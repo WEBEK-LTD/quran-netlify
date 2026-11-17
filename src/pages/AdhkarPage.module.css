@@ -1,0 +1,175 @@
+.page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+  direction: rtl;
+}
+.topBar { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+.backBtn {
+  font-size:13px; color:var(--text3); padding:6px 12px; border-radius:8px;
+  border:1px solid var(--border); background:var(--surface); text-decoration:none; transition:all .15s;
+}
+.backBtn:hover { color:var(--text); border-color:var(--text2); }
+.pageTitle { flex:1; text-align:center; font-size:20px; font-weight:700; color:var(--text); }
+
+/* Search */
+.searchWrap {
+  position: relative; display: flex; align-items: center;
+  margin-bottom: 16px;
+}
+.searchIcon { position:absolute; right:14px; font-size:15px; pointer-events:none; color:var(--text3); }
+.searchInput {
+  width: 100%; padding: 11px 40px 11px 14px;
+  border-radius: 12px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-size: 14px;
+  transition: border-color .2s;
+}
+.searchInput:focus { outline:none; border-color:var(--gold); }
+.clearBtn {
+  position:absolute; left:12px; background:none; border:none;
+  color:var(--text3); cursor:pointer; font-size:14px; padding:4px;
+}
+
+/* Categories */
+.categories {
+  display: flex; gap: 8px; overflow-x: auto;
+  padding-bottom: 8px; margin-bottom: 20px;
+  scrollbar-width: none;
+}
+.categories::-webkit-scrollbar { display:none; }
+.catBtn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 20px; white-space: nowrap;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text2); font-size: 13px; cursor: pointer;
+  transition: all .2s; flex-shrink: 0;
+}
+.catBtn:hover { border-color: var(--cat-color); color: var(--cat-color); }
+.catBtnActive {
+  background: color-mix(in srgb, var(--cat-color) 15%, var(--surface)) !important;
+  border-color: color-mix(in srgb, var(--cat-color) 50%, transparent) !important;
+  color: var(--cat-color) !important;
+  font-weight: 600;
+}
+
+/* Category header */
+.catHeader {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px; border-radius: 14px; margin-bottom: 18px;
+  background: color-mix(in srgb, var(--cat-color) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--cat-color) 25%, transparent);
+}
+.catHeaderIcon { font-size: 32px; flex-shrink:0; }
+.catHeaderName { font-size: 17px; font-weight: 700; color: var(--text); }
+.catHeaderCount { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+/* Cards */
+.adhkarList { display:flex; flex-direction:column; gap:10px; }
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden;
+  transition: border-color .2s, box-shadow .2s;
+  animation: slideIn .3s ease both;
+  border-right: 3px solid var(--card-accent);
+}
+@keyframes slideIn {
+  from { opacity:0; transform:translateY(8px); }
+  to { opacity:1; transform:translateY(0); }
+}
+.card:hover { border-color: color-mix(in srgb, var(--card-accent) 40%, var(--border)); }
+.cardDone { opacity: .75; }
+
+/* Card header */
+.cardHeader {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; cursor: pointer;
+}
+.cardLeft { flex: 1; min-width: 0; }
+.cardName { font-size: 15px; font-weight: 700; color: var(--text); }
+.cardMeta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px; }
+.source { font-size: 11px; color: var(--text3); }
+.countBadge {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  background: var(--gold-dim); color: var(--gold); font-weight: 600;
+  border: 1px solid rgba(201,168,76,.2);
+}
+.doneBadge {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  background: rgba(82,183,136,.12); color: #52b788; font-weight: 600;
+}
+.chevron {
+  font-size: 20px; color: var(--text3); transition: transform .25s;
+  transform: rotate(0deg); flex-shrink:0; line-height:1;
+}
+.chevronOpen { transform: rotate(-90deg); }
+
+/* Dhikr text */
+.dhikrText {
+  padding: 0 16px; font-family: var(--font-quran, 'Amiri', serif);
+  color: var(--text); line-height: 2; cursor: pointer;
+  transition: max-height .3s ease;
+}
+.dhikrTextPreview {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; font-size: 16px; padding-bottom: 14px;
+}
+.dhikrTextFull { font-size: 18px; padding-bottom: 14px; }
+
+/* Actions */
+.cardActions {
+  display: flex; gap: 8px; padding: 12px 16px 14px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.countBtn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 9px 16px; border-radius: 10px;
+  background: color-mix(in srgb, var(--card-accent) 12%, var(--bg2));
+  border: 1px solid color-mix(in srgb, var(--card-accent) 30%, transparent);
+  color: var(--text); cursor: pointer; transition: all .2s; font-size: 14px;
+}
+.countBtn:hover { background: color-mix(in srgb, var(--card-accent) 20%, var(--bg2)); }
+.countBtnDone { opacity:.6; cursor:default; }
+.countNum { font-size: 20px; font-weight: 700; color: var(--card-accent); line-height:1; }
+.countOf { font-size: 13px; color: var(--text3); }
+.countLabel { font-size: 12px; color: var(--text2); }
+
+.resetBtn {
+  padding: 9px 12px; border-radius: 10px;
+  background: var(--bg2); border: 1px solid var(--border);
+  color: var(--text3); cursor: pointer; font-size: 13px; transition: all .2s;
+}
+.resetBtn:hover { color: var(--text); border-color: var(--text2); }
+
+.copyBtn {
+  padding: 9px 14px; border-radius: 10px;
+  background: var(--bg2); border: 1px solid var(--border);
+  color: var(--text2); cursor: pointer; font-size: 13px; transition: all .2s;
+  margin-right: auto;
+}
+.copyBtn:hover { border-color: var(--gold); color: var(--gold); }
+
+/* Progress bar */
+.progressBar {
+  height: 3px; background: var(--border);
+  border-radius: 0 0 14px 14px; overflow: hidden;
+}
+.progressFill {
+  height: 100%;
+  background: var(--card-accent);
+  transition: width .4s ease;
+  border-radius: inherit;
+}
+.progressDone { background: #52b788 !important; }
+
+/* Empty */
+.empty { text-align:center; padding:48px 20px; color:var(--text3); }
+.emptyIcon { font-size:48px; margin-bottom:12px; }
+.empty p { font-size:15px; }
+
+/* Tip */
+.tip {
+  text-align: center; font-size: 12px; color: var(--text3);
+  margin-top: 24px; padding: 12px;
+  border-top: 1px solid var(--border);
+}

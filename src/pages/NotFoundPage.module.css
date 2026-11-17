@@ -1,0 +1,24 @@
+.page {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px; padding: 40px; text-align: center; direction: rtl;
+}
+.decor {
+  font-size: 40px; color: var(--gold); opacity: 0.3;
+  animation: spin 20s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.code {
+  font-family: var(--font-quran); font-size: 80px; font-weight: 800;
+  color: var(--gold); opacity: 0.15; line-height: 1;
+  margin-bottom: -10px;
+}
+h1 { font-size: 22px; font-weight: 700; color: var(--text); }
+p  { font-size: 14px; color: var(--text3); max-width: 300px; line-height: 1.7; }
+.homeBtn {
+  margin-top: 10px; padding: 12px 28px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--green), var(--green2));
+  color: white; font-family: var(--font-ui); font-size: 14px; font-weight: 700;
+  text-decoration: none; transition: all 0.2s;
+}
+.homeBtn:hover { opacity: 0.88; transform: translateY(-2px); }

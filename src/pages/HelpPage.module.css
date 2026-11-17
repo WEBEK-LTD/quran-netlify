@@ -1,0 +1,39 @@
+.page { max-width: 720px; margin: 0 auto; padding: 24px 16px 100px; direction: rtl; }
+.topBar { display:flex; align-items:center; gap:8px; margin-bottom:20px; }
+.pageTitle { flex:1; text-align:center; font-size:20px; font-weight:700; color:var(--text); }
+.backBtn { font-size:12px; color:var(--text3); padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); text-decoration:none; }
+
+.hero { display:flex; align-items:center; gap:14px; padding:18px 20px; margin-bottom:20px; background:linear-gradient(135deg,var(--surface),var(--surface2)); border:1px solid var(--border); border-radius:16px; }
+.heroIcon { font-size:40px; }
+.heroTitle { font-size:18px; font-weight:700; color:var(--text); }
+.heroSub { font-size:13px; color:var(--text3); margin-top:3px; }
+
+.searchWrap { position:relative; display:flex; align-items:center; margin-bottom:20px; }
+.searchIcon { position:absolute; right:14px; color:var(--text3); pointer-events:none; }
+.searchInput { width:100%; padding:11px 38px 11px 14px; border-radius:12px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:14px; }
+.searchInput:focus { outline:none; border-color:var(--gold); }
+.clearSearch { position:absolute; left:12px; background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; }
+
+.section { margin-bottom:10px; background:var(--surface); border:1px solid var(--border); border-right:3px solid var(--sec-color); border-radius:14px; overflow:hidden; }
+.secHeader { display:flex; align-items:center; gap:10px; padding:14px 16px; cursor:pointer; transition:background .15s; }
+.secHeader:hover { background:var(--surface2); }
+.secIcon { font-size:22px; flex-shrink:0; }
+.secTitle { flex:1; font-size:15px; font-weight:700; color:var(--text); }
+.secChevron { font-size:20px; color:var(--text3); transition:transform .25s; transform:rotate(0deg); }
+.secChevronOpen { transform:rotate(-90deg); color:var(--sec-color) !important; }
+.secBody { border-top:1px solid var(--border); }
+
+.faqItem { border-bottom:1px solid var(--border); }
+.faqItem:last-child { border-bottom:none; }
+.faqQ { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 16px; cursor:pointer; transition:background .13s; }
+.faqQ:hover { background:var(--surface2); }
+.faqQText { font-size:14px; color:var(--text2); line-height:1.5; }
+.faqChevron { font-size:18px; color:var(--text3); flex-shrink:0; transition:transform .2s; }
+.faqChevronOpen { transform:rotate(-90deg); color:var(--gold) !important; }
+.faqA { padding:12px 16px 14px; font-size:13px; color:var(--text3); line-height:1.9; background:var(--bg); border-top:1px solid var(--border); animation:fadeIn .2s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } }
+
+.contactCard { display:flex; align-items:center; gap:14px; margin-top:24px; padding:16px 20px; background:var(--gold-dim); border:1px solid rgba(201,168,76,.3); border-radius:14px; }
+.contactIcon { font-size:28px; }
+.contactText { flex:1; font-size:14px; color:var(--text2); }
+.contactBtn { padding:9px 18px; border-radius:10px; background:var(--gold); color:#000; font-weight:700; font-size:13px; text-decoration:none; white-space:nowrap; }

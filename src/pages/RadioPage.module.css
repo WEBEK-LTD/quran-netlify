@@ -1,0 +1,83 @@
+.page { max-width: 860px; margin: 0 auto; padding: 24px 16px 100px; direction: rtl; }
+.topBar { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.backBtn { font-size:13px; color:var(--text3); padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); text-decoration:none; }
+.backBtn:hover { color:var(--text); }
+.pageTitle { flex:1; text-align:center; font-size:20px; font-weight:700; color:var(--text); }
+
+/* Now Playing */
+.nowPlaying { position:relative; overflow:hidden; display:flex; align-items:center; gap:14px; padding:16px 18px; margin-bottom:14px; background:linear-gradient(135deg,color-mix(in srgb,var(--c) 10%,var(--surface)),var(--surface2)); border:1px solid color-mix(in srgb,var(--c) 35%,transparent); border-radius:16px; box-shadow:0 4px 20px color-mix(in srgb,var(--c) 12%,transparent); }
+.npGlow { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 0% 50%,color-mix(in srgb,var(--c) 10%,transparent),transparent 70%); }
+.npIconWrap { width:50px; height:50px; border-radius:50%; flex-shrink:0; background:color-mix(in srgb,var(--c) 15%,var(--bg2)); border:2px solid color-mix(in srgb,var(--c) 35%,transparent); display:flex; align-items:center; justify-content:center; }
+.npIcon { font-size:22px; }
+.npSpinner { width:20px; height:20px; border-radius:50%; border:3px solid color-mix(in srgb,var(--c) 25%,transparent); border-top-color:var(--c); animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.npInfo { flex:1; min-width:0; }
+.npLive { font-size:11px; font-weight:700; color:var(--c); letter-spacing:.8px; margin-bottom:2px; }
+.npName { font-size:15px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.npDesc { font-size:11px; color:var(--text3); margin-top:2px; }
+.npRight { display:flex; flex-direction:column; align-items:center; gap:6px; flex-shrink:0; }
+.npTime { font-size:16px; font-weight:700; color:var(--c); direction:ltr; font-family:monospace; }
+.npStop { width:32px; height:32px; border-radius:50%; background:color-mix(in srgb,var(--c) 15%,transparent); border:1px solid color-mix(in srgb,var(--c) 30%,transparent); color:var(--c); font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+.npStop:hover { background:color-mix(in srgb,var(--c) 28%,transparent); }
+
+/* Error */
+.errorMsg { padding:10px 14px; border-radius:10px; font-size:13px; text-align:center; background:rgba(248,113,113,.1); border:1px solid rgba(248,113,113,.3); color:#f87171; margin-bottom:12px; }
+
+/* Volume */
+.volRow { display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:14px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+.muteBtn { font-size:18px; background:none; border:none; cursor:pointer; flex-shrink:0; }
+.volSlider { flex:1; height:4px; cursor:pointer; accent-color:var(--gold); }
+.volVal { font-size:12px; color:var(--text3); width:34px; text-align:left; flex-shrink:0; }
+
+/* Controls */
+.controls { display:flex; flex-direction:column; gap:10px; margin-bottom:18px; }
+.searchWrap { position:relative; display:flex; align-items:center; }
+.searchIcon { position:absolute; right:12px; font-size:14px; pointer-events:none; color:var(--text3); }
+.searchInput { width:100%; padding:10px 36px 10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:14px; }
+.searchInput:focus { outline:none; border-color:var(--gold); }
+.searchClear { position:absolute; left:10px; background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; }
+.cats { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; }
+.cats::-webkit-scrollbar { display:none; }
+.catBtn { padding:7px 14px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--text2); font-size:13px; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:all .2s; }
+.catBtn:hover { border-color:var(--cc,var(--gold)); color:var(--cc,var(--gold)); }
+.catActive { background:color-mix(in srgb,var(--cc,var(--gold)) 12%,var(--surface)) !important; border-color:color-mix(in srgb,var(--cc,var(--gold)) 40%,transparent) !important; color:var(--cc,var(--gold)) !important; font-weight:700; }
+
+/* Loading bar */
+.fetchingBar { display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:14px; background:var(--surface); border-radius:10px; border:1px solid var(--border); font-size:13px; color:var(--text3); }
+.fetchSpinner { width:14px; height:14px; border-radius:50%; border:2px solid var(--border); border-top-color:var(--gold); animation:spin .8s linear infinite; flex-shrink:0; }
+
+/* Empty */
+.empty { text-align:center; padding:40px 20px; color:var(--text3); font-size:15px; }
+.empty div { font-size:48px; margin-bottom:12px; }
+
+/* Grid */
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(165px,1fr)); gap:10px; }
+@media (max-width:420px) { .grid { grid-template-columns:1fr 1fr; } }
+
+/* Card */
+.card { position:relative; overflow:hidden; display:flex; flex-direction:column; gap:5px; padding:13px 11px; border-radius:14px; text-align:right; background:var(--surface); border:1px solid var(--border); border-right:3px solid var(--c); cursor:pointer; transition:all .2s; }
+.card:hover { transform:translateY(-2px); border-color:color-mix(in srgb,var(--c) 50%,transparent); box-shadow:0 6px 18px color-mix(in srgb,var(--c) 12%,transparent); }
+.cardOn { background:color-mix(in srgb,var(--c) 7%,var(--surface)) !important; border-color:color-mix(in srgb,var(--c) 45%,transparent) !important; }
+.cardGlow { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 50% 0%,color-mix(in srgb,var(--c) 8%,transparent),transparent 65%); }
+.cardHead { display:flex; align-items:center; gap:6px; }
+.cardIcon { font-size:20px; flex-shrink:0; }
+.cardCountry { font-size:15px; flex-shrink:0; }
+.cardName { font-size:12px; font-weight:700; color:var(--text); line-height:1.3; }
+.cardDesc { font-size:10px; color:var(--text3); line-height:1.4; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cardFoot { display:flex; align-items:center; justify-content:space-between; margin-top:4px; }
+.bitrate { font-size:9px; color:var(--text3); }
+.playBtn { width:26px; height:26px; border-radius:50%; background:color-mix(in srgb,var(--c) 12%,transparent); border:1px solid color-mix(in srgb,var(--c) 25%,transparent); color:var(--c); font-size:10px; display:flex; align-items:center; justify-content:center; transition:all .2s; flex-shrink:0; }
+.playOn { background:var(--c) !important; color:#fff !important; border-color:var(--c) !important; }
+
+/* Sound wave */
+.wave { display:flex; align-items:center; gap:2px; margin-right:auto; }
+.wave span { width:3px; border-radius:2px; background:var(--c); animation:wav .7s ease-in-out infinite; }
+.wave span:nth-child(1) { height:6px; }
+.wave span:nth-child(2) { height:12px; animation-delay:.15s; }
+.wave span:nth-child(3) { height:8px; animation-delay:.3s; }
+.wave span:nth-child(4) { height:5px; animation-delay:.45s; }
+@keyframes wav { 0%,100%{transform:scaleY(.5)} 50%{transform:scaleY(1)} }
+
+.cardSpin { width:13px; height:13px; border-radius:50%; border:2px solid color-mix(in srgb,var(--c) 25%,transparent); border-top-color:var(--c); animation:spin .8s linear infinite; margin-right:auto; }
+
+.hint { display:flex; align-items:center; gap:8px; margin-top:20px; padding-top:14px; border-top:1px solid var(--border); font-size:11px; color:var(--text3); }

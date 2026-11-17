@@ -1,0 +1,294 @@
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+  direction: rtl;
+}
+
+/* Top bar */
+.topBar { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+.backBtn {
+  font-size:13px; color:var(--text3); padding:6px 12px; border-radius:8px;
+  border:1px solid var(--border); background:var(--surface); text-decoration:none;
+  transition:all .15s;
+}
+.backBtn:hover { color:var(--text); border-color:var(--text2); }
+.pageTitle { flex:1; text-align:center; font-size:20px; font-weight:700; color:var(--text); }
+
+/* Clock card */
+.clockCard {
+  background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px 24px 20px;
+  text-align: center;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.clockCard::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+.clockTime {
+  font-size: clamp(44px, 10vw, 64px);
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: -2px;
+  line-height: 1;
+  font-family: 'Segoe UI', sans-serif;
+  direction: ltr;
+}
+.ampm { font-size: .4em; font-weight: 500; color: var(--gold2); vertical-align: super; }
+.clockDate { font-size: 15px; color: var(--text2); margin-top: 8px; }
+.hijriDate { font-size: 13px; color: var(--text3); margin-top: 4px; }
+.cityBadge {
+  display: inline-block;
+  margin-top: 10px; padding: 4px 14px;
+  background: var(--gold-dim); border: 1px solid rgba(201,168,76,.3);
+  border-radius: 20px; font-size: 13px; color: var(--gold);
+}
+
+/* Next prayer banner */
+.nextBanner {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--surface)), var(--surface2));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 16px;
+  margin-bottom: 16px;
+  position: relative; overflow: hidden;
+}
+.nextBanner::before {
+  content: ''; position: absolute;
+  right: -20px; top: -20px;
+  width: 100px; height: 100px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%);
+  pointer-events: none;
+}
+.nextIcon { font-size: 36px; flex-shrink: 0; }
+.nextInfo { flex: 1; }
+.nextLabel { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+.nextName { font-size: 22px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.nextTime { text-align: left; flex-shrink: 0; }
+.nextTimeVal { font-size: 22px; font-weight: 700; color: var(--accent); direction: ltr; }
+.nextLeft { font-size: 12px; color: var(--text3); text-align: center; margin-top: 3px; }
+
+/* Location card */
+.locationCard {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 18px 20px; margin-bottom: 20px;
+}
+.gpsBtn {
+  width: 100%; padding: 12px; border-radius: 10px;
+  background: var(--gold-dim); border: 1px solid rgba(201,168,76,.4);
+  color: var(--gold); font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all .2s; cursor: pointer;
+}
+.gpsBtn:hover:not(:disabled) { background: rgba(201,168,76,.2); }
+.gpsBtn:disabled { opacity: .5; cursor: default; }
+.spin { display: inline-block; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.orLine {
+  display: flex; align-items: center; gap: 10px;
+  margin: 12px 0; color: var(--text3); font-size: 12px;
+}
+.orLine::before, .orLine::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.cityRow { display: flex; gap: 8px; margin-bottom: 12px; }
+.cityInput {
+  flex: 1; padding: 9px 14px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg2);
+  color: var(--text); font-size: 14px;
+}
+.cityInput:focus { outline: none; border-color: var(--gold); }
+.cityBtn {
+  padding: 9px 18px; border-radius: 10px;
+  background: var(--gold); color: #000; font-weight: 700;
+  border: none; cursor: pointer; font-size: 14px;
+  transition: opacity .2s;
+}
+.cityBtn:disabled { opacity: .5; cursor: default; }
+.methodRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.methodLabel { font-size: 13px; color: var(--text3); flex-shrink: 0; }
+.methodSelect {
+  flex: 1; padding: 7px 10px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg2);
+  color: var(--text); font-size: 13px; cursor: pointer;
+}
+
+/* Error */
+.errorMsg {
+  padding: 12px 16px; border-radius: 10px; font-size: 14px;
+  background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.3);
+  color: #f87171; margin-bottom: 16px; text-align: center;
+}
+
+/* Prayers grid */
+.prayersGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+@media (max-width: 480px) {
+  .prayersGrid { grid-template-columns: repeat(2, 1fr); }
+}
+.prayerCard {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px 12px;
+  text-align: center; position: relative; overflow: hidden;
+  transition: transform .2s, border-color .2s;
+}
+.prayerCard:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.prayerCardNext {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, var(--surface)), var(--surface));
+}
+.prayerGlow {
+  position: absolute; inset: 0;
+  opacity: .06; pointer-events: none;
+}
+.prayerIcon { font-size: 28px; margin-bottom: 6px; }
+.prayerName { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.prayerTime { font-size: 16px; font-weight: 600; color: var(--accent); direction: ltr; }
+.prayerBadge {
+  display: inline-block; margin-top: 6px;
+  padding: 2px 8px; border-radius: 12px; font-size: 11px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent); font-weight: 600;
+}
+
+/* Empty / loading */
+.emptyState {
+  text-align: center; padding: 48px 20px; color: var(--text3);
+}
+.emptyIcon { font-size: 56px; margin-bottom: 16px; }
+.emptyState p { font-size: 15px; line-height: 1.7; max-width: 300px; margin: 0 auto; }
+.loadingState { text-align: center; padding: 40px; color: var(--text3); }
+.loadSpinner {
+  width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 16px;
+  border: 3px solid var(--border); border-top-color: var(--gold);
+  animation: spin .8s linear infinite;
+}
+
+/* Dhikr section */
+.section { margin-top: 8px; }
+.sectionTitle {
+  font-size: 16px; font-weight: 700; color: var(--text);
+  margin-bottom: 14px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.dhikrList { display: flex; flex-direction: column; gap: 10px; }
+.dhikrItem {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px 16px;
+}
+.dhikrName { font-size: 12px; color: var(--gold); font-weight: 600; margin-bottom: 6px; }
+.dhikrAr { font-size: 16px; color: var(--text); line-height: 1.8; font-family: var(--font-quran, serif); }
+
+.clockColon {
+  color: var(--gold);
+  opacity: 0.6;
+  animation: blink 1s step-end infinite;
+  margin: 0 2px;
+}
+@keyframes blink {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.2; }
+}
+
+/* Weekly table */
+.weekTable {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  overflow-x: auto;
+}
+.weekHeader {
+  display: grid;
+  grid-template-columns: 80px repeat(6, 1fr);
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.weekRow {
+  display: grid;
+  grid-template-columns: 80px repeat(6, 1fr);
+  border-bottom: 1px solid var(--border);
+  transition: background .15s;
+}
+.weekRow:last-child { border-bottom: none; }
+.weekRow:hover { background: var(--surface); }
+.weekRowToday {
+  background: rgba(201,168,76,.07) !important;
+  border-right: 3px solid var(--gold);
+}
+.weekCell {
+  padding: 10px 6px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.weekHeader .weekCell {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 8px 6px;
+}
+.weekDay { font-size: 13px; font-weight: 700; color: var(--text); }
+.weekDate { font-size: 11px; color: var(--text3); }
+.weekTime { font-size: 13px; font-weight: 600; color: var(--gold); direction: ltr; }
+.weekRowToday .weekTime { color: var(--gold2); }
+
+@media (max-width: 500px) {
+  .weekHeader, .weekRow { grid-template-columns: 60px repeat(6, 1fr); }
+  .weekCell { padding: 8px 3px; font-size: 11px; }
+  .weekTime { font-size: 11px; }
+  .weekDay { font-size: 11px; }
+}
+
+.methodHint {
+  margin-top: 8px; font-size: 12px; color: var(--text3);
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.methodHintBtn {
+  background: var(--gold-dim); border: 1px solid rgba(201,168,76,.3);
+  color: var(--gold); font-size: 12px; padding: 3px 10px; border-radius: 8px;
+  cursor: pointer; transition: background .2s;
+}
+.methodHintBtn:hover { background: rgba(201,168,76,.2); }
+
+/* Alarm button */
+.alarmBtn {
+  background: none; border: none; cursor: pointer;
+  font-size: 14px; padding: 2px; opacity: .5;
+  transition: all .2s; margin-top: 4px;
+}
+.alarmBtn:hover { opacity: 1; transform: scale(1.2); }
+.alarmOn { opacity: 1 !important; }
+
+/* Notification banner */
+.notifBanner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; margin-bottom: 16px;
+  background: var(--gold-dim); border: 1px solid rgba(201,168,76,.3);
+  border-radius: 12px; font-size: 13px; color: var(--gold);
+}
+.notifBanner span:nth-child(2) { flex: 1; }
+.notifBtn {
+  padding: 6px 14px; border-radius: 8px;
+  background: var(--gold); color: #000; font-weight: 700;
+  font-size: 12px; border: none; cursor: pointer;
+  white-space: nowrap; flex-shrink: 0;
+}

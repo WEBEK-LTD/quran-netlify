@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://nuralquran.net/sitemap.xml
+
+# Block admin
+Disallow: /admin
+Disallow: /admin/

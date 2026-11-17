@@ -1,0 +1,92 @@
+:root {
+  --bg: #0f1a12;
+  --bg2: #162019;
+  --bg3: #1c2b20;
+  --surface: #1e2d22;
+  --surface2: #243329;
+  --border: #2d4033;
+  --gold: #c9a84c;
+  --gold2: #e8c97a;
+  --gold-dim: rgba(201,168,76,0.12);
+  --green: #2d6a4f;
+  --green2: #40916c;
+  --green3: #52b788;
+  --text: #e8e8e0;
+  --text2: #a8b5a0;
+  --text3: #6b7c65;
+  --ayah-hover: rgba(201,168,76,0.10);
+  --ayah-active: rgba(201,168,76,0.20);
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --radius: 14px;
+  --font-quran: 'Amiri Quran', 'Amiri', serif;
+  --font-ui: 'Cairo', sans-serif;
+  --font-size: 26px;
+}
+
+body.light {
+  --bg: #f5f0e8;
+  --bg2: #ede7d9;
+  --bg3: #e5dece;
+  --surface: #fdf8f0;
+  --surface2: #f0e9d8;
+  --border: #d4c9a8;
+  --text: #2c3e28;
+  --text2: #5a6e52;
+  --text3: #8a9e82;
+  --ayah-hover: rgba(45,106,79,0.08);
+  --ayah-active: rgba(45,106,79,0.16);
+  --shadow: 0 8px 32px rgba(0,0,0,0.10);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+  overflow-x: hidden;
+  direction: rtl;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+a { color: inherit; text-decoration: none; }
+button { font-family: var(--font-ui); cursor: pointer; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes modalIn {
+  from { transform: scale(0.92); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+@keyframes toastIn {
+  from { transform: translateX(-50%) translateY(80px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ─── Mobile bottom nav spacing ─────────────────────────── */
+@media (max-width: 768px) {
+  /* Full pages: pad for BottomNav */
+  .fullPage > * {
+    padding-bottom: 80px;
+  }
+  /* When audio player is also open it's 64+60=124px approx */
+  body.audio-open .fullPage > * {
+    padding-bottom: 144px;
+  }
+}
+
+/* ─── PWA standalone mode adjustments ───────────────────── */
+@media (display-mode: standalone) {
+  body { padding-top: env(safe-area-inset-top, 0); }
+}

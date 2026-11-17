@@ -1,0 +1,124 @@
+/* ── Toolbar — part of sticky header block ────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 14px;
+  height: 40px;               /* slim bar */
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;       /* hide scrollbar on Firefox */
+}
+.toolbar::-webkit-scrollbar { display: none; }
+
+/* ── Controls ─────────────────────────────────────────────────────────── */
+.group { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+
+.btn {
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text3);
+  font-size: 11px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: all 0.13s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.btn:hover  { border-color: var(--green2); color: var(--green3); }
+.active     { border-color: var(--gold) !important; color: var(--gold) !important; background: var(--gold-dim) !important; }
+
+.sizeDisplay {
+  width: 28px; text-align: center;
+  font-size: 12px; font-weight: 700; color: var(--gold);
+  flex-shrink: 0;
+}
+
+.sep {
+  width: 1px; height: 18px;
+  background: var(--border);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.spacer { flex: 1; min-width: 8px; }
+
+.label  { display: none; } /* hidden — saves space */
+.meta   { font-size: 10px; color: var(--text3); white-space: nowrap; flex-shrink: 0; }
+
+/* ── Translation select ───────────────────────────────────────────────── */
+.transSelect {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text3);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  padding: 3px 6px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.13s;
+  flex-shrink: 0;
+  max-width: 80px;
+}
+.transSelect:focus { border-color: var(--gold); color: var(--text); }
+
+/* ── Ward widget ──────────────────────────────────────────────────────── */
+.wardWidget {
+  display: flex; align-items: center; gap: 5px;
+  padding: 3px 8px; border-radius: 7px;
+  border: 1px solid rgba(201,168,76,0.2);
+  background: var(--gold-dim);
+  flex-shrink: 0;
+}
+.streak    { font-size: 10px; color: #f97316; font-weight: 700; }
+.wardInfo  { font-size: 10px; color: var(--gold2); font-family: var(--font-quran); white-space: nowrap; }
+.wardBtn {
+  padding: 3px 8px; border-radius: 5px; font-size: 10px;
+  border: 1px solid var(--green2); background: rgba(64,145,108,0.12);
+  color: var(--green3); font-family: var(--font-ui);
+  cursor: pointer; transition: all 0.13s; white-space: nowrap;
+}
+.wardBtn:hover:not(:disabled) { background: rgba(64,145,108,0.22); }
+.wardDone { opacity: 0.6; cursor: not-allowed; }
+.setWardBtn {
+  padding: 3px 10px; border-radius: 6px; font-size: 10px;
+  border: 1px dashed var(--border); color: var(--text3);
+  font-family: var(--font-ui); text-decoration: none;
+  transition: all 0.13s; white-space: nowrap; flex-shrink: 0;
+}
+.setWardBtn:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── Quick links ──────────────────────────────────────────────────────── */
+.quickLink {
+  padding: 3px 9px; border-radius: 6px;
+  border: 1px solid var(--border); background: none;
+  color: var(--text3); font-size: 10px; font-family: var(--font-ui);
+  text-decoration: none; transition: all 0.13s; white-space: nowrap; flex-shrink: 0;
+}
+.quickLink:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── Mobile: hide non-essential items, keep scrollable ───────────────── */
+@media (max-width: 768px) {
+  .toolbar    { padding: 0 10px; gap: 3px; }
+  .quickLink  { display: none; }
+  .wardWidget { display: none; }
+  .setWardBtn { display: none; }
+  .meta       { display: none; }
+  /* keep font size controls + translation visible */
+}
+
+.toolLabel {
+  font-size: 10px;
+  color: var(--text3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  .toolLabel { font-size: 9px; }
+}

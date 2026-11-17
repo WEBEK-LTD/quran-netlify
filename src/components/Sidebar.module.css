@@ -1,0 +1,201 @@
+/* ── Container ───────────────────────────────────────────────────────── */
+.sidebar {
+  width: 272px;
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 0.28s cubic-bezier(0.4,0,0.2,1);
+}
+.collapsed { width: 0; }
+
+/* ── Tabs ────────────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tab {
+  flex: 1; padding: 10px 4px;
+  font-size: 11px; font-weight: 600;
+  color: var(--text3); background: none;
+  border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; transition: all 0.15s;
+  white-space: nowrap; font-family: var(--font-ui);
+}
+.tab:hover { color: var(--text2); }
+.activeTab { color: var(--gold) !important; border-bottom-color: var(--gold) !important; }
+
+/* ── Filter ──────────────────────────────────────────────────────────── */
+.filterWrap {
+  position: relative; padding: 8px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.filterInput {
+  width: 100%; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 32px 7px 12px; font-family: var(--font-ui);
+  font-size: 12px; color: var(--text); outline: none;
+  transition: border-color 0.15s; direction: rtl; box-sizing: border-box;
+}
+.filterInput:focus { border-color: var(--gold); }
+.filterInput::placeholder { color: var(--text3); }
+.clearFilter {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text3); cursor: pointer;
+  font-size: 11px; line-height: 1; padding: 2px;
+}
+
+/* ── Scrollable list ─────────────────────────────────────────────────── */
+.list {
+  flex: 1; overflow-y: auto; padding: 6px 6px 12px;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.list::-webkit-scrollbar { width: 4px; }
+.list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Surah item ──────────────────────────────────────────────────────── */
+.item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 10px;
+  cursor: pointer; transition: background 0.13s; margin-bottom: 1px;
+}
+.item:hover { background: var(--surface); }
+.activeItem { background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.18); }
+
+.num {
+  width: 30px; height: 30px; border-radius: 7px;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-ui); font-size: 11px; color: var(--gold);
+  font-weight: 700; flex-shrink: 0;
+}
+.activeItem .num { background: rgba(201,168,76,0.2); }
+
+.info { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.name { font-family: var(--font-quran); font-size: 15px; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sub  { font-size: 10px; color: var(--text3); }
+
+/* ── Juz group ───────────────────────────────────────────────────────── */
+.juzGroup { margin-bottom: 2px; }
+
+.juzHeader {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 10px;
+  cursor: pointer; transition: background 0.13s;
+  border: 1px solid transparent;
+}
+.juzHeader:hover { background: var(--surface); }
+.activeJuz {
+  background: var(--gold-dim) !important;
+  border-color: rgba(201,168,76,0.2) !important;
+}
+
+.juzBadge {
+  width: 30px; height: 30px; border-radius: 7px; flex-shrink: 0;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-ui); font-size: 11px; color: var(--gold); font-weight: 800;
+}
+.juzInfo { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.juzName { font-family: var(--font-ui); font-size: 12px; color: var(--text); font-weight: 700; }
+.juzSub  { font-size: 10px; color: var(--text3); }
+.juzMeta { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.juzCount { font-size: 10px; color: var(--text3); }
+.juzArrow {
+  font-size: 16px; color: var(--text3); font-weight: 300;
+  transition: transform 0.2s; display: inline-block; line-height: 1;
+}
+.juzArrowOpen { transform: rotate(90deg); color: var(--gold); }
+
+/* Surahs inside juz */
+.juzSurahs {
+  margin: 2px 0 4px 8px;
+  border-right: 2px solid var(--border);
+  border-radius: 0 0 0 6px;
+  padding-right: 4px;
+  animation: expandIn 0.2s ease;
+}
+@keyframes expandIn { from { opacity: 0; transform: translateY(-4px); } }
+
+.juzStartRow {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 8px; margin-bottom: 2px;
+  cursor: pointer; transition: background 0.13s;
+  background: rgba(64,145,108,0.06);
+  border: 1px dashed rgba(64,145,108,0.25);
+  font-size: 11px; color: var(--green3); font-family: var(--font-ui);
+}
+.juzStartRow:hover { background: rgba(64,145,108,0.12); }
+.juzStartIcon { font-size: 10px; flex-shrink: 0; }
+.juzStartRef  { margin-right: auto; font-size: 10px; color: var(--text3); direction: ltr; }
+
+.subItem {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: 8px;
+  cursor: pointer; transition: background 0.13s; margin-bottom: 1px;
+}
+.subItem:hover { background: var(--surface); }
+.subItemActive { background: var(--gold-dim); }
+.subNum {
+  width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-ui); font-size: 10px; color: var(--text3); font-weight: 700;
+}
+.subItemActive .subNum { color: var(--gold); background: rgba(201,168,76,0.15); }
+
+/* ── Hizb item ───────────────────────────────────────────────────────── */
+.hizbItem {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 10px;
+  cursor: pointer; transition: background 0.13s; margin-bottom: 1px;
+}
+.hizbItem:hover { background: var(--surface); }
+.hizbActive { background: var(--gold-dim); border: 1px solid rgba(201,168,76,0.18); }
+
+.hizbBadge {
+  width: 34px; flex-shrink: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+}
+.hizbNum {
+  width: 30px; height: 22px; border-radius: 6px;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-ui); font-size: 11px; color: var(--gold); font-weight: 800;
+}
+.hizbActive .hizbNum { background: rgba(201,168,76,0.2); }
+.hizbJuz {
+  font-size: 9px; color: var(--text3); font-family: var(--font-ui);
+  direction: ltr;
+}
+.hizbRef {
+  font-size: 10px; color: var(--text3); flex-shrink: 0;
+  direction: ltr; font-family: var(--font-ui);
+}
+
+/* ── Empty ───────────────────────────────────────────────────────────── */
+.empty {
+  text-align: center; padding: 40px 16px;
+  color: var(--text3); font-size: 13px; line-height: 1.8;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────── */
+.overlay {
+  display: none;
+}
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed; top: 102px; right: 0; bottom: 0;
+    z-index: 90; box-shadow: -4px 0 20px rgba(0,0,0,0.4);
+  }
+  .overlay {
+    display: block; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 89;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } }
+}

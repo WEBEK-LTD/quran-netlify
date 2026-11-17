@@ -1,0 +1,109 @@
+/* ── Install button (shows in Header) ───────────────────────── */
+.installBtn {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.installBtn:hover {
+  border-color: var(--green2);
+  background: rgba(64,145,108,0.08);
+  transform: scale(1.05);
+}
+
+/* ── Backdrop ────────────────────────────────────────────────── */
+.backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex; align-items: flex-end; justify-content: center;
+  z-index: 600;
+  padding: 0;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } }
+
+/* ── Guide sheet (bottom sheet on mobile) ───────────────────── */
+.guide {
+  width: 100%; max-width: 480px;
+  background: var(--surface);
+  border-radius: 24px 24px 0 0;
+  padding: 28px 24px 40px;
+  direction: rtl;
+  position: relative;
+  animation: slideUp 0.32s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+}
+
+/* desktop — center modal */
+@media (min-width: 600px) {
+  .backdrop { align-items: center; padding: 20px; }
+  .guide { border-radius: 20px; }
+}
+
+.closeBtn {
+  position: absolute; top: 16px; left: 16px;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1px solid var(--border); background: none;
+  color: var(--text3); font-size: 12px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.13s;
+}
+.closeBtn:hover { color: var(--text); }
+
+.guideIcon { font-size: 44px; text-align: center; margin-bottom: 12px; }
+
+.guide h3 {
+  text-align: center; font-size: 20px; font-weight: 800;
+  color: var(--text); margin-bottom: 4px;
+}
+.guideSub {
+  text-align: center; font-size: 13px; color: var(--text3);
+  margin-bottom: 20px;
+}
+
+/* ── Steps ───────────────────────────────────────────────────── */
+.steps { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+
+.step {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px;
+}
+.step span { font-size: 14px; color: var(--text2); line-height: 1.6; }
+.step strong { color: var(--text); }
+
+.stepNum {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--green), var(--green2));
+  color: white !important; font-family: var(--font-ui) !important;
+  font-size: 13px !important; font-weight: 800 !important;
+  display: flex !important; align-items: center !important;
+  justify-content: center !important; flex-shrink: 0 !important;
+}
+
+/* ── iOS share hint ──────────────────────────────────────────── */
+.iosHint {
+  display: flex; align-items: center; gap: 10px; justify-content: center;
+  padding: 12px; border-radius: 12px;
+  background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.2);
+  margin-bottom: 20px; font-size: 13px; color: var(--gold);
+}
+.iosArrow { font-size: 22px; }
+
+/* ── Done button ─────────────────────────────────────────────── */
+.doneBtn {
+  width: 100%; padding: 14px;
+  border-radius: 14px; border: none;
+  background: linear-gradient(135deg, var(--green), var(--green2));
+  color: white; font-family: var(--font-ui);
+  font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.doneBtn:hover { opacity: 0.88; }

@@ -1,0 +1,83 @@
+.page { max-width: 560px; margin: 0 auto; padding: 24px 16px 100px; direction: rtl; }
+
+.topBar { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+.backBtn { font-size:13px; color:var(--text3); padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); text-decoration:none; }
+.backBtn:hover { color:var(--text); }
+.pageTitle { flex:1; text-align:center; font-size:20px; font-weight:700; color:var(--text); }
+.vibBtn { font-size:20px; background:none; border:none; cursor:pointer; padding:4px 8px; border-radius:8px; transition:background .2s; }
+.vibBtn:hover { background:var(--surface); }
+
+/* Stats */
+.statsRow { display:flex; gap:10px; margin-bottom:20px; }
+.statBox { flex:1; text-align:center; padding:12px 8px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+.statVal { font-size:22px; font-weight:800; color:var(--gold); }
+.statLabel { font-size:11px; color:var(--text3); margin-top:2px; }
+
+/* Presets */
+.presets { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:16px; }
+.presetBtn { padding:7px 13px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--text2); font-size:12px; cursor:pointer; transition:all .2s; }
+.presetBtn:hover { border-color:var(--pc); color:var(--pc); }
+.presetActive { background:color-mix(in srgb,var(--pc) 12%,var(--surface)) !important; border-color:color-mix(in srgb,var(--pc) 45%,transparent) !important; color:var(--pc) !important; font-weight:700; }
+
+/* Custom */
+.customWrap { margin-bottom:12px; }
+.customInput { width:100%; padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:15px; text-align:center; font-family:var(--font-quran,serif); }
+.customInput:focus { outline:none; border-color:var(--gold); }
+
+/* Counter */
+.counterWrap { display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:24px; }
+.counterFlash { animation:flash .5s ease; }
+@keyframes flash { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+
+/* Ring */
+.ring { position:relative; width:min(300px,80vw); height:min(300px,80vw); }
+.ringsvg { position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg); }
+.ringBg { fill:none; stroke:var(--border); stroke-width:8; }
+.ringFill { fill:none; stroke-width:8; stroke-linecap:round; transition:stroke-dashoffset .3s ease; }
+
+/* Tap button */
+.tapBtn {
+  position:absolute; inset:16px; border-radius:50%;
+  background:radial-gradient(circle at 40% 35%, color-mix(in srgb,var(--cc) 18%,var(--surface2)), var(--surface));
+  border:2px solid color-mix(in srgb,var(--cc) 25%,transparent);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:6px; cursor:pointer;
+  box-shadow:0 8px 32px color-mix(in srgb,var(--cc) 20%,transparent), inset 0 2px 4px rgba(255,255,255,.05);
+  transition:all .15s; user-select:none;
+}
+.tapBtn:hover { box-shadow:0 12px 40px color-mix(in srgb,var(--cc) 30%,transparent); transform:scale(1.02); }
+.tapBtn:active { transform:scale(.97); box-shadow:0 4px 16px color-mix(in srgb,var(--cc) 20%,transparent); }
+.tapCount { font-size:clamp(48px,14vw,72px); font-weight:800; color:var(--cc); line-height:1; font-family:monospace; }
+.tapLabel { font-size:clamp(13px,3.5vw,17px); color:var(--text2); font-family:var(--font-quran,serif); text-align:center; padding:0 8px; line-height:1.4; max-width:90%; }
+.tapCompleted { font-size:12px; color:var(--cc); opacity:.8; }
+
+/* Progress text */
+.progress { display:flex; align-items:center; gap:4px; font-size:16px; color:var(--text3); }
+.progressCurrent { font-size:22px; font-weight:700; color:var(--text); }
+.progressSep { color:var(--border); }
+.progressTarget { font-size:18px; color:var(--text3); }
+
+.completedBadge { font-size:15px; font-weight:700; text-align:center; }
+
+/* Actions */
+.actions { display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:16px; }
+.resetBtn { padding:10px 32px; border-radius:12px; background:var(--surface); border:1px solid var(--border); color:var(--text2); font-size:14px; cursor:pointer; transition:all .2s; }
+.resetBtn:hover { border-color:#f87171; color:#f87171; }
+.targetRow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; }
+.targetLabel { font-size:13px; color:var(--text3); }
+.targetBtn { padding:6px 14px; border-radius:16px; border:1px solid var(--border); background:var(--surface); color:var(--text2); font-size:13px; cursor:pointer; transition:all .2s; }
+.targetBtn:hover { border-color:var(--pc); color:var(--pc); }
+.targetActive { background:color-mix(in srgb,var(--pc) 12%,var(--surface)) !important; border-color:var(--pc) !important; color:var(--pc) !important; font-weight:700; }
+
+.hint { text-align:center; font-size:12px; color:var(--text3); margin-bottom:24px; }
+
+/* Sessions */
+.sessions { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.sessionsTitle { font-size:14px; font-weight:700; color:var(--text); padding:14px 16px; border-bottom:1px solid var(--border); margin:0; }
+.sessionsList { display:flex; flex-direction:column; }
+.sessionRow { display:flex; align-items:center; gap:10px; padding:10px 16px; border-bottom:1px solid var(--border); font-size:13px; }
+.sessionRow:last-child { border-bottom:none; }
+.sessionPreset { flex:1; color:var(--text2); font-weight:600; }
+.sessionCount { color:var(--gold); font-weight:700; }
+.sessionTime { font-size:11px; color:var(--text3); }
+.moreHint { text-align:center; font-size:12px; color:var(--text3); padding:8px; margin:0; }

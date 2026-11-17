@@ -1,0 +1,164 @@
+.page { max-width:900px; margin:0 auto; padding:20px 14px 100px; direction:rtl; }
+
+.topBar { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+.title  { flex:1; text-align:center; font-size:17px; color:var(--text); }
+.backBtn { font-size:12px; color:var(--text3); padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); text-decoration:none; white-space:nowrap; }
+.backBtn:hover { color:var(--gold); }
+
+/* Tabs */
+.tabs { display:flex; gap:6px; margin-bottom:16px; overflow-x:auto; scrollbar-width:none; }
+.tabs::-webkit-scrollbar { display:none; }
+.tab { padding:9px 18px; border-radius:20px; flex-shrink:0; border:1px solid var(--border); background:none; color:var(--text3); font-family:var(--font-ui); font-size:13px; cursor:pointer; transition:all .13s; white-space:nowrap; }
+.tabActive { background:rgba(201,168,76,.1); border-color:var(--gold); color:var(--gold); font-weight:700; }
+
+/* ── Controls ── */
+.controls { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:14px 16px; margin-bottom:12px; display:flex; flex-direction:column; gap:10px; }
+.ctrlLabel { font-size:12px; color:var(--text3); flex-shrink:0; }
+.qiraaRow  { display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; }
+.cmpRow    { display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; }
+.qiraaBtns { display:flex; flex-wrap:wrap; gap:5px; }
+.qiraaBtn  {
+  padding:5px 12px; border-radius:20px; border:1px solid var(--border);
+  background:none; color:var(--text3); font-family:var(--font-ui); font-size:12px;
+  cursor:pointer; transition:all .13s;
+}
+.qiraaBtnA { background:color-mix(in srgb,var(--c) 12%,transparent) !important; border-color:var(--c) !important; color:var(--c) !important; font-weight:700; }
+
+.controlsRow2 { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+/* Surah selector */
+.surahSel { position:relative; flex:1; min-width:160px; }
+.surahSelBtn { width:100%; display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-family:var(--font-ui); font-size:13px; cursor:pointer; }
+.surahSelNum { font-size:11px; color:var(--text3); background:var(--surface2); padding:2px 6px; border-radius:10px; }
+.surahDropdown { position:absolute; top:calc(100% + 4px); right:0; left:0; z-index:100; background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,.2); }
+.surahSearch { width:100%; padding:8px 12px; border:none; border-bottom:1px solid var(--border); background:var(--bg); color:var(--text); font-family:var(--font-ui); font-size:13px; outline:none; box-sizing:border-box; }
+.surahList { max-height:240px; overflow-y:auto; }
+.surahItem { width:100%; display:flex; align-items:center; gap:8px; padding:8px 12px; background:none; border:none; color:var(--text2); font-family:var(--font-ui); font-size:13px; cursor:pointer; text-align:right; }
+.surahItem:hover { background:var(--surface2); }
+.surahItemActive { color:var(--gold) !important; font-weight:700; }
+.surahItemNum { font-size:11px; color:var(--text3); min-width:22px; }
+.surahItemAyahs { font-size:11px; color:var(--text3); margin-right:auto; }
+
+/* Font ctrl */
+.fontCtrl { display:flex; align-items:center; gap:6px; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:4px 8px; }
+.fontCtrl button { background:none; border:none; color:var(--text3); font-family:var(--font-ui); font-size:13px; cursor:pointer; padding:2px 6px; }
+.fontCtrl span { font-size:12px; color:var(--text3); min-width:24px; text-align:center; }
+
+/* Compare btn */
+.compareBtn { padding:8px 14px; border-radius:10px; border:1px solid var(--border); background:none; color:var(--text3); font-family:var(--font-ui); font-size:12px; cursor:pointer; transition:all .13s; }
+.compareBtnOn { background:rgba(96,165,250,.1); border-color:#60a5fa; color:#60a5fa; font-weight:700; }
+
+/* Qiraa info bar */
+.qiraaInfo { display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:12px; border-right:3px solid var(--c); background:color-mix(in srgb,var(--c) 5%,var(--surface)); margin-bottom:12px; flex-wrap:wrap; }
+.qiraaInfoLeft { display:flex; flex-direction:column; gap:3px; }
+.qiraaFull { font-size:14px; font-weight:700; color:var(--c); }
+.qiraaRegion { font-size:11px; color:var(--text3); }
+.qiraaDesc { font-size:12px; color:var(--text3); }
+
+/* Mushaf */
+.mushafWrap { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:24px 20px; }
+.basmala { text-align:center; font-family:var(--font-quran); font-size:24px; color:var(--gold); margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+.mushafText { font-family:var(--font-quran); line-height:2.4; text-align:justify; direction:rtl; color:var(--text); }
+.ayahSpan { display:inline; }
+.ayahNum { font-size:.7em; color:var(--gold); margin:0 4px; vertical-align:middle; }
+.loadingPulse { text-align:center; color:var(--text3); padding:40px; animation:pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+/* Compare */
+.compareGrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media(max-width:600px) { .compareGrid { grid-template-columns:1fr; } }
+.compareCol { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; }
+.compareHeader { padding-bottom:8px; margin-bottom:12px; border-bottom:2px solid; font-size:13px; font-weight:700; }
+
+/* ── Chain Tab ── */
+.chainTab { max-width:560px; margin:0 auto; }
+.chainIntro { font-size:13px; color:var(--text3); line-height:1.9; margin-bottom:24px; }
+.chain { display:flex; flex-direction:column; gap:0; margin-bottom:24px; }
+.chainNode { display:flex; align-items:center; gap:14px; position:relative; }
+.chainIcon { width:44px; height:44px; border-radius:50%; background:var(--surface); border:2px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; position:relative; z-index:1; }
+.chainLine { position:absolute; right:21px; top:44px; width:2px; height:28px; background:linear-gradient(to bottom,var(--gold),rgba(201,168,76,.2)); }
+.chainNode:last-child .chainLine { display:none; }
+.chainText { font-size:14px; color:var(--text); font-weight:600; padding:12px 0; }
+.chainInfo { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px; display:flex; flex-direction:column; gap:8px; }
+.chainInfo h3 { font-size:14px; color:var(--gold); font-weight:700; margin-top:12px; }
+.chainInfo h3:first-child { margin-top:0; }
+.chainInfo p { font-size:13px; color:var(--text3); line-height:1.85; }
+
+/* ── About Tab ── */
+.aboutIntro { font-size:13px; color:var(--text3); text-align:center; margin-bottom:16px; }
+.qiraatGrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; }
+.qiraaCard { background:var(--surface); border:1px solid var(--border); border-right:3px solid var(--c); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:6px; transition:box-shadow .15s; }
+.qiraaCard:hover { box-shadow:0 4px 20px rgba(0,0,0,.1); }
+.qiraaCardHeader { display:flex; align-items:baseline; justify-content:space-between; }
+.qiraaCardImam { font-size:14px; font-weight:800; color:var(--c); }
+.qiraaCardRawi { font-size:12px; color:var(--text3); }
+.qiraaCardRegion { font-size:11px; color:var(--text3); }
+.qiraaCardDesc { font-size:12px; color:var(--text2); line-height:1.7; flex:1; }
+.readThisBtn { margin-top:6px; padding:7px 14px; border-radius:10px; border:1px solid var(--c); background:color-mix(in srgb,var(--c) 8%,transparent); color:var(--c); font-family:var(--font-ui); font-size:12px; font-weight:700; cursor:pointer; transition:all .13s; text-align:right; }
+.readThisBtn:hover { background:color-mix(in srgb,var(--c) 16%,transparent); }
+
+/* ── Audio Player Bar ─────────────────────────────────────────────────────── */
+.audioBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 16px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.audioAyah { flex: 1; font-size: 13px; color: var(--text2); min-width: 140px; }
+.audioHint { color: var(--text3); font-size: 12px; }
+.audioCtrls { display: flex; align-items: center; gap: 6px; }
+.audioBtn {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--bg);
+  color: var(--text2); font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .13s;
+}
+.audioBtn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.audioBtn:disabled { opacity: .3; cursor: not-allowed; }
+.audioBtnMain {
+  width: 44px; height: 44px; font-size: 16px;
+  background: var(--gold) !important;
+  border-color: var(--gold) !important;
+  color: #000 !important;
+}
+.audioBtnOn { border-color: #60a5fa !important; color: #60a5fa !important; }
+
+/* Ayah playing highlight */
+.ayahPlaying {
+  background: rgba(201,168,76,.12);
+  border-radius: 4px;
+  padding: 2px 4px;
+  color: var(--gold);
+  cursor: pointer;
+}
+.ayahSpan { cursor: pointer; transition: color .1s; }
+.ayahSpan:hover { color: var(--gold); }
+
+.qiraaInfoRight { display:flex; flex-direction:column; gap:3px; }
+.qiraaReciter { font-size:11px; color:var(--text3); }
+.qiraaCardReciter { font-size:11px; color:var(--text3); margin-top:2px; }
+
+.audioUnavail {
+  font-size: 12px;
+  color: #f97316;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.audioUnavailBanner {
+  background: rgba(249,115,22,.08);
+  border: 1px solid rgba(249,115,22,.25);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: #f97316;
+  margin-bottom: 6px;
+  line-height: 1.6;
+}

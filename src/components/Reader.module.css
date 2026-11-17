@@ -1,0 +1,273 @@
+.reader {
+  flex: 1;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+/* Surah Header */
+.surahHeader {
+  text-align: center;
+  padding: 48px 40px 28px;
+  background: linear-gradient(180deg, var(--bg2) 0%, transparent 100%);
+  position: relative;
+}
+.surahHeader::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center; justify-content: center;
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-size: 14px; font-weight: 700;
+  background: var(--gold-dim);
+  margin-bottom: 14px;
+}
+
+.surahName {
+  font-family: var(--font-quran);
+  font-size: 38px;
+  color: var(--text);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.surahMeta {
+  font-size: 13px; color: var(--text3);
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  flex-wrap: wrap;
+}
+.dot { color: var(--border); }
+
+/* Ornament */
+.ornament {
+  text-align: center;
+  padding: 12px;
+  color: var(--gold);
+  font-size: 20px;
+  opacity: 0.45;
+  letter-spacing: 8px;
+}
+
+/* Basmala */
+.basmala {
+  font-family: var(--font-quran);
+  font-size: 28px;
+  color: var(--gold2);
+  text-align: center;
+  padding: 20px 40px;
+  opacity: 0.88;
+  letter-spacing: 2px;
+}
+
+/* Ayahs */
+.ayahsWrap {
+  padding: 0 32px 120px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.ayah {
+  display: flex;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-bottom: 4px;
+  transition: background 0.15s;
+  position: relative;
+  animation: fadeUp 0.35s ease both;
+}
+.ayah:hover { background: var(--ayah-hover); }
+.highlighted {
+  background: var(--ayah-active) !important;
+}
+.highlighted::before {
+  content: '';
+  position: absolute; right: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--gold);
+  border-radius: 0 6px 6px 0;
+}
+
+.ayahNum {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 16px;        /* pill — يتمدد مع الأرقام الكبيرة */
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui); /* خط واضح يضمن حجم ثابت */
+  font-size: 11px;
+  color: var(--text3);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  margin-top: 4px;
+  white-space: nowrap;
+  line-height: 1;
+  box-sizing: border-box;
+  transition: all 0.18s;
+}
+.ayah:hover .ayahNum,
+.highlighted .ayahNum {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--gold-dim);
+}
+
+.ayahContent { flex: 1; }
+
+.ayahText {
+  font-size: var(--font-size);
+  line-height: 2.3;
+  color: var(--text);
+  text-align: justify;
+  direction: rtl;
+  word-spacing: 4px;
+}
+
+.ayahMark {
+  color: var(--gold);
+  font-family: var(--font-quran);
+  font-size: 0.82em;
+}
+
+/* Action buttons (show on hover) */
+.actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  opacity: 0;
+  transition: opacity 0.18s;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.ayah:hover .actions { opacity: 1; }
+
+.actBtn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text3);
+  font-size: 11px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: all 0.13s;
+}
+.actBtn:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+
+.ayahRef {
+  font-size: 10px;
+  color: var(--text3);
+  padding: 4px 8px;
+  direction: ltr;
+}
+
+/* Loading */
+.loading {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 60vh;
+  gap: 16px; color: var(--text3);
+}
+.spinner {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--gold);
+  animation: spin 0.8s linear infinite;
+}
+
+.tafsirBtn {
+  border-color: var(--green2) !important;
+  color: var(--green3) !important;
+}
+.tafsirBtn:hover {
+  background: rgba(82,183,136,0.1) !important;
+  border-color: var(--green3) !important;
+}
+.aiBtn {
+  border-color: rgba(201,168,76,0.4) !important;
+  color: var(--gold) !important;
+  background: var(--gold-dim) !important;
+}
+.aiBtn:hover {
+  background: rgba(201,168,76,0.18) !important;
+}
+.noteBtn {
+  border-color: rgba(96,165,250,0.4) !important;
+  color: #93c5fd !important;
+}
+.noteBtn:hover {
+  background: rgba(96,165,250,0.1) !important;
+}
+
+/* Error box */
+.errorBox {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 50vh; gap: 16px; text-align: center;
+  padding: 40px;
+}
+.errorBox p { font-size: 15px; color: var(--text2); }
+.errorBox button {
+  padding: 10px 24px; border-radius: 10px;
+  border: 1px solid var(--gold); background: var(--gold-dim);
+  color: var(--gold); font-family: var(--font-ui);
+  font-size: 13px; cursor: pointer; transition: all 0.15s;
+}
+.errorBox button:hover { background: var(--gold); color: var(--bg); }
+
+@media (max-width: 600px) {
+  .surahHeader { padding: 28px 16px 20px; }
+  .basmala { font-size: 22px; padding: 14px 16px; }
+  .ayahsWrap { padding: 0 10px 100px; }
+  .surahName { font-size: 28px; }
+}
+
+.shareBtn {
+  border-color: rgba(96,165,250,0.35) !important;
+  color: #93c5fd !important;
+}
+.shareBtn:hover {
+  background: rgba(96,165,250,0.1) !important;
+}
+
+@media (max-width: 768px) {
+  .ayahs {
+    padding-bottom: 140px; /* BottomNav 64px + AudioPlayer ~70px + buffer */
+  }
+}
+
+/* Translation text under each ayah */
+.translationText {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text3);
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  margin-top: 4px;
+  direction: ltr;
+  text-align: left;
+  font-style: italic;
+}
+
+/* RTL languages (Urdu, Farsi, Arabic) */
+.translationText[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+  font-style: normal;
+}

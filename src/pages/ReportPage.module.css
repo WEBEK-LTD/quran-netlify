@@ -1,0 +1,68 @@
+.page { max-width:760px; margin:0 auto; padding:24px 16px 100px; direction:rtl; }
+.center { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; text-align:center; }
+.spinner { width:40px;height:40px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--gold);animation:spin .8s linear infinite; }
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.topBar{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+.backBtn{font-size:13px;color:var(--text3);padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);text-decoration:none;}
+.pageTitle{flex:1;text-align:center;font-size:20px;font-weight:700;color:var(--text);}
+.printBtn{padding:7px 12px;border-radius:8px;background:var(--surface);border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;}
+
+.loginBtn{padding:12px 28px;border-radius:12px;background:var(--gold);color:#000;font-weight:700;font-size:15px;text-decoration:none;}
+
+/* Month selector */
+.monthSelector{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;}
+.navBtn{width:36px;height:36px;border-radius:50%;background:var(--gold-dim);border:1px solid rgba(201,168,76,.3);color:var(--gold);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.navBtn:hover:not(:disabled){background:rgba(201,168,76,.2);}
+.navBtn:disabled{opacity:.3;cursor:default;}
+.monthLabel{font-size:18px;font-weight:700;color:var(--text);min-width:160px;text-align:center;}
+
+/* Stats grid */
+.statsGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+@media(max-width:500px){.statsGrid{grid-template-columns:repeat(2,1fr);}}
+.statCard{padding:14px 10px;text-align:center;background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--sc);border-radius:12px;}
+.scIcon{font-size:24px;margin-bottom:4px;}
+.scVal{font-size:26px;font-weight:800;color:var(--sc);}
+.scLabel{font-size:11px;color:var(--text3);margin-top:2px;}
+
+/* Section */
+.section{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:16px;}
+.sectionTitle{font-size:15px;font-weight:700;color:var(--text);margin:0 0 14px;}
+
+/* Calendar */
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.calHeader{font-size:10px;color:var(--text3);text-align:center;padding:4px 0;font-weight:700;}
+.calEmpty{height:44px;}
+.calDay{height:44px;border-radius:8px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:all .2s;cursor:default;}
+.calToday{border-color:var(--gold) !important;box-shadow:0 0 0 1px var(--gold);}
+.calDayNum{font-size:11px;color:var(--text3);}
+.calCount{font-size:10px;font-weight:700;color:var(--green3);}
+.bestDay{font-size:13px;color:var(--text3);margin-top:12px;text-align:center;}
+
+/* All-time */
+.allTimeGrid{display:flex;flex-direction:column;gap:0;}
+.allTimeRow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);}
+.allTimeRow:last-child{border-bottom:none;}
+.atIcon{font-size:20px;flex-shrink:0;}
+.atLabel{flex:1;font-size:14px;color:var(--text2);}
+.atVal{font-size:20px;font-weight:700;color:var(--gold);}
+
+/* Ward chart */
+.wardChart{display:flex;align-items:flex-end;gap:4px;height:80px;}
+.wardBar{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;}
+.wardBarFill{width:100%;border-radius:4px;transition:height .3s;}
+.wardDone{background:#52b788;}
+.wardMiss{background:var(--border);}
+.wardLabel{font-size:10px;color:var(--text3);}
+
+/* Actions */
+.actions{display:flex;gap:10px;justify-content:center;margin-top:8px;}
+.actionBtn{padding:12px 24px;border-radius:12px;background:var(--gold-dim);border:1px solid rgba(201,168,76,.3);color:var(--gold);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;}
+.actionBtn:hover{background:rgba(201,168,76,.2);}
+
+/* Print styles */
+@media print {
+  .topBar, .actions, .monthSelector { display:none !important; }
+  .page { padding:0; }
+  .section { break-inside:avoid; }
+}
