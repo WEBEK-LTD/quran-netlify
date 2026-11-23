@@ -96,7 +96,7 @@ final class Push
             return $stats;
         }
         $rows = Db::all(
-            'SELECT q.id, q.payload, q.attempts, d.id AS device_id, d.provider, d.token FROM push_queue q JOIN devices d ON d.id = q.device_id WHERE q.claim = ? ORDER BY q.id',
+            'SELECT q.id, q.payload, q.attempts, d.id AS device_id, d.provider, d.token, u.lang FROM push_queue q JOIN devices d ON d.id = q.device_id LEFT JOIN users u ON u.id = d.user_id WHERE q.claim = ? ORDER BY q.id',
             [$claim]
         );
         foreach ($rows as $row) {
@@ -105,7 +105,7 @@ final class Push
                 continue;
             }
             $p = json_decode((string) $row['payload'], true);
-            $p = is_array($p) ? $p : [];
+            $p = PushText::payload(is_array($p) ? $p : [], $row['lang'] ?? null); // in the member's language
             try {
                 $res = $row['provider'] === 'apns' ? self::sendApns((string) $row['token'], $p) : self::sendFcm((string) $row['token'], $p);
             } catch (\Throwable $e) {

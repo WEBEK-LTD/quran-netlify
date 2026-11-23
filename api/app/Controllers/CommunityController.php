@@ -9,6 +9,7 @@ use NQ\Core\Community;
 use NQ\Core\Db;
 use NQ\Core\Moderation;
 use NQ\Core\Push;
+use NQ\Core\PushText;
 use NQ\Core\RateLimit;
 use NQ\Core\Reply;
 use NQ\Core\Request;
@@ -511,7 +512,8 @@ final class CommunityController
         $after = max(0, (int) ($r->q('after_id') ?? '0'));
         $limit = max(1, min(100, (int) ($r->q('limit') ?? '50')));
         $stat = Db::one('SELECT COALESCE(MAX(id), 0) AS max_id, COALESCE(SUM(read_at IS NULL), 0) AS unread FROM notifications WHERE user_id = ?', [$uid]) ?? ['max_id' => 0, 'unread' => 0];
-        $etag = 'W/"n' . $stat['max_id'] . '-' . $stat['unread'] . '-' . $after . '-' . $limit . '"';
+        $langNow = (string) (Db::one('SELECT lang FROM users WHERE id = ?', [$uid])['lang'] ?? 'ar');
+        $etag = 'W/"n' . $stat['max_id'] . '-' . $stat['unread'] . '-' . $after . '-' . $limit . '-' . $langNow . '"';
         if ($r->header('if-none-match') === $etag) {
             return new Reply(null, 304, ['ETag' => $etag]);
         }
@@ -519,9 +521,11 @@ final class CommunityController
             'SELECT id, type, title, body, data, read_at, created_at FROM notifications WHERE user_id = ? AND id > ? ORDER BY id DESC LIMIT ?',
             [$uid, $after, $limit]
         );
+        $lang = $langNow;
         return new Reply([
             'items' => array_map(static fn (array $n): array => [
-                'id' => (int) $n['id'], 'type' => (string) $n['type'], 'title' => (string) $n['title'], 'body' => (string) $n['body'],
+                'id' => (int) $n['id'], 'type' => (string) $n['type'],
+                'title' => PushText::tr((string) $n['title'], $lang), 'body' => PushText::tr((string) $n['body'], $lang),
                 'data' => json_decode((string) $n['data'], true) ?: new \stdClass(), 'read' => $n['read_at'] !== null, 'created_at' => Db::iso($n['created_at']),
             ], $rows),
             'unread' => (int) $stat['unread'],

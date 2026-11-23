@@ -328,6 +328,10 @@ $fr = req('POST', "/people/{$M1['id']}/friend-request", null, $W1);
 $frl = req('GET', '/me/friend-requests', null, $M1);
 check('friend request → incoming list + notification', $fr['status'] === 201 && in_array($W1['id'], array_column((array) (data($frl)['incoming'] ?? []), 'id'), true)
     && in_array('friend_request:', $types(req('GET', '/me/notifications', null, $M1)), true), desc($fr));
+req('PATCH', '/auth/profile', ['lang' => 'en'], $M1);
+$frEn = array_values(array_filter((array) (data(req('GET', '/me/notifications', null, $M1))['items'] ?? []), static fn ($n) => ($n['type'] ?? '') === 'friend_request'));
+check('notifications in the member\'s language (en: «sent you a friend request.»)', ($frEn[0]['body'] ?? '') === 'sent you a friend request.', json_encode($frEn[0] ?? null, JSON_UNESCAPED_UNICODE));
+req('PATCH', '/auth/profile', ['lang' => 'ar'], $M1);
 check('an unanswered request leaves the requester a follower', (data(req('GET', "/people/{$M1['id']}", null, $W1))['relation']['i_follow'] ?? null) === true);
 $acc = req('POST', "/me/friend-requests/{$W1['id']}/accept", null, $M1);
 check('accept → friends', $acc['status'] === 200 && (data(req('GET', "/people/{$M1['id']}", null, $W1))['relation']['is_friend'] ?? null) === true, desc($acc));
