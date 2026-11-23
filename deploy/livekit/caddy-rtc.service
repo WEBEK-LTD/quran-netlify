@@ -1,0 +1,33 @@
+# /etc/systemd/system/caddy-rtc.service — installed by install.sh
+[Unit]
+Description=Caddy TLS front for LiveKit (wss://rtc.nuralquran.net:7443)
+After=network-online.target livekit.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=livekit
+Group=livekit
+ExecStart=/opt/livekit/caddy run --config /etc/livekit/Caddyfile --adapter caddyfile
+ExecReload=/bin/kill -USR1 $MAINPID
+Restart=on-failure
+RestartSec=5
+Environment=XDG_DATA_HOME=/var/lib/livekit XDG_CONFIG_HOME=/var/lib/livekit
+CPUQuota=100%
+MemoryMax=256M
+LimitNOFILE=65536
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ReadOnlyPaths=/etc/livekit
+ReadWritePaths=/var/lib/livekit
+
+[Install]
+WantedBy=multi-user.target

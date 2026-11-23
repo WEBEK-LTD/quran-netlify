@@ -2,24 +2,14 @@
 // Prayer name, city and time, the ayah of An-Nisa 103, «إيقاف الأذان» and
 // «تذكير بعد ٥ دقائق». The Quranic text is never translated (its reference is).
 import { useEffect, useRef } from 'react';
-import { useTr, num, surahName } from '../../l10n';
+import { useTr, surahName } from '../../l10n';
+import { fmtPrayerTime } from './format';
 import { Badge8, Pattern, Icon } from '../../components/ornaments/Ornaments';
 import { RECORDINGS, recordingName } from './muezzins';
 import styles from './AdhanMoment.module.css';
 
 const PRAYER_AR = { Fajr: 'الفجر', Dhuhr: 'الظهر', Asr: 'العصر', Maghrib: 'المغرب', Isha: 'العشاء' };
 const AYAH = 'إِنَّ ٱلصَّلَوٰةَ كَانَتْ عَلَى ٱلْمُؤْمِنِينَ كِتَٰبًا مَّوْقُوتًا';
-
-function fmtTime(hm, lang) {
-  const m = /^(\d{1,2}):(\d{2})/.exec(hm || '');
-  if (!m) return '';
-  const h = +m[1], mi = m[2];
-  if (lang === 'ar' || lang === 'en') {
-    const ap = h < 12 ? (lang === 'ar' ? 'ص' : 'AM') : (lang === 'ar' ? 'م' : 'PM');
-    return num(`${h % 12 || 12}:${mi}`, lang) + ' ' + ap;
-  }
-  return num(`${String(h).padStart(2, '0')}:${mi}`, lang);
-}
 
 export default function AdhanMoment({ prayer, time, city, recording, onStop, onSnooze, onClose }) {
   const tr = useTr();
@@ -56,7 +46,7 @@ export default function AdhanMoment({ prayer, time, city, recording, onStop, onS
         <h1 id="nq-adhan-title" className={styles.title}>{tr('صلاة {p}', { p: pName })}</h1>
         <p id="nq-adhan-sub" className={styles.sub}>
           {where && <span><Icon name="pin" />{where}</span>}
-          {time && <span><Icon name="timer" /><bdi>{fmtTime(time, tr.lang)}</bdi></span>}
+          {time && <span><Icon name="timer" /><bdi>{fmtPrayerTime(time, tr.lang)}</bdi></span>}
         </p>
         <figure className={styles.ayah}>
           <blockquote lang="ar" dir="rtl">﴿{AYAH}﴾</blockquote>

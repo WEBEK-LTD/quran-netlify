@@ -7,8 +7,9 @@
 //
 // Flow: askForPush() explains in Arabic why, then asks the OS → register() →
 // 'registration' token → POST /me/devices {platform, token, app_version, lang}
-// (rooms backend; a 404 is ignored and retried on the next launch). A tap opens
-// data.path / data.url inside the app.
+// (rooms backend; a 404 is ignored and retried on the next launch); on sign-out
+// DELETE /me/devices {token} (useAuth.signOutAuth calls unregisterDevice() first).
+// A tap opens data.path / data.url inside the app.
 import { PushNotifications } from '@capacitor/push-notifications';
 import { App } from '@capacitor/app';
 import { api, getToken } from '../apiClient';
@@ -33,7 +34,10 @@ async function sendToken() {
   let appVersion = '';
   try { const info = await App.getInfo(); appVersion = `${info.version} (${info.build})`; } catch {}
   try {
-    await api.post('/me/devices', { platform: platform(), token: deviceToken, app_version: appVersion, lang });
+    // contract: docs/API.md → POST /me/devices {provider: fcm|apns, token, platform, app_version}
+    // (iOS hands us the raw APNs token; Android the FCM registration token). `lang` is extra context.
+    const p = platform();
+    await api.post('/me/devices', { provider: p === 'ios' ? 'apns' : 'fcm', token: deviceToken, platform: p, app_version: appVersion.slice(0, 32), lang });
     try { localStorage.setItem(SENT_KEY, sig); } catch {}
   } catch (e) {
     // 404 until the rooms backend ships /me/devices; 401 when signed out — both fine.
@@ -92,4 +96,11 @@ export async function askForPush() {
     await PushNotifications.register();
     return true;
   } catch { return false; }
+}
+
+/** Before signing out: detach this device from the account so its pushes stop. */
+export async function unregisterDevice() {
+  if (!PUSH_ENABLED || !deviceToken || !getToken()) return;
+  try { await api.del('/me/devices', { token: deviceToken }); } catch {}
+  try { localStorage.removeItem(SENT_KEY); } catch {}
 }

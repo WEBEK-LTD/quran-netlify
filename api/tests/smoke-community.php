@@ -57,6 +57,13 @@ $q1 = static function (string $sql, array $p = []) use ($db): mixed {
     return $st->fetchColumn();
 };
 
+// ── Runtime migration: an install from an older schema.sql gets the new tables on the next request
+$db->exec('DROP TABLE dictionary_words');
+array_map('unlink', glob($LOCAL . '/storage/schema-*.version') ?: []);
+req('GET', '/health');
+check('Migrations v4 recreates missing community tables from schema.sql', (int) $q1("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dictionary_words'") === 1
+    && (int) @file_get_contents((string) (glob($LOCAL . '/storage/schema-*.version')[0] ?? '')) === 4);
+
 // ── Keys: LiveKit, FCM service account (RSA), APNs .p8 (EC P-256) — test keys made here, endpoints = the stand-ins
 $LK_KEY = 'APItestkey';
 $LK_SECRET = 'lk-secret-' . bin2hex(random_bytes(20));
@@ -279,7 +286,8 @@ check('shared mushaf page: moderator sets it (broadcast), bad ayah 422, listener
     && count(array_filter($lkCalls('SendData'), static fn ($c) => ($c['body']['topic'] ?? '') === 'page')) >= 1, desc($page));
 $kick = req('POST', "/rooms/{$B}/participants/{$W2['id']}/kick", null, $M2);
 $rej = req('POST', "/rooms/{$B}/join", null, $W2);
-check('moderator kicks a listener → RemoveParticipant; cannot rejoin (403 kicked)', $kick['status'] === 200 && $rej['status'] === 403 && errc($rej) === 'kicked'
+check('moderator kicks a listener → RemoveParticipant; cannot rejoin or read the chat (403 kicked)', $kick['status'] === 200 && $rej['status'] === 403 && errc($rej) === 'kicked'
+    && req('GET', "/rooms/{$B}/chat", null, $W2)['status'] === 403
     && count(array_filter($lkCalls('RemoveParticipant'), static fn ($c) => ($c['body']['identity'] ?? '') === (string) $W2['id'])) >= 1, desc($rej));
 $lock = req('PATCH', "/rooms/{$B}", ['locked' => true], $M1);
 $newcomer = $mk('m4', 'عمر', 'male', $adult, '10.70.0.8');

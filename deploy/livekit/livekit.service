@@ -1,0 +1,43 @@
+# /etc/systemd/system/livekit.service — installed by install.sh
+[Unit]
+Description=LiveKit server (Nur Al-Quran voice rooms)
+Documentation=https://docs.livekit.io/home/self-hosting/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=livekit
+Group=livekit
+ExecStart=/opt/livekit/livekit-server --config /etc/livekit/livekit.yaml
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+
+# Resource limits (cgroup v2 on CloudLinux 9): at most 4 cores and 4 GB, whatever load the rooms bring.
+CPUQuota=400%
+MemoryHigh=3584M
+MemoryMax=4G
+TasksMax=4096
+LimitNOFILE=65536
+
+# Hardening: unprivileged ports only, read-only system, no home access.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+LockPersonality=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+ReadOnlyPaths=/etc/livekit
+
+[Install]
+WantedBy=multi-user.target

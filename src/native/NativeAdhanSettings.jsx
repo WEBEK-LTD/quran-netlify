@@ -16,6 +16,7 @@ import manifest from './adhan/recordings.json';
 import { regularRecordings, fajrRecordings, recordingName, recordingFor, channelIdFor } from './adhan/muezzins';
 import { playAdhan, stopAdhan } from './adhan/player';
 import { showAdhanMoment } from './adhan/moment';
+import { fmtPrayerTime } from './adhan/format';
 import { NQNative } from './nqNative';
 import { openExternal } from './browser';
 import { confirmDialog } from './ui';
@@ -206,7 +207,7 @@ export default function NativeAdhanSettings({ alarms, onToggle, coords, method, 
         <p className={styles.status} role="status">
           <Icon name="check" />
           {next
-            ? tr('جُدول {n} تنبيهاً على هذا الجهاز. التالي: صلاة {p} عند {t}.', { n: num(status.scheduled), p: tr(PRAYER_AR[next.prayer]), t: num(next.time) })
+            ? tr('جُدول {n} تنبيهاً على هذا الجهاز. التالي: صلاة {p} عند {t}.', { n: num(status.scheduled), p: tr(PRAYER_AR[next.prayer]), t: fmtPrayerTime(next.time, tr.lang) })
             : status ? tr('جُدول {n} تنبيهاً على هذا الجهاز.', { n: num(status.scheduled) }) : tr('جارٍ جدولة التنبيهات…')}
           {isIOS() && status && status.scheduled >= 60 ? ` ${tr('يُجدَّد الجدول تلقائياً كلما فتحت التطبيق.')}` : ''}
         </p>

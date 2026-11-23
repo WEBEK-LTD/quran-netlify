@@ -1,0 +1,7 @@
+# /etc/systemd/system/livekit-cert-sync.service — copies the renewed AutoSSL certificate (run by the timer)
+[Unit]
+Description=Copy the AutoSSL certificate of rtc.nuralquran.net to LiveKit/Caddy
+
+[Service]
+Type=oneshot
+ExecStart=/opt/livekit/livekit-cert-sync.sh

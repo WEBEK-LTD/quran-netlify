@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api, setToken } from '../apiClient';
+import { api, setToken, CLIENT } from '../apiClient';
 
 // ─── One shared auth state for the whole app ─────────────────────────────────
 // Initialised once by GET /auth/me. Every useAuth() subscribes to the same store,
@@ -38,6 +38,8 @@ export function refreshAuth() {
 }
 
 export async function signOutAuth() {
+  // Native app: stop this device's pushes for the account while the session still works
+  if (CLIENT === 'app') { try { await (await import('../native/push')).unregisterDevice(); } catch {} }
   try { await api.post('/auth/logout'); } catch {}
   setToken(null);
   setAuthUser(null);

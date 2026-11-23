@@ -1,88 +1,44 @@
-#!/bin/bash
-# ═══════════════════════════════════════════════════════
-# نور القرآن — دليل التحويل لتطبيق iOS & Android
-# ═══════════════════════════════════════════════════════
+#!/usr/bin/env bash
+# ═══════════════════════════════════════════════════════════════════════════
+# نور القرآن — build the iOS / Android apps (Capacitor 8). Full guide: docs/APP.md
+#
+#   ./build-app.sh            install, test, build the app bundle, sync both platforms
+#   ./build-app.sh android    … then open Android Studio
+#   ./build-app.sh ios        … then open Xcode (macOS only)
+# ═══════════════════════════════════════════════════════════════════════════
+set -euo pipefail
+cd "$(dirname "$0")"
+GREEN='\033[0;32m'; GOLD='\033[0;33m'; RED='\033[0;31m'; NC='\033[0m'
+step() { echo -e "\n${GREEN}▸ $1${NC}"; }
+die()  { echo -e "${RED}✗ $1${NC}" >&2; exit 1; }
 
-set -e
-GREEN='\033[0;32m'
-GOLD='\033[0;33m'
-RED='\033[0;31m'
-NC='\033[0m'
+echo -e "${GOLD}نور القرآن — App build${NC}"
 
-echo -e "${GOLD}"
-echo "╔══════════════════════════════════════╗"
-echo "║       نور القرآن — App Builder       ║"
-echo "╚══════════════════════════════════════╝"
-echo -e "${NC}"
+step "Requirements"
+command -v node >/dev/null || die "Node.js 22+ is required (nodejs.org)"
+NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]')
+[ "$NODE_MAJOR" -ge 22 ] || die "Node.js 22+ is required by the Capacitor 8 CLI (found $(node --version))"
+echo "  node $(node --version) · npm $(npm --version)"
 
-# ── الخطوة 1: التحقق من المتطلبات ──────────────────────
-echo -e "${GREEN}[1/6] التحقق من المتطلبات...${NC}"
-
-command -v node >/dev/null || { echo -e "${RED}❌ Node.js غير مثبت — نزّله من nodejs.org${NC}"; exit 1; }
-command -v npm  >/dev/null || { echo -e "${RED}❌ npm غير مثبت${NC}"; exit 1; }
-
-NODE_VER=$(node --version | cut -d'.' -f1 | tr -d 'v')
-if [ "$NODE_VER" -lt 18 ]; then
-    echo -e "${RED}❌ Node.js يجب أن يكون 18+ — عندك v$(node --version)${NC}"
-    exit 1
-fi
-
-echo "  ✅ Node.js $(node --version)"
-echo "  ✅ npm $(npm --version)"
-
-# ── الخطوة 2: تثبيت الحزم ──────────────────────────────
-echo -e "\n${GREEN}[2/6] تثبيت الحزم...${NC}"
+step "Install"
 npm install
 
-# ── الخطوة 3: بناء الموقع ──────────────────────────────
-echo -e "\n${GREEN}[3/6] بناء الموقع (Vite build)...${NC}"
-npm run build
-echo "  ✅ تم إنشاء مجلد dist/"
+step "Unit tests (adhan schedule) + static native checks"
+npm run test:native
+npm run check:native
 
-# ── الخطوة 4: تهيئة Capacitor ─────────────────────────
-echo -e "\n${GREEN}[4/6] تهيئة Capacitor...${NC}"
+step "Web bundle + adhan audio → dist/ + cap sync"
+npm run build:app
 
-if [ ! -d "android" ] && [ ! -d "ios" ]; then
-    echo "  جاري إضافة منصة Android..."
-    npx cap add android
-    echo "  ✅ Android"
-    
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        echo "  جاري إضافة منصة iOS..."
-        npx cap add ios
-        echo "  ✅ iOS"
-    else
-        echo "  ⚠️  iOS يحتاج Mac — تخطّينا"
-    fi
-else
-    echo "  ✅ المنصات موجودة بالفعل"
-fi
-
-# ── الخطوة 5: مزامنة الملفات ──────────────────────────
-echo -e "\n${GREEN}[5/6] مزامنة الملفات مع Capacitor...${NC}"
-npx cap sync
-echo "  ✅ تمت المزامنة"
-
-# ── الخطوة 6: فتح IDE ──────────────────────────────────
-echo -e "\n${GREEN}[6/6] فتح المشروع...${NC}"
-echo ""
-echo -e "${GOLD}══════════════════════════════════════════${NC}"
-echo -e "${GOLD}  الخطوات التالية:${NC}"
-echo -e "${GOLD}══════════════════════════════════════════${NC}"
-echo ""
-echo "  📱 Android:"
-echo "    npx cap open android"
-echo "    → في Android Studio: Build → Generate Signed Bundle"
-echo ""
-
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    echo "  🍎 iOS:"
-    echo "    npx cap open ios"
-    echo "    → في Xcode: Product → Archive"
-    echo ""
-fi
-
-echo "  🔄 بعد كل تعديل على الكود:"
-echo "    npm run build && npx cap sync"
-echo ""
-echo -e "${GREEN}✅ جاهز!${NC}"
+case "${1:-}" in
+  android)
+    step "Android Studio"; npx cap open android
+    echo "  Release: Build ▸ Generate Signed App Bundle — or: cd android && ./gradlew bundleRelease (needs android/key.properties)";;
+  ios)
+    [[ "$OSTYPE" == darwin* ]] || die "Xcode needs macOS"
+    step "Xcode"; npx cap open ios
+    echo "  Release: select your Team, then Product ▸ Archive";;
+  *)
+    echo -e "\n${GOLD}Next:${NC} ./build-app.sh android | ./build-app.sh ios   (signing: docs/APP.md §7)";;
+esac
+echo -e "${GREEN}✓ done${NC}"

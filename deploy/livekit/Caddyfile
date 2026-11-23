@@ -1,0 +1,28 @@
+# /etc/livekit/Caddyfile — TLS for LiveKit's signal server on a dedicated port (LiteSpeed keeps 80/443).
+# Certificates are the AutoSSL ones for rtc.nuralquran.net, copied by livekit-cert-sync.sh. No ACME here.
+{
+	auto_https off
+	admin off
+	persist_config off
+	servers {
+		protocols h1 h2
+	}
+}
+
+rtc.nuralquran.net:7443 {
+	tls /etc/livekit/tls/fullchain.pem /etc/livekit/tls/privkey.pem {
+		protocols tls1.2 tls1.3
+	}
+	# WebSocket upgrades are proxied automatically; stream without buffering
+	reverse_proxy 127.0.0.1:7880 {
+		flush_interval -1
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	log {
+		output stderr
+		level WARN
+	}
+}

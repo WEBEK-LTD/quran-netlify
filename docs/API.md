@@ -9,10 +9,11 @@ This file is the contract between `api/` (server) and `src/` (web + app). Change
 - Success: `200/201 {"ok":true,"data":…}`. Error: `4xx/5xx {"ok":false,"error":{"code":"…","message":"<Arabic, shown to users>"}}`.
 - Common error codes: `unauthenticated` 401, `forbidden` 403, `not_found` 404, `validation` 422 (+ `"fields":{name:msg}`), `rate_limited` 429 (+ `Retry-After`), `maintenance` 503, `banned` 403, `server` 500.
 - **Auth:** a session token. The web gets it as an httpOnly cookie `nq_session` (`Domain=.nuralquran.net; Secure; SameSite=Lax; Path=/`); the native app gets it in the JSON body and sends `Authorization: Bearer <token>`. The server accepts either. Sessions last 60 days, refreshed on use; stored hashed (SHA-256).
-- **CSRF:** every non-GET request must carry header `X-NQ-Client: web` or `X-NQ-Client: app`. Requests without it get 403. The header forces a CORS preflight, so other sites can't send it.
+- **CSRF:** every non-GET request must carry header `X-NQ-Client: web` or `X-NQ-Client: app`. Requests without it get 403. The header forces a CORS preflight, so other sites can't send it. (Only `POST /livekit/webhook` is exempt: it is server-to-server and signed.)
+- **Conditional GET:** `/me/conversations` and `/me/notifications` send a weak `ETag`; send it back as `If-None-Match` to get `304` with no body (allowed/exposed in CORS).
 - **CORS:** allowed origins come from config (`https://nuralquran.net`, `https://www.nuralquran.net`, `https://nur-alquran.netlify.app`, `capacitor://localhost`, `https://localhost`, `http://localhost:3000`, `http://localhost:5173`). `Access-Control-Allow-Credentials: true`. Never `*`.
-- **Rate limits** (per IP and per user, stored in DB): login 10/10 min, signup 5/hour, forgot-password 5/hour, AI 20/hour/user, profile photo upload 10/hour/user, reading log 2/second, writes 120/min, uncached riwaya texts 60/10 min.
-- **Body size:** request bodies over 64 KB get 413 `payload_too_large` (checked from `Content-Length` before routing). The only exception is `POST /me/avatar` (multipart, photo ≤ 5 MB).
+- **Rate limits** (per IP and per user, stored in DB): login 10/10 min, signup 5/hour, forgot-password 5/hour, AI 20/hour/user, profile photo upload 10/hour/user, reading log 2/second, writes 120/min, uncached riwaya texts 60/10 min (community limits: see «Rooms & community»).
+- **Body size:** request bodies over 64 KB get 413 `payload_too_large` (checked from `Content-Length` before routing). The only exceptions are `POST /me/avatar` and `POST /community/groups/{id}/photo` (multipart, photo ≤ 5 MB).
 - **Maintenance mode:** when `maintenance_mode` is on, every route except `GET /settings/public`, `/auth/*`, `/admin/*` and `GET /avatars/*` returns 503 `maintenance` for non-admins.
 - **Bans:** a banned user (scope `app`) can't sign in; their sessions are revoked.
 - **Pagination:** `?page=1&per_page=50` (max 100) → `data: {items:[…], page, per_page, total}`.
@@ -47,7 +48,7 @@ Recitation { reciter, reciter_id, moshaf, moshaf_id, style: "murattal"|"mujawwad
 | Method | Path | Body / query | Returns |
 |---|---|---|---|
 | GET | `/health` | | `{status:"ok", db:true}` |
-| GET | `/settings/public` | | `{app_name, description, announcement, maintenance_mode, allow_signup, features:{hifz,khatma,khatma_group,leaderboard,ijaza,ai_assistant,notes,search: bool}, google_login: bool}` |
+| GET | `/settings/public` | | `{app_name, description, announcement, maintenance_mode, allow_signup, features:{hifz,khatma,khatma_group,leaderboard,ijaza,ai_assistant,notes,search,rooms: bool}, google_login: bool}` |
 | GET | `/broadcasts` | | `Broadcast[]` (active, not expired) |
 | GET | `/leaderboard` | `type=reading\|hifz\|khatma`, `period=week\|month\|all` | `[{rank, name, score, is_me}]` top 50, only users with `show_on_leaderboard` |
 | POST | `/presence` | `{visitor_id, path}` | `{}` — call every 60 s |
@@ -215,7 +216,7 @@ The site polls messages every 5 s while a ticket is open.
 | PUT | `/admin/settings` | any subset of the above | same |
 | GET | `/admin/integrations` | | `{items:[{key, label, set: bool, preview: "sk-…ab12"\|null, secret: bool}]}` — secrets never returned |
 | PUT | `/admin/integrations` | `{key: value, …}` (empty string clears) | same as GET |
-| POST | `/admin/integrations/test` | `{target:"ai"\|"mail"\|"google"}` | `{ok, message}` |
+| POST | `/admin/integrations/test` | `{target:"ai"\|"mail"\|"google"\|"livekit"\|"fcm"\|"apns"}` | `{ok, message}` |
 | GET | `/admin/tickets` | `?status=&page` | paginated `Ticket[]` with `user` |
 | GET | `/admin/tickets/{id}/messages` | `?after_id=` | `Message[]` (marks user messages read) |
 | POST | `/admin/tickets/{id}/messages` | `{body}` | `Message` |
@@ -223,7 +224,209 @@ The site polls messages every 5 s while a ticket is open.
 | GET | `/admin/unread` | | `{count}` |
 | GET | `/admin/log` | `?page` | paginated `[{id, admin_email, action, target, created_at}]` |
 
-Integration keys: `google_client_id`, `google_client_secret`*, `ai_provider` (`openai`\|`anthropic`), `ai_model`, `openai_api_key`*, `anthropic_api_key`*, `mail_from_address`, `mail_from_name`, `mail_transport` (`server`\|`smtp`, default `server` = PHP `mail()`), `smtp_host`, `smtp_port` (1–65535), `smtp_username`, `smtp_password`*, `smtp_encryption` (`tls` = STARTTLS\|`ssl` = implicit TLS\|`none`). (* = secret, encrypted at rest with AES-256-GCM using `app_key` from config.)
+Integration keys: `google_client_id`, `google_client_secret`*, `ai_provider` (`openai`\|`anthropic`), `ai_model`, `openai_api_key`*, `anthropic_api_key`*, `mail_from_address`, `mail_from_name`, `mail_transport` (`server`\|`smtp`, default `server` = PHP `mail()`), `smtp_host`, `smtp_port` (1–65535), `smtp_username`, `smtp_password`*, `smtp_encryption` (`tls` = STARTTLS\|`ssl` = implicit TLS\|`none`). Voice rooms & push: `livekit_url` (`wss://rtc.nuralquran.net:7443`, what clients connect to), `livekit_api_url` (optional, `http://127.0.0.1:7880` when LiveKit runs on the same server; default = `livekit_url` with ws→http), `livekit_api_key`, `livekit_api_secret`* (≥ 32 chars), `fcm_service_account`* (the Firebase service-account JSON, pasted whole, multi-line allowed, ≤ 12 000 chars), `apns_key_p8`* (the `.p8` PEM), `apns_key_id` / `apns_team_id` (10 chars), `apns_bundle_id`, `apns_environment` (`production`\|`sandbox`). (* = secret, encrypted at rest with AES-256-GCM using `app_key` from config.)
+
+## Rooms & community
+
+Live audio rooms («الغرف الصوتية»), community profiles, friends/follows/blocks, direct messages, community groups,
+reports, the dictionary filter and push notifications. Feature flag `rooms` (403 `feature_disabled` when off).
+Audio goes through a self-hosted **LiveKit** server (`deploy/livekit/`); nothing is recorded. Everything else
+(chat, reactions, hands, roles, the shared mushaf page) goes through this API, which moderates/rate-limits it and then
+broadcasts it into the room with LiveKit `SendData` — clients never get `canPublishData`.
+
+### Rules (enforced server-side everywhere)
+
+- **Entry:** gender + birthdate required (409 `community_profile_required`, `missing:["gender","birthdate"]` →
+  `PATCH /me/community-profile`). Both are **locked** once set together (the account "joins": 409 `gender_locked` /
+  `birthdate_locked`, also through `PATCH /auth/profile`); corrections only by an admin (`PATCH /admin/community/users/{id}`).
+  Under 13 → 403 `underage`.
+- **Minors (13–17):** rooms incl. mixed, may speak; follow and be followed; **no DMs and no friendship either way**
+  (403 `minor_restricted`); profile always private; `dm_policy` reported as `"none"`.
+- **Gender separation:** room/group `gender_scope` `men` | `women` | `mixed`. A viewer only ever gets rooms/groups of
+  their own scope or mixed — lists, search, `GET /rooms/{id}` (404, never 403), joining, notifications, «in a room now»
+  on profiles, friends' activity, group lists. A mixed room of a men's group shows `group: null` to women.
+  Members-only rooms (`visibility: "group_members"`) exist only for that group's members. Blocks hide profiles, DMs and
+  the blocked person's rooms both ways.
+- **Suspensions:** 403 `community_suspended` (community-wide: rooms, groups, friends, DMs) or 403 `rooms_banned`
+  (rooms only), both with `{until, permanent}`. App-wide bans are the existing `bans` (sessions revoked).
+- **Text:** room chat (≤ 500), DMs (≤ 2000), room titles, group names/descriptions and bios are plain text: links,
+  e-mail addresses and handles → 422 `links_not_allowed` (`validation` for profile fields). Then the **dictionary**:
+  - `severe` («شديدة»): not delivered, kept as evidence, **account suspended in the community until an admin decides**
+    (`suspension` notification), removed from the room → 403 `community_suspended`;
+  - `possible` («محتملة»): not delivered, sent to the admins → 422 `content_review`.
+  Matching folds diacritics/tatweel/invisible characters and letter variants, collapses repeated letters, ignores
+  punctuation and spaces between letters («ز ب ا ل ة», «ز.ب.ا.ل.ة»), and reads Arabizi/Franco (2→ء 3→ع 5→خ 6→ط 7→ح 8→ق
+  9→ص, sh/kh/gh/th/dh…) by consonant skeleton («7mar» ~ «حمار»), latin words with leetspeak folding. A severe word found
+  only after removing every space (could straddle two innocent words) is treated as `possible`. Words that occur in the
+  Quran are always stored as `possible` (`forced_possible: true` on create).
+
+### Shapes
+
+```
+Brief        { id, name, avatar_url|null }
+RoomCard     { id, title, gender_scope, visibility: "public_by_type"|"group_members", status: "open"|"scheduled",
+               scheduled_at|null, opened_at|null, locked, owner: Brief|null, group: {id,name,photo_url}|null,
+               listener_count, speaker_count, stage: [Brief & {role}] (≤ 6 in lists, all in detail),
+               shared: {surah, ayah, page|null, updated_at}|null, reminded: bool,
+               my_role: "owner"|"moderator"|"speaker"|"listener"|null, hand_raised: bool,
+               // detail only: in_room: bool, hands: [Brief & {raised_at}] (owner/moderators only)
+             }
+Group        { id, name, description, privacy: "public"|"private", gender_scope, photo_url|null, member_count,
+               my_role: "founder"|"moderator"|"member"|null, my_perms: Perm[], created_at,
+               // detail: founder: Brief|null, is_following, request_pending, invited, allowed_room_scopes, pending_requests?, rooms: RoomCard[]
+             }
+Perm         "open_rooms"|"schedule_rooms"|"accept_members"|"kick"|"edit_info"|"assign_moderators"  (founder: all; transfer/delete: founder only)
+Conversation { id, other: Brief, started_by_me, last_message: {id, body (≤ 200), from_me, created_at}|null, unread, updated_at }
+DM           { id, body, from_me, sender_id, created_at }
+ChatLine     { id, kind: "chat"|"system", event: null|"join"|"leave", body, user: Brief & {role?}|null, created_at }
+Notification { id, type, title, body, data: {room_id?|group_id?|user_id?|conversation_id?…}, read, created_at }
+```
+Notification types: `room_opened`, `room_scheduled` (followed person/friend), `group_room` (group you're in/follow),
+`reminder_soon` (10 min before), `reminder_started`, `reminder_changed`, `reminder_cancelled` («ذكّرني»), `speak_invite`,
+`friend_request`, `friend_accept`, `dm` (push only, not in the list), `join_request` (request or invite), `suspension`
+(cannot be muted).
+
+### Community profile, people, social graph (signed in)
+
+| Method | Path | Body / query | Returns |
+|---|---|---|---|
+| GET | `/me/community-profile` | | `{joined, eligible, missing[], gender, birthdate, age, is_minor, underage, locked:{gender,birthdate}, user: Brief, profile: {bio, facebook_url, instagram_url, is_private, private_forced, dm_policy: "everyone"\|"same_gender"\|"friends"\|"none", counters:{friends, followers, following, claps_sent, claps_received}}\|null, suspension: {scope, source, reason, until, permanent}\|null, muted_types[]}` |
+| PATCH | `/me/community-profile` | `{gender?, birthdate?, bio? (≤ 300), facebook_url?, instagram_url?, is_private?, dm_policy?}` | same. gender/birthdate only until joined; social links: https `facebook.com`/`fb.com` or `instagram.com` profile URLs only (`null` clears). Photo = the existing `POST /me/avatar` |
+| GET | `/people?q=` | ≥ 2 chars | `{items:[Brief & {is_friend, i_follow}]}` (community members, minus blocked; 60/min) |
+| GET | `/people/{id}` | | `Brief & {is_private, is_me, relation:{is_friend, i_follow, follows_me, request_sent, request_received}, can_friend, can_message, lists_visible}` + when public or friend: `{bio, facebook_url, instagram_url, counters, in_room: {id,title,gender_scope}\|null, joined_at}`. 404 when blocked either way or not a member |
+| GET | `/people/{id}/{kind}` | kind = `friends`\|`followers`\|`following`\|`clappers`, `?page` | paginated `Brief[]` (`clappers`: + `claps`) — **friends of that person only** (403) |
+| GET | `/me/social/{kind}` | same kinds | my own lists |
+| POST / DELETE | `/people/{id}/friend-request` | | send (201 `{status:"requested"}`; if they already asked you → `{status:"friends"}`) / cancel. Sending also follows them: an unanswered request leaves you a follower |
+| GET | `/me/friend-requests` | | `{incoming:[Brief&{created_at}], outgoing:[…]}` |
+| POST | `/me/friend-requests/{id}/accept` · `/decline` | `{id}` = requester | `{status:"friends"}` / `{}` (declined requester stays a follower) |
+| DELETE | `/people/{id}/friend` | | unfriend |
+| POST / DELETE | `/people/{id}/follow` | | follow (room notifications only, no contact) / unfollow |
+| DELETE | `/me/followers/{id}` | | remove a follower |
+| POST / DELETE | `/people/{id}/block` | | block (removes friendship, follows and requests both ways) / unblock |
+| GET | `/me/blocks` | | `{items: Brief[]}` |
+| GET | `/me/friends/activity` | | `{items:[Brief & {room: {id,title,gender_scope}, role}]}` — friends in rooms you can see |
+
+### Direct messages (signed in; text only, stored)
+
+Who may write: blocked → never (404); minor on either side → never (403 `minor_restricted`); friends → always; the
+other person started the conversation → you may reply; else the recipient's `dm_policy` (`everyone` | `same_gender` |
+`friends`) → 403 `dm_not_allowed`. 30 messages/min.
+
+| Method | Path | Body / query | Returns |
+|---|---|---|---|
+| GET | `/me/conversations` | `?since=ISO` (incremental), header `If-None-Match` | `{items: Conversation[], server_time, ids?}` + `ETag`; **304** with no body when nothing changed (new message, deletion, read). With `since`, only conversations updated after it plus `ids` = every conversation that still exists |
+| POST | `/me/conversations` | `{user_id, body}` | 201 `{conversation_id, message: DM}` (creates or continues the pair's conversation) |
+| GET | `/me/conversations/{id}/messages` | `?after_id=` (poll) or `?before_id=` (history), `limit ≤ 100` | `{conversation:{id, other, started_by_me, other_read_id}, items: DM[] (oldest first), can_send}` |
+| POST | `/me/conversations/{id}/messages` | `{body}` | 201 `{conversation_id, message}` |
+| POST | `/me/conversations/{id}/read` | `{last_id?}` | `{}` |
+| DELETE | `/me/conversations/{id}/messages/{mid}` | | `{}` — either side; deleted for both and from the database |
+| DELETE | `/me/conversations/{id}` | | `{}` — either side; the whole conversation, for both |
+
+Reported messages survive deletion (hidden, kept for the admins until an admin deletes them or dismisses the report).
+
+### Rooms (signed in)
+
+| Method | Path | Body / query | Returns |
+|---|---|---|---|
+| GET | `/rooms` | `?tab=live\|scheduled\|groups\|mine&q=&page&per_page` (`groups` = «من جروباتي», members-only rooms included) | paginated `RoomCard[]` |
+| POST | `/rooms` | `{title (3–120), gender_scope, visibility?, group_id?, scheduled_at? (ISO, 1 min – 30 days ahead)}` | 201 `RoomCard`. Scope: your own or `mixed`; a group room: the group's scope or `mixed`, needs `open_rooms` (now) / `schedule_rooms` (scheduled). 409 `room_limit` (per person, open + scheduled), 503 `rooms_busy` (site-wide open rooms), 503 `rooms_unavailable` (LiveKit not configured). Followers/friends/group members/group followers who may see it are notified |
+| GET | `/rooms/{id}` | | `RoomCard` (detail) + `limits:{max_listeners}` |
+| PATCH | `/rooms/{id}` | owner: `{title?, locked?, scheduled_at?}` | `RoomCard`; reminders get `reminder_changed` |
+| POST | `/rooms/{id}/start` | owner, scheduled room | `RoomCard` (`reminder_started` + audience notified) |
+| DELETE | `/rooms/{id}` | owner | `{}` — close (live) or cancel (scheduled → `reminder_cancelled`) |
+| POST | `/rooms/{id}/join` | | `{url, token, identity, livekit_room, role, expires_at, room: RoomCard, me}` → connect with the LiveKit SDK. 403 `kicked`, 403 `room_locked` (newcomers), 409 `room_full` (listeners), 409 `room_not_open` |
+| POST | `/rooms/{id}/leave` | `{quiet?: true}` | `{}` — «مغادرة بهدوء»: no «غادر …» line |
+| GET | `/rooms/{id}/participants` | | `{stage: [Brief&{role, hand_raised}], listeners: […], listener_count}` |
+| POST / DELETE | `/rooms/{id}/hand` | | raise / lower my hand (owner + moderators get a `hand` event) |
+| POST / DELETE | `/rooms/{id}/speakers/{uid}` | owner/moderator (anyone may step down themselves; moderators lowered by the owner only) | `{role}`; raising sends `speak_invite` |
+| POST / DELETE | `/rooms/{id}/moderators/{uid}` | owner | `{role}` (removed moderator stays a speaker) |
+| POST | `/rooms/{id}/participants/{uid}/mute` | owner/moderator (moderators: not the owner/other moderators) | `{muted_tracks}` (server-side mute; only the user can unmute) |
+| POST | `/rooms/{id}/participants/{uid}/kick` | same | `{}` — disconnected, cannot rejoin this room |
+| PUT | `/rooms/{id}/page` | owner/moderator `{surah, ayah, page? (1–604)}` | `{surah, ayah, page, updated_at}` (broadcast) |
+| GET | `/rooms/{id}/chat` | `?after_id=` | `{items: ChatLine[]}` (last 100) |
+| POST | `/rooms/{id}/chat` | `{body}` (present participants; 10 per 20 s) | 201 `ChatLine` |
+| POST | `/rooms/{id}/reactions` | `{type: clap\|heart\|mashallah\|barakallah\|ameen\|jazakallah, to_user_id?}` | `{type, from, to}` — 1 per 2 s per person (429); `to_user_id` = a directed **clap** («فلان سقّف لفلان») to someone on stage, max once a minute per sender→speaker (429). Counts `claps_sent` / `claps_received` |
+| POST / DELETE | `/rooms/{id}/reminder` | scheduled rooms | «ذكّرني» on/off |
+| POST | `/livekit/webhook` | LiveKit → API (`Authorization`: HS256 JWT signed with the API secret, `sha256` claim = base64 SHA-256 of the body; no `X-NQ-Client`) | `{handled}`; 401 `invalid_signature`. Handles `participant_joined` / `participant_left` / `room_finished` (presence, counts, kicked users removed again) |
+
+**LiveKit token** (`join.token`, JWT HS256, 6 h): `iss` = API key, `sub` = user id (= LiveKit identity), `name`,
+`metadata` = `{"role", "avatar", "user_id"}`, `video` = `{room: "nq-room-<id>", roomJoin, canSubscribe: true,
+canPublish: <owner|moderator|speaker>, canPublishSources: ["microphone"] (stage only), canPublishData: false,
+canUpdateOwnMetadata: false}`. Role changes are applied live (`UpdateParticipant`) — keep the connection, read the new
+permissions/metadata from the SDK's `ParticipantPermissionsChanged` / metadata events.
+
+**Room data events** (LiveKit data packets from the server; JSON, `topic`): `chat` → `{type:"chat"|"system", id, body,
+user?, event?, created_at}`; `reaction` → `{type, from, to|null}`; `page` → `{type:"page", surah, ayah, page, by}`;
+`room` → `{type: "role" (user, role) | "hand" (user, raised; to owner/mods) | "muted" (user_id) | "kicked" (user_id) |
+"updated" (title, locked) | "closed" (reason)}`. Every event carries `room_id`.
+
+**Lifecycle:** a room closes when its owner (or an admin) closes it, or automatically after **10 min with nobody on
+stage** (presence from `/join`, `/leave` and the webhook). Closing deletes its chat from the database **except reported
+messages**, plus presence, hands and reminders, and deletes the LiveKit room. Scheduled rooms get `reminder_soon` 10 min
+before; a scheduled room not started 60 min after its time is cancelled. Admin limits (defaults): 500 listeners per
+room, 20 open rooms site-wide, 3 open+scheduled rooms per person, auto-close 10 min.
+
+### Community groups (signed in)
+
+| Method | Path | Body / query | Returns |
+|---|---|---|---|
+| GET | `/community/groups` | `?q=&page` | «اكتشف الجروبات»: paginated public `Group[]` of your scope + mixed |
+| GET | `/community/groups/mine` | | `{items: Group[], invites: Group[]}` |
+| POST | `/community/groups` | `{name (3–80), description?, privacy?, gender_scope}` | 201 `Group` (you are the founder) |
+| GET / PATCH / DELETE | `/community/groups/{id}` | PATCH (`edit_info`): `{name?, description?, privacy?}` (scope can't change); DELETE: founder | `Group` (detail) / `{}` |
+| POST | `/community/groups/{id}/join` | | `{status:"member"\|"requested"}` — public: joins; private: accepts an invite, else a request (`join_request` to holders of `accept_members`) |
+| DELETE | `/community/groups/{id}/membership` | | leave (founder: 409 `transfer_first` unless alone → group deleted) |
+| GET | `/community/groups/{id}/members` | `?page` | paginated `Brief & {role, perms, joined_at}` (private groups: members only) |
+| DELETE | `/community/groups/{id}/members/{uid}` | `kick` (moderators can't kick moderators) | `{}` |
+| GET | `/community/groups/{id}/requests` | `accept_members` | `{items: Brief&{created_at}}` |
+| POST | `/community/groups/{id}/requests/{uid}/accept` · `/decline` | `accept_members` | `{status}` / `{}` |
+| POST | `/community/groups/{id}/invites` | `{user_id}` (`accept_members`) | 201 `{status:"invited"}`; 422 `not_eligible` (other gender) |
+| PUT / DELETE | `/community/groups/{id}/moderators/{uid}` | PUT `{perms: Perm[]}` (`assign_moderators`; non-founders can't grant perms they lack or `assign_moderators`) | `{role, perms}` |
+| POST | `/community/groups/{id}/transfer` | `{user_id}` founder only | `Group` (old founder → moderator with all perms) |
+| POST / DELETE | `/community/groups/{id}/follow` | public groups | room notifications without joining |
+| POST / DELETE | `/community/groups/{id}/photo` | multipart `photo` (as `/me/avatar`), `edit_info` | `Group` |
+
+### Reports, devices, notifications (signed in)
+
+| Method | Path | Body / query | Returns |
+|---|---|---|---|
+| GET | `/reports/reasons` | | `{items:[{id, label}]}` — `harassment, hate, sexual, spam, impersonation, inappropriate_photo, child_safety, violence, gender_rules, other` |
+| POST | `/reports` | `{target_type: user\|photo\|room_message\|dm_message\|room\|group\|group_photo, target_id, reason, details?}` | 201 `{id, status}` (same open report twice → 200 same id). Snapshot kept; reported messages are retained |
+| POST | `/me/devices` | `{provider: "fcm"\|"apns", token, platform?: android\|ios\|web, app_version?}` (APNs: hex device token) | 201 — upsert by token (moves to the signed-in user); 10 devices per account. Call after login and on token refresh |
+| DELETE | `/me/devices` | `{token}` | `{}` — call on logout |
+| GET | `/me/notifications` | `?after_id=&limit≤100`, `If-None-Match` | `{items: Notification[] (newest first), unread, max_id}` + `ETag` / 304 |
+| POST | `/me/notifications/read` | `{ids:[…]}` or `{all:true}` | `{}` |
+| GET / PUT | `/me/notification-prefs` | PUT `{muted: Type[]}` | `{types:[{type, muted}]}` — muted types are still listed in-app but never pushed |
+
+**Push:** FCM HTTP v1 (service account → RS256 assertion → OAuth token, cached) and APNs (token auth, ES256 JWT with
+the `.p8`, 50-min reuse, HTTP/2, `apns-topic` = bundle id, `apns-collapse-id` per conversation/room). Each notification is
+queued per device (`push_queue`) and sent in small batches after the response and every minute by
+`php ~/nuralquran-api/tools/push-worker.php --loop=55` (cron). Payload: FCM `notification{title,body}` +
+`data{type, room_id?, group_id?, user_id?, conversation_id?, …}` (strings), Android channel `community`; APNs
+`aps.alert{title,body}` + top-level `type`, `data`. Dead tokens (FCM `UNREGISTERED`, APNs 410) delete the device;
+429/5xx retry 5× with back-off. Config overrides for tests only: `push_fcm_endpoint`, `push_fcm_token_url`, `push_apns_endpoint`.
+
+### Admin (is_admin) — every action is written to `admin_log`
+
+| Method | Path | Body / query | Returns |
+|---|---|---|---|
+| GET | `/admin/community/reports` | `?status=open\|dismissed\|actioned\|all&source=user\|dictionary&type=…&page` | paginated `{id, source, level, target_type, target_id, target_user, reporter, reason, reason_label, details, snapshot, current (the content now, or null), status, decision, …}` (severe first) |
+| GET | `/admin/community/reports/{id}` | | same + `user_history` |
+| POST | `/admin/community/reports/{id}/decision` | `{action: dismiss\|delete_content\|remove_photo\|suspend\|ban_rooms\|ban_app\|release, duration_days? (null = permanent), note?, also_delete?}` | report. `release` delivers a held «possible» DM. Dismissing the last open report of a message releases its retention |
+| GET | `/admin/community/suspensions` | `?source=dictionary\|admin` | paginated `{user, scope, source, reason, until, locked, report_id, evidence:[held text…]}` |
+| POST | `/admin/community/suspensions/{id}/reactivate` · `/lock` | user id | `{}` — lift / make permanent |
+| POST | `/admin/community/users/{id}/suspend` | `{scope: community\|rooms\|app, duration_days?, reason?}` | `{}` (also removes them from live rooms) |
+| PATCH | `/admin/community/users/{id}` | `{gender?, birthdate?}` | `User` — correction (support requests); leaves rooms/groups of the other type |
+| DELETE | `/admin/community/users/{id}/photo` · `/admin/community/groups/{id}/photo` · `/admin/community/groups/{id}` | | `{}` |
+| GET | `/admin/community/rooms` | `?status=open\|scheduled` | `{items:[…all genders…], limits, open_count}` |
+| DELETE | `/admin/community/rooms/{id}` | | `{}` — close now |
+| GET / POST | `/admin/community/dictionary` | GET `?q=&level=`; POST `{word, level: severe\|possible, note?, in_quran?}` | paginated words / 201 word + `forced_possible` (409 when an equivalent form exists) |
+| PATCH / DELETE | `/admin/community/dictionary/{id}` | `{level?, note?}` | word / `{}` |
+| POST | `/admin/community/dictionary/test` | `{text}` | `{match: {id, word, level}\|null, has_link, forms}` (nothing stored) |
+| GET / PUT | `/admin/community/settings` | PUT `{rooms:{max_listeners (1–5000), max_concurrent (1–500), max_per_user (1–20), auto_close_minutes (2–240)}}` | `{rooms, bounds, livekit_configured, fcm_configured, apns_configured}` |
+
+Rate limits (community): room chat 10/20 s, DMs 30/min, reports 20/h, friend requests + follows 60/h, room creation 10/h,
+group creation 5/h, people search 60/min; reactions 1/2 s and directed claps 1/min per pair (exact, not windowed).
 
 ## Install
 

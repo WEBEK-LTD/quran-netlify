@@ -26,6 +26,7 @@ import {
   RECORDINGS, recordingFor, channelIdFor, androidRawSound, iosSound, recordingName,
 } from './muezzins';
 import { showAdhanMoment } from './moment';
+import { fmtPrayerTime } from './format';
 
 const PRAYER_AR = { Fajr: 'الفجر', Dhuhr: 'الظهر', Asr: 'العصر', Maghrib: 'المغرب', Isha: 'العشاء' };
 const SMALL_ICON = 'ic_stat_nq';
@@ -156,7 +157,7 @@ function toNotification(e, ctx) {
     return {
       ...base,
       title: trNow('صلاة {p} بعد {n} دقيقة', { p, n: num(e.minutesBefore) }),
-      body: trNow('استعدّ للصلاة، يُرفع الأذان عند {t}', { t: num(e.time) }),
+      body: trNow('استعدّ للصلاة، يُرفع الأذان عند {t}', { t: fmtPrayerTime(e.time) }),
       channelId: ios ? undefined : CH_REMINDER,
       sound: ios ? 'default' : undefined,
       threadIdentifier: 'prayer', group: 'prayer',

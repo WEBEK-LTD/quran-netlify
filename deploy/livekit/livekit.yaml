@@ -1,0 +1,47 @@
+# LiveKit server — نور القرآن voice rooms (rtc.nuralquran.net). Installed as /etc/livekit/livekit.yaml by install.sh,
+# which replaces __NODE_IP__ and __API_KEY__. No secret is stored here: the API key/secret pair lives in
+# /etc/livekit/keys.yaml (0600, owner livekit), generated on the server and never committed.
+#
+# Topology (see README.md):
+#   clients ──wss:7443──▶ Caddy (TLS, AutoSSL cert) ──ws──▶ 127.0.0.1:7880 LiveKit signal (never opened in the firewall)
+#   clients ◀─UDP 50000-60000 / TCP 7881──▶ LiveKit media (WebRTC ICE)
+#   clients behind UDP-blocking networks ◀─TURN/TLS 5349, TURN/UDP 3478──▶ LiveKit's embedded TURN
+#   LiveKit ──https──▶ https://api.nuralquran.net/v1/livekit/webhook (signed with the API secret)
+
+port: 7880
+log_level: info
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 60000
+  # the server's public IPv4 (the address rtc.nuralquran.net points to); no STUN lookup needed on a public host
+  use_external_ip: false
+  node_ip: __NODE_IP__
+
+turn:
+  enabled: true
+  domain: rtc.nuralquran.net
+  tls_port: 5349
+  udp_port: 3478
+  external_tls: false
+  cert_file: /etc/livekit/tls/fullchain.pem
+  key_file: /etc/livekit/tls/privkey.pem
+
+key_file: /etc/livekit/keys.yaml
+
+webhook:
+  api_key: __API_KEY__
+  urls:
+    - https://api.nuralquran.net/v1/livekit/webhook
+
+room:
+  # LiveKit-side safety net; the API enforces the real limits (admin settings: 500 listeners, 20 rooms)
+  max_participants: 600
+  empty_timeout: 300
+  departure_timeout: 20
+  # audio only
+  enabled_codecs:
+    - mime: audio/opus
+    - mime: audio/red
+

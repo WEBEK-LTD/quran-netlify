@@ -1,0 +1,11 @@
+# /etc/systemd/system/livekit-cert-sync.timer — daily at 04:20 (AutoSSL renews well before expiry)
+[Unit]
+Description=Daily AutoSSL → LiveKit certificate sync
+
+[Timer]
+OnCalendar=*-*-* 04:20:00
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

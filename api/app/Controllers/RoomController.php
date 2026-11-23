@@ -538,6 +538,10 @@ final class RoomController
     {
         $ctx = Community::ctx($r);
         $room = Rooms::visible($ctx, $r->intParam('id'));
+        $p = Rooms::participant((int) $room['id'], (int) $ctx['id']);
+        if ($p !== null && (int) $p['kicked'] === 1) {
+            throw new ApiError(403, 'kicked', 'تم إخراجك من هذه الغرفة.');
+        }
         $after = max(0, (int) ($r->q('after_id') ?? '0'));
         $rows = Db::all(
             'SELECT m.id, m.kind, m.event, m.body, m.created_at, m.user_id, u.name, u.avatar_url' . (\NQ\Core\Migrations::ready() ? ', u.avatar_file' : '') . '
