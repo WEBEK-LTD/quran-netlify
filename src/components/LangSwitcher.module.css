@@ -35,3 +35,6 @@
 .option:hover { background: var(--hl); color: var(--text); }
 .optionActive { color: var(--gold) !important; font-weight: 700; }
 .check { margin-inline-start: auto; color: var(--gold); width: 16px; height: 16px; }
+
+.up { top: auto; bottom: calc(100% + 6px); }
+:global([dir="rtl"]) .dropdown { left: auto; right: 0; }

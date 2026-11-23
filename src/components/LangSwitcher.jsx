@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { LANGS, useLang, setLang } from '../i18n';
 import styles from './LangSwitcher.module.css';
 import { Icon } from './ornaments/Ornaments';
@@ -8,6 +8,8 @@ const SHORT = { ar: 'ع', en: 'EN', tr: 'TR', fr: 'FR', ur: 'اُ', id: 'ID' };
 export default function LangSwitcher({ compact = false }) {
   const lang = useLang();
   const [open, setOpen] = useState(false);
+  const [up, setUp] = useState(false);
+  const wrapRef = useRef(null);
   const current = LANGS.find(l => l.code === lang) || LANGS[0];
 
   function choose(code) {
@@ -20,10 +22,15 @@ export default function LangSwitcher({ compact = false }) {
   }
 
   return (
-    <div className={styles.wrap}>
+    <div className={styles.wrap} ref={wrapRef}>
       <button
         className={`${styles.btn} ${compact ? styles.btnCompact : ''}`}
-        onClick={() => setOpen(o => !o)}
+        onClick={() => {
+          // open upward when there isn't room below (e.g. in the footer)
+          const r = wrapRef.current?.getBoundingClientRect();
+          if (r) setUp(window.innerHeight - r.bottom < 300 && r.top > window.innerHeight - r.bottom);
+          setOpen(o => !o);
+        }}
         title="اللغة · Language"
         aria-label={`اللغة: ${current.label}`}
         aria-expanded={open}
@@ -36,7 +43,7 @@ export default function LangSwitcher({ compact = false }) {
       {open && (
         <>
           <div className={styles.backdrop} onClick={() => setOpen(false)} />
-          <div className={styles.dropdown}>
+          <div className={`${styles.dropdown} ${up ? styles.up : ''}`}>
             {LANGS.map(l => (
               <button
                 key={l.code}
