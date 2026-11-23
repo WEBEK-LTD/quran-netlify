@@ -5,6 +5,7 @@
 
 import { api, request, ApiError, API_BASE, CLIENT, setToken } from './apiClient';
 import { setAuthUser, getAuthUser, refreshAuth, signOutAuth } from './hooks/useAuth';
+import { getToken, localDate } from './apiClient';
 
 export { ApiError, API_BASE };
 
@@ -134,6 +135,50 @@ export async function deleteAccount({ password, confirm } = {}) {
 }
 
 export async function exportMyData() { return api.get('/auth/export'); }
+
+// ─── PROFILE PHOTO ────────────────────────────────────────────────────────────
+// POST /me/avatar is multipart (field `photo`), so it can't go through request()
+// (JSON only). Same base URL, cookie/Bearer and X-NQ-Client; the browser sets the
+// multipart Content-Type with its boundary. The server re-encodes to 512×512.
+export async function uploadAvatar(blob, { timeout = 60000 } = {}) {
+  const ext = blob && blob.type === 'image/webp' ? 'webp' : blob && blob.type === 'image/png' ? 'png' : 'jpg';
+  const form = new FormData();
+  form.append('photo', blob, `avatar.${ext}`);
+  const headers = { 'Accept': 'application/json', 'X-NQ-Client': CLIENT, 'X-NQ-Date': localDate() };
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout);
+  let res;
+  try {
+    res = await fetch(API_BASE + '/me/avatar', { method: 'POST', headers, body: form, credentials: 'include', signal: ctrl.signal });
+  } catch (e) {
+    throw new ApiError(0, 'network', e && e.name === 'AbortError'
+      ? 'انتهت مهلة الاتصال، حاول مرة أخرى'
+      : 'تعذّر الاتصال بالخادم، تحقق من الإنترنت');
+  } finally {
+    clearTimeout(timer);
+  }
+  let json = null;
+  try { json = await res.json(); } catch {}
+  if (!res.ok || !json || json.ok === false) {
+    const err = json && json.error;
+    if (res.status === 401) window.dispatchEvent(new CustomEvent('nq-auth-expired'));
+    // 413 from a proxy/host limit may come without our JSON body
+    const code = (err && err.code) || (res.status === 413 ? 'avatar_too_large' : undefined);
+    throw new ApiError(res.status, code, err && err.message, err && err.fields);
+  }
+  const user = json.data && json.data.user;
+  if (user) setAuthUser(user); else await refreshAuth();
+  return user || getAuthUser();
+}
+
+export async function removeAvatar() {
+  const d = await api.del('/me/avatar');
+  if (d && d.user) setAuthUser(d.user); else await refreshAuth();
+  return (d && d.user) || getAuthUser();
+}
 
 // ─── BOOKMARKS ────────────────────────────────────────────────────────────────
 const cleanBookmarks = list => (Array.isArray(list) ? list : [])

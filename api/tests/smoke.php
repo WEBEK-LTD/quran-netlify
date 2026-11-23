@@ -190,6 +190,14 @@ function uploadPhoto(string $bytes, string $name, string $mime, array $o): array
     return req('POST', '/me/avatar', null, $o + ['multipart' => ['photo' => new CURLStringFile($bytes, $name, $mime)]]);
 }
 
+/** Whether a stored photo exists on disk (local mode; bypasses PHP's stat cache). */
+function photoOnDisk(string $file): bool
+{
+    global $LOCAL;
+    clearstatcache();
+    return $LOCAL !== null && $file !== '' && is_file($LOCAL . '/storage/avatars/' . $file);
+}
+
 /** Path part of an avatar URL → the file name. */
 function avatarFile(?string $url): string
 {
@@ -422,7 +430,7 @@ if ($up['status'] === 503 && errc($up) === 'avatar_unavailable') {
         json_encode($img['headers']));
     check('re-encoded: original bytes and metadata are not kept', !str_contains($img['raw'], 'SECRET-META') && $img['raw'] !== $png);
     if ($LOCAL !== null) {
-        check('stored outside the web root in storage/avatars', is_file($LOCAL . '/storage/avatars/' . $file) && !is_file($LOCAL . '/public/' . $file));
+        check('stored outside the web root in storage/avatars', photoOnDisk($file) && !is_file($LOCAL . '/public/' . $file));
     }
 
     $php = uploadPhoto("<?php echo 'pwned'; ?>", 'shell.jpg', 'image/jpeg', $ta);
@@ -455,7 +463,7 @@ if ($up['status'] === 503 && errc($up) === 'avatar_unavailable') {
     $url2 = (string) (data($up2)['user']['avatar_url'] ?? '');
     check('replace with a GIF → new URL', $up2['status'] === 200 && $url2 !== '' && $url2 !== $url, desc($up2));
     check('previous photo is deleted on replace', req('GET', $url, null, ['client' => false])['status'] === 404
-        && ($LOCAL === null || !is_file($LOCAL . '/storage/avatars/' . $file)));
+        && !photoOnDisk($file));
     if (function_exists('imagewebp')) {
         $wi = imagecreatetruecolor(800, 1200);
         ob_start();
@@ -472,7 +480,7 @@ if ($up['status'] === 503 && errc($up) === 'avatar_unavailable') {
     check('DELETE /me/avatar → user.avatar_url null', $del['status'] === 200 && array_key_exists('avatar_url', (array) (data($del)['user'] ?? []))
         && data($del)['user']['avatar_url'] === null, desc($del));
     check('deleted photo is gone (404, file removed)', req('GET', $url2, null, ['client' => false])['status'] === 404
-        && ($LOCAL === null || !is_file($LOCAL . '/storage/avatars/' . avatarFile($url2))));
+        && !photoOnDisk(avatarFile($url2)));
     $del2 = req('DELETE', '/me/avatar', null, $ta);
     check('DELETE again is harmless', $del2['status'] === 200, desc($del2));
     if (pdo()) {
@@ -495,8 +503,10 @@ if ($up['status'] === 503 && errc($up) === 'avatar_unavailable') {
     }
     check('upload rate limit: 11th upload in an hour → 429', $codes[10] === 429 && !in_array(429, array_slice($codes, 0, 10), true), implode(',', $codes));
     if ($LOCAL !== null) {
-        $pid = (int) (data(req('GET', '/auth/me', null, $tp))['user']['id'] ?? 0);
-        check('only the latest photo is kept on disk', count(glob($LOCAL . '/storage/avatars/' . $pid . '-*') ?: []) === 1);
+        $pMe = data(req('GET', '/auth/me', null, $tp))['user'] ?? [];
+        clearstatcache();
+        $onDisk = array_map('basename', glob($LOCAL . '/storage/avatars/' . (int) ($pMe['id'] ?? 0) . '-*') ?: []);
+        check('only the latest photo is kept on disk', $onDisk === [avatarFile($pMe['avatar_url'] ?? null)], implode(',', $onDisk));
     }
 }
 
@@ -850,7 +860,7 @@ check('deleted user cannot log in', req('POST', '/auth/login', ['email' => $D['e
 check("deleted user's room is gone", req('GET', "/groups/{$dRoom}", null, $tb)['status'] === 404);
 if ($dPhotoFile !== '') {
     check("account deletion removes the profile photo", req('GET', '/avatars/' . $dPhotoFile, null, ['client' => false])['status'] === 404
-        && ($LOCAL === null || !is_file($LOCAL . '/storage/avatars/' . $dPhotoFile)));
+        && !photoOnDisk($dPhotoFile));
 }
 if (pdo()) {
     $left = 0;

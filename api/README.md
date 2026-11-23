@@ -7,7 +7,7 @@
 
 | من هذا المستودع | إلى الاستضافة | ملاحظات |
 |---|---|---|
-| محتويات `api/public/` (`index.php`, `install.php`, `.htaccess`) | `/home/nuralqur/public_html/api.nuralquran.net/` | الجذر العام للنطاق الفرعي. لا يوجد فيه أي سر. |
+| محتويات `api/public/` (`index.php`, `install.php`, `.htaccess`, `.user.ini`) | `/home/nuralqur/public_html/api.nuralquran.net/` | الجذر العام للنطاق الفرعي. لا يوجد فيه أي سر. |
 | `api/app/` و `api/schema.sql` | `/home/nuralqur/nuralquran-api/` | **خارج** `public_html` فلا يمكن فتحها من المتصفح. |
 | (يُنشأ تلقائياً) `config.php` | `/home/nuralqur/nuralquran-api/config.php` | يكتبه `install.php` بصلاحيات 0600. لا ترفعه ولا تشاركه. |
 
@@ -17,7 +17,8 @@
 /home/nuralqur/nuralquran-api/
 ├── app/
 ├── schema.sql
-└── config.php      ← يظهر بعد التثبيت
+├── config.php      ← يظهر بعد التثبيت
+└── storage/        ← يُنشأ تلقائياً: السجلات، وصور الملف الشخصي في storage/avatars (لا تحذفه عند التحديث)
 ```
 
 ## التثبيت لأول مرة (حوالي 10 دقائق)
@@ -26,7 +27,8 @@
    واجعل الـ Document Root: `public_html/api.nuralquran.net` (المسار الكامل `/home/nuralqur/public_html/api.nuralquran.net`).
 2. **فعّل شهادة SSL** — cPanel ← *SSL/TLS Status* ← *Run AutoSSL* وتأكد أن `api.nuralquran.net` أصبح باللون الأخضر.
 3. **تأكد من إصدار PHP** — cPanel ← *MultiPHP Manager* (أو *Select PHP Version*) ← اختر **PHP 8.2** أو أحدث للنطاق الفرعي،
-   وتأكد من تفعيل الإضافات: `pdo_mysql`, `curl`, `openssl`, `mbstring`, `json`.
+   وتأكد من تفعيل الإضافات: `pdo_mysql`, `curl`, `openssl`, `mbstring`, `json`، و **`gd`** (لصور الملف الشخصي، ويُفضّل أن يدعم WebP)،
+   و `fileinfo` و `exif` (اختياريتان). إن لم تكن `gd` مفعّلة يعمل كل شيء ما عدا رفع الصور (يظهر «رفع الصور غير متاح على الخادم حالياً»).
 4. **أنشئ قاعدة البيانات** — cPanel ← *MySQL® Databases*:
    - أنشئ قاعدة بيانات جديدة (مثلاً `nuralqur_quran`).
    - أنشئ مستخدماً جديداً بكلمة مرور قوية (مثلاً `nuralqur_api`). احفظ كلمة المرور.
@@ -66,6 +68,16 @@
    الملف آمن للتشغيل أكثر من مرة (يُنشئ الجداول والأعمدة الناقصة فقط ولا يمسّ البيانات).
    الأعمدة الجديدة تُضاف أيضاً تلقائياً عند أول طلب بعد التحديث (`app/Core/Migrations.php`)، فهذه الخطوة اختيارية لها.
 
+### صور الملف الشخصي
+
+- يرفع المستخدم صورته من صفحة الإعدادات (`POST /v1/me/avatar`). يقصّها الموقع ويصغّرها قبل الرفع، ثم يعيد الخادم ترميزها
+  بنفسه (مربّع 512×512 بصيغة WebP أو JPEG) فلا يُحفظ الملف الأصلي ولا بياناته الوصفية (مثل موقع التصوير) أبداً.
+- تُحفظ في `/home/nuralqur/nuralquran-api/storage/avatars/` (خارج `public_html`) وتُعرض عبر `https://api.nuralquran.net/v1/avatars/…`.
+  عند تغيير الصورة أو حذفها أو حذف الحساب يُحذف الملف القديم. عند النقل لخادم آخر انسخ هذا المجلد مع قاعدة البيانات.
+- الحد الأقصى 5 ميغابايت. ملف `.user.ini` المرفق يرفع `upload_max_filesize` إلى 6M و `post_max_size` إلى 8M (تقرؤه LiteSpeed/PHP-FPM
+  خلال 5 دقائق تقريباً). إن ظهرت «حجم الصورة كبير جداً» لصور أصغر من 5 ميغابايت، اضبط القيمتين من cPanel ← *MultiPHP INI Editor*
+  (أو *Select PHP Version* ← *Options*). بقية المسارات ما زالت ترفض أي طلب أكبر من 64 كيلوبايت.
+
 ## حل المشكلات
 
 | المشكلة | الحل |
@@ -74,6 +86,7 @@
 | «تعذّر الاتصال بقاعدة البيانات» أثناء التثبيت | راجع الاسم الكامل للقاعدة والمستخدم (مع البادئة `nuralqur_`) وكلمة المرور، وأن المستخدم مضاف للقاعدة بـ ALL PRIVILEGES. |
 | «لا يمكن الكتابة في المجلد» | اجعل صلاحيات `/home/nuralqur/nuralquran-api` على `755`. |
 | خطأ 500 بعد التثبيت | سجل الأخطاء في `/home/nuralqur/nuralquran-api/storage/logs/php-error.log` (لا يظهر للزوار أبداً). |
+| «رفع الصور غير متاح على الخادم حالياً» | فعّل إضافة `gd` من *Select PHP Version* ← *Extensions* (أو اطلب ذلك من الاستضافة). |
 | الموقع لا يستطيع الاتصال (CORS) | عنوان الموقع يجب أن يكون ضمن `cors_origins` في `config.php`. |
 
 ## للمطوّرين
@@ -86,7 +99,8 @@
 DB_NAME=nq_test DB_USER=nq DB_PASS=nqpass123 api/tests/run-local.sh
 ```
 
-  يُنشئ قاعدة بيانات جديدة، ويشغّل `php -S`، وينفّذ التثبيت عبر HTTP، ثم يشغّل `api/tests/smoke.php` (اختبار شامل لكل المسارات) ويحذف `config.php` المحلي في النهاية.
+  يُنشئ قاعدة بيانات جديدة، ويشغّل `php -S`، وينفّذ التثبيت عبر HTTP، ثم يشغّل `api/tests/smoke.php` (اختبار شامل لكل المسارات، ومنها رفع الصور ورفض الأنواع والأحجام غير المسموحة) ويحذف `config.php` المحلي في النهاية.
+  يرفض العمل إن وُجد `api/config.php` (خادم محلي آخر يستخدمه)؛ عندها انسخ مجلد `api` إلى مكان مؤقت (بدون `config.php`) وشغّله من هناك مع `PORT=8097` مثلاً.
   يمكن أيضاً تشغيل `php api/tests/smoke.php --base=https://api.example.com` على خادم قائم (بدون `--local`).
 
 - **تصميم الرسائل**: كل الرسائل تُبنى من قالب واحد في `app/Core/Mailer.php` (`Mailer::render()`). لمعاينتها دون إرسال:

@@ -64,7 +64,7 @@ export default function WelcomePage() {
         <div className={`nq-wrap ${styles.heroWrap}`}>
           <div className={styles.heroIn}>
             <h1 id="home-ayah" className={styles.qh} lang="ar" dir="rtl">﴿قَدْ جَاءَكُم مِّنَ ٱللَّهِ نُورٌ وَكِتَٰبٌ مُّبِينٌ﴾</h1>
-            <p className={styles.qref}><span lang="ar">سورة المائدة · ١٥</span>{lang !== 'ar' && <> · {tr('{name} {s}:{a}', { name: surahName(5), s: num(5), a: num(15) })}</>}</p>
+            <p className={styles.qref}><bdi lang="ar">سورة المائدة · ١٥</bdi>{lang !== 'ar' && <> · {tr('{name} {s}:{a}', { name: surahName(5), s: num(5), a: num(15) })}</>}</p>
             <p className={`nq-lead ${styles.heroLead}`}>{tr('اقرأ المصحف بالرسم العثماني، واستمع لكبار القرّاء، واحفظ بخطة تناسبك. مواقيت الصلاة والقبلة والأذكار في مكان واحد.')}</p>
             <div className={styles.ctas}>
               <Link className="nq-btn gold" to={hasProgress ? `/reader?surah=${s}&ayah=${a}` : '/reader?surah=1&ayah=1'}>

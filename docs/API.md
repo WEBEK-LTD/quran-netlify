@@ -11,8 +11,9 @@ This file is the contract between `api/` (server) and `src/` (web + app). Change
 - **Auth:** a session token. The web gets it as an httpOnly cookie `nq_session` (`Domain=.nuralquran.net; Secure; SameSite=Lax; Path=/`); the native app gets it in the JSON body and sends `Authorization: Bearer <token>`. The server accepts either. Sessions last 60 days, refreshed on use; stored hashed (SHA-256).
 - **CSRF:** every non-GET request must carry header `X-NQ-Client: web` or `X-NQ-Client: app`. Requests without it get 403. The header forces a CORS preflight, so other sites can't send it.
 - **CORS:** allowed origins come from config (`https://nuralquran.net`, `https://www.nuralquran.net`, `https://nur-alquran.netlify.app`, `capacitor://localhost`, `https://localhost`, `http://localhost:3000`, `http://localhost:5173`). `Access-Control-Allow-Credentials: true`. Never `*`.
-- **Rate limits** (per IP and per user, stored in DB): login 10/10 min, signup 5/hour, forgot-password 5/hour, AI 20/hour/user, reading log 2/second, writes 120/min.
-- **Maintenance mode:** when `maintenance_mode` is on, every route except `GET /settings/public`, `/auth/*` and `/admin/*` returns 503 `maintenance` for non-admins.
+- **Rate limits** (per IP and per user, stored in DB): login 10/10 min, signup 5/hour, forgot-password 5/hour, AI 20/hour/user, profile photo upload 10/hour/user, reading log 2/second, writes 120/min.
+- **Body size:** request bodies over 64 KB get 413 `payload_too_large` (checked from `Content-Length` before routing). The only exception is `POST /me/avatar` (multipart, photo ≤ 5 MB).
+- **Maintenance mode:** when `maintenance_mode` is on, every route except `GET /settings/public`, `/auth/*`, `/admin/*` and `GET /avatars/*` returns 503 `maintenance` for non-admins.
 - **Bans:** a banned user (scope `app`) can't sign in; their sessions are revoked.
 - **Pagination:** `?page=1&per_page=50` (max 100) → `data: {items:[…], page, per_page, total}`.
 
@@ -21,6 +22,8 @@ This file is the contract between `api/` (server) and `src/` (web + app). Change
 ```
 User      { id, email, name, lang: "ar"|"en"|"tr"|"fr"|"ur"|"id", avatar_url|null, gender: "male"|"female"|null, birthdate|null,
             is_admin: bool, email_verified: bool, show_on_leaderboard: bool, created_at }
+            // avatar_url: the uploaded photo (absolute https://api.nuralquran.net/v1/avatars/… URL) if any,
+            // else the Google picture, else null. A new upload always gets a new URL.
 Bookmark  { surah, ayah, created_at }
 Note      { surah, ayah, text, updated_at }
 Progress  { surah, ayah, updated_at }
@@ -58,8 +61,8 @@ Broadcast { id, title, body, type: "info"|"warning"|"success", created_at, expir
 | POST | `/auth/reset-password` | `{token, password}` | `{}` — revokes all sessions |
 | POST | `/auth/change-password` | `{current_password, new_password}` | `{}` — revokes other sessions. Google-only accounts may set a password without `current_password` |
 | PATCH | `/auth/profile` | `{name?, show_on_leaderboard?, lang?}` | `{user}` — `lang` is the language of the account's emails |
-| DELETE | `/auth/account` | `{password}` (or `{confirm:"DELETE"}` for Google-only accounts) | `{}` — deletes the user and every row they own; group rooms they own are deleted |
-| GET | `/auth/export` | | all of the user's data as JSON (download) |
+| DELETE | `/auth/account` | `{password}` (or `{confirm:"DELETE"}` for Google-only accounts) | `{}` — deletes the user and every row they own; group rooms they own are deleted; the profile photo file is deleted |
+| GET | `/auth/export` | | all of the user's data as JSON (download), incl. `profile_photo_url` (uploaded photo or null) |
 | GET | `/auth/google/start` | `?next=/dashboard&client=web\|app&lang=en` | 302 to Google. `lang` is kept in the OAuth state: new accounts get it (and their welcome email in it), existing accounts have it updated |
 | GET | `/auth/google/callback` | (from Google) | web: sets cookie, 302 to `https://nuralquran.net/auth/callback?status=ok&next=…`; app: 302 to `nuralquran://auth?token=…`; error: `…/auth/callback?status=error&reason=…` |
 
@@ -90,6 +93,22 @@ Email links point to the site, which calls the API:
 | POST | `/me/khatmat` | `{type, start_date, end_date, notes}` | `Khatma` |
 | PATCH | `/me/khatmat/{id}` | same fields | `Khatma` |
 | DELETE | `/me/khatmat/{id}` | | `{}` |
+
+## Profile photo
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| POST | `/me/avatar` | `multipart/form-data`, field `photo` (≤ 5 MB; JPEG, PNG, WebP or GIF — first frame) | `{user}` with the new `avatar_url`. Replaces (and deletes) the previous photo |
+| DELETE | `/me/avatar` | | `{user}` — `avatar_url` falls back to the Google picture, else null. Harmless when there is none |
+| GET | `/avatars/{file}` | | the image itself (not JSON): `image/webp` (or `image/jpeg` when the server has no WebP encoder) |
+
+- Signed in + `X-NQ-Client` as for every write. Don't set `Content-Type` yourself (the browser adds the boundary).
+- The type is detected from the file's bytes (magic number + `getimagesize` + `finfo`), never from the name or the sent MIME type. SVG, HEIC, animated WebP etc. → 422 `unsupported_image`.
+- Dimensions 64×64 … 6000×6000, else 422 `image_dimensions`. Over 5 MB → 413 `avatar_too_large`. No `photo` field → 422 `validation` (`fields.photo`). 10 uploads/hour/user → 429.
+- The server never keeps or serves the uploaded bytes: it applies EXIF rotation, centre-crops to a square, resizes to 512×512 and re-encodes (WebP q82, else JPEG q82), which strips all metadata. Clients should still crop/resize first (the web sends a 512×512 image) so uploads stay small.
+- Server without GD → 503 `avatar_unavailable` («رفع الصور غير متاح على الخادم حالياً.»).
+- `GET /avatars/{file}` is public (file names are `<user id>-<24 random hex>.webp`, so they can't be guessed) and sends `Cache-Control: public, max-age=31536000, immutable`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'`, `Cross-Origin-Resource-Policy: cross-origin`. Unknown or removed files → 404 JSON. It needs no session and no database.
+- Files live in `storage/avatars/` next to `app/` (outside the web root).
 
 ## Group khatma (signed in)
 
