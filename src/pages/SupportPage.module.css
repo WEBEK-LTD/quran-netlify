@@ -57,7 +57,7 @@
 .fs { border: 0; margin: 0; padding: 0; display: grid; gap: 10px; }
 .label { font-weight: 600; font-size: .92rem; padding: 0; }
 .topics { display: flex; flex-wrap: wrap; gap: 8px; }
-.topic { min-height: 42px; padding: 0 16px; border-radius: 999px; border: var(--bw) solid var(--line); background: var(--raise); color: var(--muted); font-size: .9rem; }
+.topic { min-height: 42px; padding: 4px 16px; border-radius: 999px; border: var(--bw) solid var(--line); background: var(--raise); color: var(--muted); font-size: .9rem; }
 .topic:hover { border-color: var(--line2); color: var(--text); }
 .topic[aria-pressed="true"] { border-color: var(--gold); background: var(--hl); color: var(--gold); font-weight: 600; }
 .fieldLbl { display: grid; gap: 8px; }
@@ -68,7 +68,7 @@
 .err :global(.nq-ico) { color: var(--danger); }
 
 /* conversation */
-.chat { display: grid; grid-template-rows: auto 1fr auto auto; min-height: 560px; max-height: min(78vh, 760px); }
+.chat { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto auto; min-height: 560px; max-height: min(78vh, 760px); }
 .chatHead { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--raise) 60%, transparent); }
 .chatSubject { font-family: var(--f-title); font-size: 1.3rem; font-weight: 700; line-height: 1.35; margin-bottom: 2px; }
 .backBtn { display: none; }
@@ -115,7 +115,7 @@
 .faqMore a { color: var(--gold); font-weight: 600; }
 
 @media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
   .side { position: static; max-height: none; overflow: visible; }
   .mHide { display: none; }
   .backBtn { display: grid; }

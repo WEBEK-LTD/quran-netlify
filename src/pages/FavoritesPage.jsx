@@ -9,8 +9,8 @@ import { setGlobal } from '../store';
 import { normalizeArabic } from '../arabic';
 import { PageHero, Icon, Badge8, Corners, Divider, AyahMark, toAr } from '../components/ornaments/Ornaments';
 import { useAyahText, cachedAyahText } from './FavoritesPage/ayahText';
-import { useTr, trNow, surahName, revelationLabel } from '../l10n';
-import { trCount } from '../locales/library';
+import { useTr, surahName, revelationLabel } from '../l10n';
+import { scoped, trCount } from '../locales/library';
 import styles from './FavoritesPage.module.css';
 
 function readLocal() {
@@ -36,7 +36,7 @@ const PAGE = 24;
 const toLatinDigits = s => String(s || '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
 
 export default function FavoritesPage() {
-  const tr = useTr();
+  const tr = scoped(useTr());
   const trc = (key, n, vars) => trCount(tr, key, n, vars);
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -212,16 +212,16 @@ export default function FavoritesPage() {
 }
 
 function FavCard({ b, onOpen, onRemove }) {
-  const tr = useTr();
+  const tr = scoped(useTr());
   const meta = SURAHS_META[b.surah - 1];
   const { text, failed } = useAyahText(b.surah, b.ayah);
   const name = surahName(b.surah, tr.lang) || '';
 
   function copy() {
     if (!text) return;
-    navigator.clipboard?.writeText(`${text}\n\n${trNow('— سورة {name}، الآية {n}', { name, n: b.ayah })}`)
-      .then(() => setGlobal({ toast: trNow('نُسخت الآية مع مرجعها') }))
-      .catch(() => setGlobal({ toast: trNow('تعذّر النسخ') }));
+    navigator.clipboard?.writeText(`${text}\n\n${tr('— سورة {name}، الآية {n}', { name, n: b.ayah })}`)
+      .then(() => setGlobal({ toast: tr('نُسخت الآية مع مرجعها') }))
+      .catch(() => setGlobal({ toast: tr('تعذّر النسخ') }));
   }
   function share() {
     if (!text) return;

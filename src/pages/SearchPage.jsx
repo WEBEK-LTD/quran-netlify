@@ -8,7 +8,7 @@ import { SURAHS_META } from '../data';
 import { normalizeArabic, highlightSegments } from '../arabic';
 import { PageHero, Icon, Badge8, Divider, toAr } from '../components/ornaments/Ornaments';
 import { useTr, surahName, revelationLabel } from '../l10n';
-import { trCount } from '../locales/library';
+import { scoped, trCount } from '../locales/library';
 import styles from './SearchPage.module.css';
 
 // ─── Local index: fetch & cache all surahs ───────────────────────────────────
@@ -131,7 +131,7 @@ const QUICK = ['الرحمن', 'الصبر', 'الجنة', 'الصلاة', 'ال
 const hasLatin = s => /[A-Za-z]/.test(String(s || ''));
 
 export default function SearchPage() {
-  const tr = useTr();
+  const tr = scoped(useTr());
   const trc = (key, n, vars) => trCount(tr, key, n, vars);
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -244,7 +244,7 @@ export default function SearchPage() {
               )}
             </label>
             <button type="submit" className={`nq-btn gold ${styles.searchBtn}`} disabled={building || !query.trim()}>
-              {building ? <span className="nq-num">{tr.lang === 'ar' ? `${toAr(progress)}٪` : `${toAr(progress)}%`}</span> : <><Icon name="search" />{tr('ابحث')}</>}
+              {building ? <span className="nq-num">{tr.lang === 'ar' || tr.lang === 'ur' ? `${toAr(progress)}٪` : `${toAr(progress)}%`}</span> : <><Icon name="search" />{tr('ابحث')}</>}
             </button>
           </div>
           <div className={styles.hintRow}>
@@ -304,7 +304,7 @@ export default function SearchPage() {
               <small>{tr('مرة واحدة فقط، ثم يصبح البحث فورياً ويعمل دون اتصال.')}</small>
               <div className={styles.bar} aria-hidden="true"><i style={{ width: `${progress}%` }} /></div>
             </div>
-            <span className={`nq-num ${styles.pct}`}>{tr.lang === 'ar' ? `${toAr(progress)}٪` : `${toAr(progress)}%`}</span>
+            <span className={`nq-num ${styles.pct}`}>{tr.lang === 'ar' || tr.lang === 'ur' ? `${toAr(progress)}٪` : `${toAr(progress)}%`}</span>
           </div>
         )}
 

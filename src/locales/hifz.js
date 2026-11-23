@@ -2,6 +2,9 @@
 // Each row: [Arabic source string, en, tr, fr, ur, id]. Keys are the exact Arabic
 // strings passed to tr()/trNow() in src/pages/{Hifz,Khatma,KhatmaGroup,Report,Leaderboard}Page.jsx
 // (plus the achievement titles/descriptions of src/hifzData.js, wrapped where rendered).
+import { useTr, trNow } from '../l10n';
+import { getLang } from '../i18n';
+
 const ROWS = [
   // ── Hifz page ──────────────────────────────────────────────────────────────
   ['سورة {s}: الآيات {a}–{b}', 'Surah {s}: ayahs {a}–{b}', '{s} Suresi: {a}–{b}. ayetler', 'Sourate {s} : versets {a}–{b}', 'سورۃ {s}: آیات {a}–{b}', 'Surah {s}: ayat {a}–{b}'],
@@ -429,3 +432,22 @@ const dict = { en: {}, tr: {}, fr: {}, ur: {}, id: {} };
 for (const [ar, ...vals] of ROWS) LANGS.forEach((l, i) => { dict[l][ar] = vals[i]; });
 
 export default dict;
+
+// The shared dictionary is merged from every locale file, so a short key such as
+// «محفوظة» (memorised / saved) can be overridden by another area. These pages use
+// the scoped helpers below: this file's rows first, then the shared dictionary.
+const fill = (s, vars) => (vars ? s.replace(/\{(\w+)\}/g, (all, k) => (vars[k] !== undefined && vars[k] !== null ? String(vars[k]) : all)) : s);
+export function useHifzTr() {
+  const base = useTr();
+  const f = (ar, vars) => {
+    const own = dict[base.lang] && dict[base.lang][ar];
+    return own ? fill(own, vars) : base(ar, vars);
+  };
+  f.lang = base.lang;
+  f.dir = base.dir;
+  return f;
+}
+export function hifzTrNow(ar, vars) {
+  const own = dict[getLang()] && dict[getLang()][ar];
+  return own ? fill(own, vars) : trNow(ar, vars);
+}

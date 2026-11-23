@@ -10,7 +10,7 @@ import { normalizeArabic } from '../arabic';
 import { PageHero, Icon, Badge8, Corners, Divider, AyahMark, toAr } from '../components/ornaments/Ornaments';
 import { useAyahText } from './FavoritesPage/ayahText';
 import { useTr, num, surahName, intlLocale } from '../l10n';
-import { trCount } from '../locales/library';
+import { scoped, trCount } from '../locales/library';
 import styles from './NotesPage.module.css';
 
 const LOCAL_KEY = 'nq_notes';
@@ -32,7 +32,7 @@ function mergeNotes(server, local) {
 }
 
 export default function NotesPage() {
-  const tr = useTr();
+  const tr = scoped(useTr());
   const trc = (key, n, vars) => trCount(tr, key, n, vars);
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -273,7 +273,7 @@ export default function NotesPage() {
 }
 
 function Modal({ onClose, labelId, role = 'dialog', small, children }) {
-  const tr = useTr();
+  const tr = scoped(useTr());
   const ref = useRef(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -307,7 +307,7 @@ function AyahPreview({ surah, ayah }) {
 }
 
 function NoteCard({ note, onOpen, onEdit, onDelete }) {
-  const tr = useTr();
+  const tr = scoped(useTr());
   const name = surahName(note.surah, tr.lang) || '';
   const { text } = useAyahText(note.surah, note.ayah);
   const date = note.updated_at ? num(new Date(note.updated_at).toLocaleDateString(intlLocale(tr.lang), { day: 'numeric', month: 'long', year: 'numeric' }), tr.lang) : '';

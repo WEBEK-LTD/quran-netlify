@@ -49,7 +49,9 @@
 :global([dir="ltr"]) .relArrow { transform: none; }
 
 /* ── delete data ── */
-.page .narrow { max-width: 860px; padding-top: 48px; display: grid; gap: 28px; }
+.page .narrow { max-width: 860px; padding-top: 48px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
+/* longer labels in other languages: let buttons wrap instead of widening the page */
+.page :global(.nq-btn) { white-space: normal; text-align: center; max-width: 100%; }
 .lead { color: var(--muted); font-size: 1.06rem; text-align: center; max-width: 60ch; justify-self: center; line-height: 1.9; }
 
 .steps { scroll-margin-top: calc(var(--header-h) + 24px); list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; counter-reset: s; }

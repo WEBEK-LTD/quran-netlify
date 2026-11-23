@@ -156,7 +156,7 @@ const ROWS = {
   "ملاحظة": ["notes", "not", "notes", "نوٹس", "catatan"],
   "من {total} ملاحظة": ["of {total} notes", "/ {total} not", "sur {total} notes", "{total} نوٹس میں سے", "dari {total} catatan"],
   "على {n} سورة": ["across {n} surahs", "{n} surede", "sur {n} sourates", "{n} سورتوں پر", "pada {n} surah"],
-  "لا توجد ملاحظة تطابق «{q}». جرّب كلمة أخرى أو اسم سورة.": ["No note matches “{q}”. Try another word or a surah name.", "«{q}» ile eşleşen not yok. Başka bir kelime veya sure adı dene.", "Aucune note ne correspond à « {q} ». Essayez un autre mot ou un nom de sourate.", "«{q}» سے کوئی نوٹ نہیں ملا۔ کوئی اور لفظ یا سورۃ کا نام آزمائیں۔", "Tidak ada catatan yang cocok dengan «{q}». Coba kata lain atau nama surah."],
+  "لا توجد ملاحظة تطابق «{q}». جرّب كلمة أخرى أو اسم سورة.": ["No note matches “{q}”. Try another word or a surah name.", "“{q}” ile eşleşen not yok. Başka bir kelime veya sure adı dene.", "Aucune note ne correspond à « {q} ». Essayez un autre mot ou un nom de sourate.", "«{q}» سے کوئی نوٹ نہیں ملا۔ کوئی اور لفظ یا سورۃ کا نام آزمائیں۔", "Tidak ada catatan yang cocok dengan “{q}”. Coba kata lain atau nama surah."],
   "عرض كل الملاحظات": ["Show all notes", "Tüm notları göster", "Afficher toutes les notes", "تمام نوٹس دکھائیں", "Tampilkan semua catatan"],
   "حذف هذه الملاحظة؟": ["Delete this note?", "Bu not silinsin mi?", "Supprimer cette note ?", "یہ نوٹ حذف کریں؟", "Hapus catatan ini?"],
   "لا يمكن التراجع عن الحذف.": ["This cannot be undone.", "Bu işlem geri alınamaz.", "Cette action est irréversible.", "حذف کرنے کے بعد واپسی ممکن نہیں۔", "Penghapusan tidak dapat dibatalkan."],
@@ -193,7 +193,7 @@ const ROWS = {
   "ابحث في آيات القرآن الكريم": ["Search the ayahs of the Holy Quran", "Kur’an-ı Kerim ayetlerinde ara", "Rechercher dans les versets du Noble Coran", "قرآنِ کریم کی آیات میں تلاش کریں", "Cari ayat-ayat Al-Qur’an"],
   "ابحث في آيات القرآن الكريم…": ["Search the Quran in Arabic…", "Kur’an’da Arapça ara…", "Rechercher dans le Coran en arabe…", "قرآن کی آیات میں عربی میں تلاش کریں…", "Cari dalam Al-Qur’an (teks Arab)…"],
   "ابحث": ["Search", "Ara", "Rechercher", "تلاش", "Cari"],
-  "بلا تشكيل: «الصبر» تجد «ٱلصَّبْرِ»": ["No diacritics needed: «الصبر» finds «ٱلصَّبْرِ»", "Hareke gerekmez: «الصبر» yazınca «ٱلصَّبْرِ» bulunur", "Sans voyelles : «الصبر» trouve «ٱلصَّبْرِ»", "اعراب ضروری نہیں: «الصبر» لکھیں تو «ٱلصَّبْرِ» ملے گا", "Tanpa harakat: «الصبر» menemukan «ٱلصَّبْرِ»"],
+  "بلا تشكيل: «الصبر» تجد «ٱلصَّبْرِ»": ["No diacritics needed: “الصبر” finds “ٱلصَّبْرِ”", "Hareke gerekmez: “الصبر” yazınca “ٱلصَّبْرِ” bulunur", "Sans voyelles : « الصبر » trouve « ٱلصَّبْرِ »", "اعراب ضروری نہیں: «الصبر» لکھیں تو «ٱلصَّبْرِ» ملے گا", "Tanpa harakat: “الصبر” menemukan “ٱلصَّبْرِ”"],
   "الهمزات والتاء المربوطة سواء": ["Hamza forms and taa marbuta are treated alike", "Hemze biçimleri ve tâ-i merbûta aynı sayılır", "Les formes de la hamza et le tâ’ marbûta sont équivalents", "ہمزہ کی صورتیں اور تائے مربوطہ یکساں شمار ہوتی ہیں", "Bentuk hamzah dan ta marbutah dianggap sama"],
   "تصفية": ["Filter", "Filtre", "Filtrer", "فلٹر", "Filter"],
   " (مفعّلة)": [" (on)", " (açık)", " (actif)", " (فعال)", " (aktif)"],
@@ -214,10 +214,10 @@ const ROWS = {
   "عند أول بحث نحمّل نص المصحف كاملاً مرة واحدة، ثم تظهر النتائج فوراً أثناء الكتابة، حتى دون اتصال.": ["On your first search we download the full Mushaf text once; after that, results appear instantly as you type, even offline.", "İlk aramada mushaf metninin tamamı bir kez indirilir; ardından sonuçlar yazarken anında, çevrimdışı bile görünür.", "Lors de la première recherche, nous téléchargeons une fois le texte complet du Mushaf ; ensuite, les résultats s’affichent instantanément pendant la saisie, même hors ligne.", "پہلی تلاش پر ہم مصحف کا پورا متن ایک بار ڈاؤن لوڈ کرتے ہیں؛ پھر لکھتے ہی نتائج فوراً ظاہر ہوتے ہیں، انٹرنیٹ کے بغیر بھی۔", "Pada pencarian pertama kami mengunduh seluruh teks mushaf sekali; setelah itu hasil muncul seketika saat mengetik, bahkan tanpa koneksi."],
   "حضّر الفهرس الآن": ["Prepare the index now", "Dizini şimdi hazırla", "Préparer l’index maintenant", "اشاریہ ابھی تیار کریں", "Siapkan indeks sekarang"],
   "أكثر من ": ["More than ", "En az ", "Plus de ", "کم از کم ", "Lebih dari "],
-  "نتيجة لـ «{q}»": ["results for “{q}”", "sonuç: «{q}»", "résultats pour « {q} »", "نتائج برائے «{q}»", "hasil untuk «{q}»"],
+  "نتيجة لـ «{q}»": ["results for “{q}”", "sonuç: “{q}”", "résultats pour « {q} »", "نتائج برائے «{q}»", "hasil untuk “{q}”"],
   "في {n} سورة": ["in {n} surahs", "{n} surede", "dans {n} sourates", "{n} سورتوں میں", "dalam {n} surah"],
   "مع التصفية": ["Filtered", "Filtreli", "Filtré", "فلٹر کے ساتھ", "Terfilter"],
-  "لا توجد نتائج لـ «{q}»": ["No results for “{q}”", "«{q}» için sonuç yok", "Aucun résultat pour « {q} »", "«{q}» کے لیے کوئی نتیجہ نہیں", "Tidak ada hasil untuk «{q}»"],
+  "لا توجد نتائج لـ «{q}»": ["No results for “{q}”", "“{q}” için sonuç yok", "Aucun résultat pour « {q} »", "«{q}» کے لیے کوئی نتیجہ نہیں", "Tidak ada hasil untuk “{q}”"],
   "جرّب كلمة أقصر أو جذراً منها، وتأكد من الإملاء.": ["Try a shorter word or its root, and check the spelling.", "Daha kısa bir kelime ya da kökünü dene ve yazımı kontrol et.", "Essayez un mot plus court ou sa racine, et vérifiez l’orthographe.", "چھوٹا لفظ یا اس کا مادہ آزمائیں، اور املا جانچ لیں۔", "Coba kata yang lebih pendek atau akar katanya, dan periksa ejaannya."],
   " التصفية مفعّلة وقد تُخفي نتائج.": [" Filters are on and may hide results.", " Filtre açık ve bazı sonuçları gizliyor olabilir.", " Des filtres sont actifs et peuvent masquer des résultats.", " فلٹر فعال ہے اور کچھ نتائج چھپا سکتا ہے۔", " Filter aktif dan mungkin menyembunyikan hasil."],
   "{n} نتيجة": ["{n} results", "{n} sonuç", "{n} résultats", "{n} نتائج", "{n} hasil"],
@@ -433,9 +433,107 @@ const ROWS = {
   "جارٍ تحميل السورة": ["Loading the surah", "Sure yükleniyor", "Chargement de la sourate", "سورۃ لوڈ ہو رہی ہے", "Memuat surah"],
 };
 
+// Keys that other areas' locale files already define, sometimes with another
+// meaning in their context (e.g. «المدينة» = "City" on the prayer-times page,
+// «محفوظة» = "Memorised" on the hifz page). They stay out of the shared
+// dictionary so this file never overrides those pages; the library pages read
+// them through scoped() below.
+const SHARED_ELSEWHERE = new Set([
+  "الحفظ",
+  "الختمات",
+  "المفضلة",
+  "ملاحظاتي",
+  "البحث",
+  "الختمة الجماعية",
+  "المتصدرون",
+  "مواقيت الصلاة",
+  "القبلة",
+  "الأذكار",
+  "السبحة",
+  "آية اليوم",
+  "الإذاعة",
+  "الدعم",
+  "الإعدادات",
+  "{n} سورة",
+  "{n} ختمة",
+  "{n} آية",
+  "لوحتي",
+  "تسجيل الخروج",
+  "تسجيل الدخول",
+  "إنشاء حساب",
+  "متابعة",
+  "سورة {name}",
+  "الآية {n}",
+  "الجزء {n}",
+  "ابدأ القراءة",
+  "سورة محفوظة",
+  "أيام متتالية",
+  "أيام القراءة",
+  "نسبة الحفظ",
+  "ختماتي",
+  "سجلّ الختمات",
+  "لا قراءة",
+  "أقل",
+  "أكثر",
+  "أنشئ حساباً مجانياً",
+  "جارٍ التحميل",
+  "مسح البحث",
+  "الكل",
+  "عرض المزيد",
+  "تعذّر النسخ",
+  "نسخ",
+  "افتح المصحف",
+  "ملاحظة",
+  "إلغاء",
+  "حذف",
+  "السورة",
+  "جارٍ الحفظ…",
+  "حفظ",
+  "إغلاق",
+  "تعديل",
+  "الصلاة",
+  "ربنا لا تزغ قلوبنا",
+  "محفوظة",
+  "شارك كصورة",
+  "التفسير الميسّر",
+  "المصحف",
+  "المدينة",
+  "اسم السورة أو رقمها",
+  "ابحث عن سورة",
+  "السور",
+  "لا توجد سورة بهذا الاسم.",
+  "الإجازة والقراءات",
+  "حجم الخط",
+  "تصغير الخط",
+  "أ−",
+  "تكبير الخط",
+  "أ+",
+  "الآية السابقة",
+  "إيقاف مؤقت",
+  "تشغيل",
+  "الآية التالية",
+]);
+
+const own = Object.fromEntries(LANGS.map(l => [l, {}]));
+for (const [ar, row] of Object.entries(ROWS)) LANGS.forEach((l, i) => { own[l][ar] = row[i]; });
+export const OWN = own;
+
 const dict = Object.fromEntries(LANGS.map(l => [l, {}]));
-for (const [ar, row] of Object.entries(ROWS)) LANGS.forEach((l, i) => { dict[l][ar] = row[i]; });
+for (const [ar, row] of Object.entries(ROWS)) if (!SHARED_ELSEWHERE.has(ar)) LANGS.forEach((l, i) => { dict[l][ar] = row[i]; });
 export default dict;
+
+// The library pages' translator: this file's wording first (right for their
+// context whatever other locale files say), then the shared dictionary.
+//   const tr = scoped(useTr());
+export function scoped(tr) {
+  const f = (ar, vars) => {
+    const s = OWN[tr.lang] && OWN[tr.lang][ar];
+    return s ? tr(s, vars) : tr(ar, vars);
+  };
+  f.lang = tr.lang;
+  f.dir = tr.dir;
+  return f;
+}
 
 // Singular wording for a count of one (French: zero and one). Kept out of the
 // shared dictionary so other pages that use the same keys keep the plural.

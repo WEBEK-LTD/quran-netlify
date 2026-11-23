@@ -7,11 +7,11 @@ import { useAuth, displayNameOf, avatarOf } from '../hooks/useAuth';
 import { usePublicSettings } from '../hooks/usePublicSettings';
 import { loadProgress, loadBookmarks, loadNotes, loadStats, getBroadcasts } from '../backend';
 import { SURAHS_META, JUZ_DATA } from '../data';
-import { visibleGroups } from '../features';
+import { visibleGroups, featureText } from '../features';
 import { useHifz, localDateStr } from '../hifzStore';
 import { PageHero, Icon, Badge8, Corners, Pattern, Divider, toAr } from '../components/ornaments/Ornaments';
 import { useTr, num, surahName, intlLocale } from '../l10n';
-import { trCount } from '../locales/library';
+import { scoped, trCount } from '../locales/library';
 import styles from './DashboardPage.module.css';
 
 function readJSON(key, fallback) {
@@ -56,6 +56,7 @@ function dayLabel(dow, lang, style = 'long') {
 // Row labels of the heat map (Saturday → Friday; every other row labelled)
 function dowLabels(lang) {
   if (lang === 'ar') return ['س', '', 'إ', '', 'خ', '', ''];
+  if (lang === 'ur') return ['ہ', '', 'پ', '', 'ب', '', ''];   // ہفتہ، پیر، بدھ
   return [6, 1, 3].flatMap(d => [dayLabel(d, lang, 'narrow'), '']).concat(['']).slice(0, 7);
 }
 
@@ -97,10 +98,10 @@ const BC_STYLE = { info: 'info', warning: 'warn', success: 'ok', error: 'danger'
 const BC_ICON = { info: 'bell', warning: 'bell', success: 'check', error: 'x' };
 
 export default function DashboardPage() {
-  const tr = useTr();
+  const tr = scoped(useTr());
   const trc = (key, n, vars) => trCount(tr, key, n, vars);
   const trn = (key, n, vars) => trc(key, n, { n: toAr(n), ...vars });
-  const pct = v => (tr.lang === 'ar' ? `${toAr(v)}٪` : `${num(v)}%`);
+  const pct = v => (tr.lang === 'ar' || tr.lang === 'ur' ? `${toAr(v)}٪` : `${num(v)}%`);
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const settings = usePublicSettings();
@@ -373,7 +374,7 @@ export default function DashboardPage() {
                 <Badge8 icon={items[k].icon} size={46} />
                 <span className={styles.qText}>
                   <b>{tr(label)}</b>
-                  <small>{quickSub[k] || items[k].desc}</small>
+                  <small>{quickSub[k] || featureText(items[k], tr.lang).desc}</small>
                 </span>
               </Link>
             ))}
@@ -430,7 +431,7 @@ export default function DashboardPage() {
 }
 
 function Kpi({ icon, value, unit, label, sub, busy }) {
-  const tr = useTr();
+  const tr = scoped(useTr());
   return (
     <div className={`nq-card ${styles.kpi}`}>
       <Badge8 icon={icon} size={44} />

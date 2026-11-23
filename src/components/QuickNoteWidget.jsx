@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { saveNote, loadNotes } from '../backend';
-import { useTr, trNow, num, surahName } from '../l10n';
+import { useTr, num, surahName } from '../l10n';
+import { coreTr, coreTrNow } from '../locales/core';
 import styles from './QuickNoteWidget.module.css';
 
 const LOCAL_KEY = 'nq_notes';
@@ -10,7 +11,7 @@ function setLocal(n) { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(n));
 
 export default function QuickNoteWidget() {
   const { user } = useAuth();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const [note,    setNote]    = useState(null);
   const [text,    setText]    = useState('');
   const [saving,  setSaving]  = useState(false);
@@ -53,7 +54,7 @@ export default function QuickNoteWidget() {
       const ok = await saveNote(user.id, surah, ayah, text.trim()).catch(() => false);
       if (ok === false) {
         setSaving(false);
-        setSaveErr('⚠️ ' + trNow('تعذّر الحفظ على حسابك — حُفظت الملاحظة على هذا الجهاز فقط'));
+        setSaveErr('⚠️ ' + coreTrNow('تعذّر الحفظ على حسابك — حُفظت الملاحظة على هذا الجهاز فقط'));
         return;
       }
     }

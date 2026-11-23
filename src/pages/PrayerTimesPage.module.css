@@ -91,8 +91,9 @@
 
 /* ── settings ── */
 .settings { padding:8px 28px; display:grid; }
-.setRow { display:grid; grid-template-columns:220px minmax(0,1fr); gap:20px; align-items:start; padding:20px 0; border-bottom:var(--bw) solid var(--line); }
+.setRow { display:grid; grid-template-columns:200px minmax(0,1fr); gap:20px; align-items:start; padding:20px 0; border-bottom:var(--bw) solid var(--line); }
 .setRow:last-child { border-bottom:0; }
+@media (min-width:901px) { :global(html:not([lang="ar"])) .setRow { grid-template-columns:230px minmax(0,1fr); } } /* "Calculation method" etc. run longer */
 .setLbl { display:flex; align-items:center; gap:10px; font-family:var(--f-title); font-size:1.2rem; font-weight:700; min-height:46px; }
 .setLbl :global(.nq-ico) { color:var(--gold); }
 .setCtl { display:grid; gap:12px; justify-items:start; min-width:0; }

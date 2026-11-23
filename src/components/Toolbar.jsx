@@ -10,6 +10,7 @@ import { Icon, toAr } from './ornaments/Ornaments';
 import { juzRange } from './reader/ayahItems';
 import { readerName } from './reader/readerNames';
 import { useTr, num, surahName, revelationLabel } from '../l10n';
+import { coreTr } from '../locales/core';
 import styles from './Toolbar.module.css';
 
 const COUNTRY = { '🇪🇬': 'مصر', '🇸🇦': 'السعودية', '🇰🇼': 'الكويت' };
@@ -28,7 +29,7 @@ export function changeFontSize(next) {
 
 function DisplayPopover({ onClose }) {
   const [state] = useStore();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const { hifz, markWardDone, todayDone, streak } = useHifz();
   const ward = hifz.dailyWard;
   const wardName = ward ? surahName(ward.surah) : null;
@@ -140,7 +141,7 @@ function DisplayPopover({ onClose }) {
 
 export default function Toolbar({ view, onView, onPrev, onNext, onListen }) {
   const [state] = useStore();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const [pop, setPop] = useState(false);
   const popRef = useRef(null);
   const s = state.currentSurah;

@@ -12,6 +12,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useStore } from '../store';
 import { useLang } from '../i18n';
 import { useTr, num, surahName, revelationLabel, intlLocale, isRtl } from '../l10n';
+import { coreTr } from '../locales/core';
 import { SURAHS_META } from '../data';
 import { normalizeArabic } from '../arabic';
 import { fetchAyahWithTafsir } from '../api';
@@ -37,7 +38,7 @@ const DECOR = Array.from({ length: 30 }, (_, i) => (i < 19 ? 'done' : i < 24 ? '
 
 export default function WelcomePage() {
   const lang = useLang();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const [state] = useStore();
   const settings = usePublicSettings();
   const { user } = useAuth();
@@ -152,7 +153,7 @@ function hijriToday() {
 }
 
 function PrayerBar() {
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const city = useMemo(savedCity, []);
   const [times, setTimes] = useState(null);
   const [now, setNow] = useState(() => cityNow(city?.tz).secs);
@@ -209,7 +210,7 @@ function PrayerBar() {
 // ── verse of the day ────────────────────────────────────────────────────────
 function DailyAyah() {
   const navigate = useNavigate();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const d = useMemo(getDailyAyah, []);
   const [text, setText] = useState('');
   const [failed, setFailed] = useState(false);
@@ -243,7 +244,7 @@ function DailyAyah() {
 // ── surah index ─────────────────────────────────────────────────────────────
 function SurahIndex() {
   const navigate = useNavigate();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const rtl = isRtl(tr.lang);
   const [filter, setFilter] = useState('all');
   const [q, setQ] = useState('');

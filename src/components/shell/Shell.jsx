@@ -9,6 +9,7 @@ import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { useAppearance, toggleScheme, setAppearance, MODES } from '../../appearance';
 import { useLang } from '../../i18n';
 import { useTr, num, surahName, revelationLabel } from '../../l10n';
+import { coreTr } from '../../locales/core';
 import { SURAHS_META } from '../../data';
 import { normalizeArabic } from '../../arabic';
 import LangSwitcher from '../LangSwitcher';
@@ -39,7 +40,7 @@ function useGo() {
 }
 
 function Brand({ onClick }) {
-  const tr = useTr();
+  const tr = coreTr(useTr());
   return (
     <Link to="/" className="nq-brand" aria-label={tr('نور القرآن — الرئيسية')} onClick={onClick}>
       <img className="mark" src="/brand/logo-mark.svg" alt="" width="34" height="40" />
@@ -68,6 +69,16 @@ const NAV = [
   { path: '/adhkar', label: 'الأذكار', opt: true },
 ];
 
+// Latin-script nav labels run longer than the Arabic ones: tighter links, and the
+// optional ones drop out earlier, so the header never overflows.
+// (candidate for src/styles/shell.css)
+const LTR_NAV_CSS = `
+:root[dir="ltr"] .nq-navlink { padding-inline:10px; }
+:root[dir="ltr"] .nq-navlink[aria-current="page"]::after { inset-inline:10px; }
+@media (max-width:1340px) { :root[lang="fr"] .nq-nav .nq-navlink.opt, :root[lang="tr"] .nq-nav .nq-navlink.opt { display:none; } }
+@media (max-width:1080px) { :root[dir="ltr"] .nq-top-in { gap:12px; } :root[dir="ltr"] .nq-nav { margin-inline-start:0; } }
+`;
+
 // ── header ──────────────────────────────────────────────────────────────────
 export function SiteHeader() {
   const { pathname } = useLocation();
@@ -75,7 +86,7 @@ export function SiteHeader() {
   const groups = useFeatures();
   const lang = useLang();
   const go = useGo();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const { scheme } = useAppearance();
   const megaOpen = overlay === 'mega';
 
@@ -84,6 +95,7 @@ export function SiteHeader() {
 
   return (
     <header className="nq-top">
+      {tr.dir === 'ltr' && <style>{LTR_NAV_CSS}</style>}
       <a href="#main" className="nq-skip">{tr('تخطَّ إلى المحتوى')}</a>
       <div className="nq-wrap nq-top-in">
         <Brand />
@@ -137,7 +149,7 @@ function Account() {
   const { user, signOut } = useAuth();
   const overlay = useOverlay();
   const navigate = useNavigate();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const open = overlay === 'account';
   if (!user) {
     return <Link to="/login" className="nq-btn gold sm hide-sm">{tr('تسجيل الدخول')}</Link>;
@@ -177,7 +189,7 @@ export function Drawer() {
   const lang = useLang();
   const go = useGo();
   const { user } = useAuth();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const { mode } = useAppearance();
   const closeRef = useRef(null);
   useEffect(() => { if (overlay === 'drawer') setTimeout(() => closeRef.current?.focus(), 30); }, [overlay]);
@@ -222,7 +234,7 @@ export function CommandPalette() {
   const lang = useLang();
   const go = useGo();
   const navigate = useNavigate();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const [q, setQ] = useState('');
   const [idx, setIdx] = useState(0);
   const inputRef = useRef(null);
@@ -328,7 +340,7 @@ const TABS = [
 ];
 export function TabBar() {
   const { pathname } = useLocation();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   useEffect(() => {
     document.body.classList.add('nq-has-tabbar');
     return () => document.body.classList.remove('nq-has-tabbar');
@@ -349,7 +361,7 @@ function hijriYear() {
   try { return num(new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { year: 'numeric' }).format(new Date()).replace(/[^0-9]/g, '')); } catch { return ''; }
 }
 export function SiteFooter() {
-  const tr = useTr();
+  const tr = coreTr(useTr());
   return (
     <footer className="nq-footer">
       <Frieze />

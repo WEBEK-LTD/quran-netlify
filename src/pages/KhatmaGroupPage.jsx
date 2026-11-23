@@ -17,7 +17,8 @@ import {
   errorMessage,
 } from '../backend';
 import { PageHero, Icon, Badge8, Pattern, Corners, Rosette, Divider, toAr } from '../components/ornaments/Ornaments';
-import { useTr, trNow, surahName, intlLocale, num, isRtl } from '../l10n';
+import { surahName, intlLocale, num, isRtl } from '../l10n';
+import { useHifzTr, hifzTrNow } from '../locales/hifz';
 import { getLang } from '../i18n';
 import styles from './KhatmaGroupPage.module.css';
 
@@ -44,13 +45,13 @@ function roomProgress(room) {
   const done  = room.done_count ?? parts.filter(p => p.done).length;
   return { done, total, pct: total > 0 ? Math.round((done / total) * 100) : 0 };
 }
-const modeLabel = mode => (mode === 'juz' ? trNow('{n} جزءاً', { n: toAr(30) }) : trNow('{n} حزباً', { n: toAr(60) }));
-const unitOf = mode => (mode === 'juz' ? trNow('جزء') : trNow('حزب'));
-const pctText = n => trNow('{n}٪', { n: toAr(n) });
+const modeLabel = mode => (mode === 'juz' ? hifzTrNow('{n} جزءاً', { n: toAr(30) }) : hifzTrNow('{n} حزباً', { n: toAr(60) }));
+const unitOf = mode => (mode === 'juz' ? hifzTrNow('جزء') : hifzTrNow('حزب'));
+const pctText = n => hifzTrNow('{n}٪', { n: toAr(n) });
 // Part label for display: the stored (Arabic) label in Arabic, rebuilt from the index otherwise
 function partLabel(part, mode) {
   if (getLang() === 'ar' || !part?.part_index) return part?.label || '';
-  return mode === 'juz' ? trNow('الجزء {n}', { n: toAr(part.part_index) }) : trNow('الحزب {n}', { n: toAr(part.part_index) });
+  return mode === 'juz' ? hifzTrNow('الجزء {n}', { n: toAr(part.part_index) }) : hifzTrNow('الحزب {n}', { n: toAr(part.part_index) });
 }
 
 function partState(p) {
@@ -74,7 +75,7 @@ function Toast({ msg }) {
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function KhatmaGroupPage() {
-  const tr = useTr();
+  const tr = useHifzTr();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -105,7 +106,7 @@ export default function KhatmaGroupPage() {
     if (!user) return;
     setListLoading(true); setListErr('');
     try { const l = await getMyGroupKhatmat(); if (aliveRef.current) setMine(l); }
-    catch (e) { if (aliveRef.current) setListErr(errorMessage(e, trNow('تعذّر تحميل ختماتك'))); }
+    catch (e) { if (aliveRef.current) setListErr(errorMessage(e, hifzTrNow('تعذّر تحميل ختماتك'))); }
     if (aliveRef.current) setListLoading(false);
   }, [user?.id]);
 
@@ -119,7 +120,7 @@ export default function KhatmaGroupPage() {
         items: page === 1 ? d.items : [...prev.items, ...d.items.filter(r => !prev.items.some(x => x.code === r.code))],
         page: d.page || page, total: d.total || 0,
       }));
-    } catch (e) { if (aliveRef.current) setListErr(errorMessage(e, trNow('تعذّر تحميل الختمات العامة'))); }
+    } catch (e) { if (aliveRef.current) setListErr(errorMessage(e, hifzTrNow('تعذّر تحميل الختمات العامة'))); }
     if (aliveRef.current) setListLoading(false);
   }, [user?.id]);
 
@@ -163,8 +164,8 @@ export default function KhatmaGroupPage() {
     } catch (e) {
       if (!aliveRef.current) return;
       setJoinErr(e?.code === 'not_found'
-        ? trNow('لم يُعثر على هذا الكود. تأكّد من الكود أو افتح رابط الدعوة مباشرة.')
-        : errorMessage(e, trNow('خطأ في الاتصال، تحقّق من الإنترنت')));
+        ? hifzTrNow('لم يُعثر على هذا الكود. تأكّد من الكود أو افتح رابط الدعوة مباشرة.')
+        : errorMessage(e, hifzTrNow('خطأ في الاتصال، تحقّق من الإنترنت')));
     }
     if (aliveRef.current) setPageLoad(false);
   }
@@ -175,7 +176,7 @@ export default function KhatmaGroupPage() {
       const full = await getGroupKhatmaByCode(room.code);
       if (aliveRef.current) openRoom(full);
     } catch (e) {
-      if (aliveRef.current) showToast(errorMessage(e, trNow('تعذّر فتح الختمة')));
+      if (aliveRef.current) showToast(errorMessage(e, hifzTrNow('تعذّر فتح الختمة')));
     }
     if (aliveRef.current) setPageLoad(false);
   }
@@ -386,12 +387,12 @@ export default function KhatmaGroupPage() {
 
 // ─── Create Room ──────────────────────────────────────────────────────────────
 function CreateRoom({ onBack, onCreated }) {
-  const tr = useTr();
+  const tr = useHifzTr();
   const [step,      setStep]    = useState(1);
   const [name,      setName]    = useState('');
   const [mode,      setMode]    = useState('juz');
   const [isPublic,  setPublic]  = useState(false);
-  const [members,   setMembers] = useState(() => [trNow('أنا')]);
+  const [members,   setMembers] = useState(() => [hifzTrNow('أنا')]);
   const [newMember, setNew]     = useState('');
   const [assign,    setAssign]  = useState({});
   const [nameErr,   setNameErr] = useState('');
@@ -546,7 +547,7 @@ function CreateRoom({ onBack, onCreated }) {
 
 // ─── Room View ────────────────────────────────────────────────────────────────
 function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
-  const tr = useTr();
+  const tr = useHifzTr();
   const labelOf = part => partLabel(part, room.mode);
   const [myName,       setMyName]  = useState(() => {
     try { return localStorage.getItem('nq_khatma_name') || displayNameOf(user); } catch { return displayNameOf(user); }
@@ -591,7 +592,7 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
         onUpdate(fresh); setSyncErr(false);
       } catch (e) {
         if (!aliveRef.current) return;
-        if (e?.code === 'not_found') { onGone(trNow('حُذفت هذه الختمة')); return; }
+        if (e?.code === 'not_found') { onGone(hifzTrNow('حُذفت هذه الختمة')); return; }
         setSyncErr(true);
       }
     }
@@ -609,7 +610,7 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
       if (updated && updated.parts) onUpdate(updated);
       if (okMsg) showToast(okMsg);
     } catch (e) {
-      if (aliveRef.current) showToast(errorMessage(e, trNow('حدث خطأ، حاول مرة أخرى')));
+      if (aliveRef.current) showToast(errorMessage(e, hifzTrNow('حدث خطأ، حاول مرة أخرى')));
     }
     if (aliveRef.current) setClaiming(null);
   }
@@ -673,20 +674,20 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
         const updated = await startNewRound(room.code);
         if (!aliveRef.current) return;
         if (updated) onUpdate(updated);
-        showToast(trNow('بدأت ختمة جديدة'));
+        showToast(hifzTrNow('بدأت ختمة جديدة'));
       } else if (what === 'delete') {
         await deleteGroupKhatma(room.code);
         if (!aliveRef.current) return;
-        onGone(trNow('تم حذف الختمة'));
+        onGone(hifzTrNow('تم حذف الختمة'));
         return;
       } else if (what === 'leave') {
         await leaveGroupKhatma(room.code);
         if (!aliveRef.current) return;
-        onGone(trNow('خرجت من الختمة'));
+        onGone(hifzTrNow('خرجت من الختمة'));
         return;
       }
     } catch (e) {
-      if (aliveRef.current) showToast(errorMessage(e, trNow('تعذّر تنفيذ الإجراء')));
+      if (aliveRef.current) showToast(errorMessage(e, hifzTrNow('تعذّر تنفيذ الإجراء')));
     }
     if (aliveRef.current) { setBusy(false); setConfirm(null); }
   }
@@ -697,9 +698,9 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
       const updated = await updateKhatmaVisibility(room.code, next);
       if (!aliveRef.current) return;
       onUpdate({ ...room, ...(updated || {}), is_public: updated?.is_public ?? next, parts: updated?.parts || room.parts });
-      showToast(next ? trNow('أصبحت الختمة عامة') : trNow('أصبحت الختمة خاصة'));
+      showToast(next ? hifzTrNow('أصبحت الختمة عامة') : hifzTrNow('أصبحت الختمة خاصة'));
     } catch (e) {
-      if (aliveRef.current) showToast(errorMessage(e, trNow('تعذّر تغيير الخصوصية')));
+      if (aliveRef.current) showToast(errorMessage(e, hifzTrNow('تعذّر تغيير الخصوصية')));
     }
   }
 
@@ -716,7 +717,7 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
   function copyLink() {
     navigator.clipboard?.writeText(shareUrl(room.code))?.catch?.(() => {});
     flashCopied('link');
-    showToast(trNow('تم نسخ رابط الدعوة'));
+    showToast(hifzTrNow('تم نسخ رابط الدعوة'));
   }
   async function invite() {
     const data = {
@@ -961,7 +962,7 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
 }
 
 function ConfirmDialog({ title, body, ok, danger, busy, onOk, onCancel }) {
-  const tr = useTr();
+  const tr = useHifzTr();
   const okRef = useRef(null);
   useEffect(() => {
     const prev = document.activeElement;

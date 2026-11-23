@@ -6,7 +6,8 @@ import { Link } from 'react-router-dom';
 import { SURAHS_META } from '../data';
 import { setGlobal } from '../store';
 import { PageHero, Icon, Badge8, Corners, Pattern, Divider, AyahMark, toAr } from '../components/ornaments/Ornaments';
-import { useTr, trNow, surahName as surahNameOf, revelationLabel, intlLocale } from '../l10n';
+import { useTr, surahName as surahNameOf, revelationLabel, intlLocale } from '../l10n';
+import { scoped } from '../locales/library';
 import styles from './DailyAyahPage.module.css';
 
 // `reason` is the Arabic source string; it is translated at render time via
@@ -59,7 +60,10 @@ const DAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء
 const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
 function hijriToday(lang) {
-  try { return new Intl.DateTimeFormat(`${intlLocale(lang)}-u-ca-islamic-umalqura`, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()); } catch { return ''; }
+  try {
+    const s = new Intl.DateTimeFormat(`${intlLocale(lang)}-u-ca-islamic-umalqura`, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+    return lang === 'ar' ? s : toAr(s);   // visitor's digits (Urdu digits for ur)
+  } catch { return ''; }
 }
 // Gregorian date: the original Arabic wording for ar, Intl for the rest.
 function gregorianToday(lang) {
@@ -86,7 +90,7 @@ function withParts(str, parts) {
 const cleanText = s => String(s || '').replace(/^﻿/, '');
 
 export default function DailyAyahPage() {
-  const tr = useTr();
+  const tr = scoped(useTr());
   const meaning = MEANING[tr.lang] || MEANING.en;
   const daily = useMemo(getDailyAyah, []);
   const dailyIdx = useMemo(getDailyIndex, []);
@@ -142,14 +146,14 @@ export default function DailyAyahPage() {
 
   function copyAyah() {
     if (!ayahText) return;
-    const text = `${ayahText}\n\n${trNow('— سورة {name}، الآية {n}', { name: shownName, n: daily.ayah })}`;
+    const text = `${ayahText}\n\n${tr('— سورة {name}، الآية {n}', { name: shownName, n: daily.ayah })}`;
     try {
       navigator.clipboard.writeText(text).then(() => {
         setCopied(true);
-        setGlobal({ toast: trNow('نُسخت الآية مع مرجعها') });
+        setGlobal({ toast: tr('نُسخت الآية مع مرجعها') });
         setTimeout(() => setCopied(false), 2000);
-      }).catch(() => setGlobal({ toast: trNow('تعذّر النسخ') }));
-    } catch { setGlobal({ toast: trNow('تعذّر النسخ') }); }
+      }).catch(() => setGlobal({ toast: tr('تعذّر النسخ') }));
+    } catch { setGlobal({ toast: tr('تعذّر النسخ') }); }
   }
 
   function toggleSave() {

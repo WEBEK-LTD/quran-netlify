@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import styles from './InstallPWA.module.css';
 import { useTr, num } from '../l10n';
+import { coreTr } from '../locales/core';
 
 export default function InstallPWA() {
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const [prompt,    setPrompt]    = useState(null); // beforeinstallprompt event
   const [show,      setShow]      = useState(false);
   const [installed, setInstalled] = useState(false);

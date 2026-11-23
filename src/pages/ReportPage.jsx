@@ -8,7 +8,8 @@ import { useAuth } from '../hooks/useAuth';
 import { loadStats } from '../backend';
 import { useHifz, localDateStr, parseLocalDate } from '../hifzStore';
 import { PageHero, Icon, Badge8, toAr as toArRaw } from '../components/ornaments/Ornaments';
-import { useTr, num, intlLocale, isRtl } from '../l10n';
+import { num, intlLocale, isRtl } from '../l10n';
+import { useHifzTr } from '../locales/hifz';
 import styles from './ReportPage.module.css';
 
 const toAr = n => toArRaw(Math.round(n));
@@ -58,7 +59,7 @@ function level(cnt, active, max) {
 }
 
 export default function ReportPage() {
-  const tr = useTr();
+  const tr = useHifzTr();
   const { user } = useAuth();
   const { hifz, completedSurahs, memorizedAyahs, progressPct } = useHifz(user?.id);
   const [sessions, setSessions] = useState([]);

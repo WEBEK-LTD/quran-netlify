@@ -10,7 +10,8 @@ import { SURAHS_META } from '../data';
 import { fetchSurahAyahs, fetchSurahTranslation } from '../api';
 import { logReading, saveProgress, addBookmark, removeBookmark, errorMessage } from '../backend';
 import { Icon, AyahMark, Badge8, Divider, toAr } from './ornaments/Ornaments';
-import { useTr, trNow, num, surahName, revelationLabel } from '../l10n';
+import { useTr, num, surahName, revelationLabel } from '../l10n';
+import { coreTr, coreTrNow } from '../locales/core';
 import { buildItems, BASMALA_TEXT, juzRange } from './reader/ayahItems';
 import AyahActions from './reader/AyahActions';
 import Toolbar from './Toolbar';
@@ -34,7 +35,7 @@ function goToSurah(n) {
 
 // Gilded cartouche holding the surah name.
 function Cartouche({ name, count, type }) {
-  const tr = useTr();
+  const tr = coreTr(useTr());
   return (
     <div className={styles.cart}>
       <svg viewBox="0 0 400 62" preserveAspectRatio="none" aria-hidden="true">
@@ -62,7 +63,7 @@ function PageCorners() {
 
 export default function Reader() {
   const [state] = useStore();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [ayahs, setAyahs]               = useState([]);
@@ -255,11 +256,11 @@ export default function Reader() {
 
   function copyAyah(item) {
     const meta = SURAHS_META[state.currentSurah - 1];
-    const local = tr.lang !== 'ar' ? `\n${trNow('{name} {s}:{a}', { name: surahName(state.currentSurah), s: state.currentSurah, a: item.label })}` : '';
+    const local = tr.lang !== 'ar' ? `\n${coreTrNow('{name} {s}:{a}', { name: surahName(state.currentSurah), s: state.currentSurah, a: item.label })}` : '';
     navigator.clipboard.writeText(
       `${item.text}\n\n— سورة ${meta[0]}، الآية ${item.label}${local}`
-    ).then(() => setGlobal({ toast: trNow('تم نسخ الآية مع المرجع') }))
-     .catch(() => setGlobal({ toast: trNow('تعذّر النسخ') }));
+    ).then(() => setGlobal({ toast: coreTrNow('تم نسخ الآية مع المرجع') }))
+     .catch(() => setGlobal({ toast: coreTrNow('تعذّر النسخ') }));
   }
 
   function toggleBookmark(ayahNum) {
@@ -269,7 +270,7 @@ export default function Reader() {
     const next = exists
       ? state.bookmarks.filter(b => !(b.surah === state.currentSurah && b.ayah === ayahNum))
       : [...state.bookmarks, { surah: state.currentSurah, ayah: ayahNum }];
-    setGlobal({ bookmarks: next, toast: exists ? trNow('تم الحذف من المفضلة') : trNow('تم الحفظ في المفضلة') });
+    setGlobal({ bookmarks: next, toast: exists ? coreTrNow('تم الحذف من المفضلة') : coreTrNow('تم الحفظ في المفضلة') });
     try { localStorage.setItem('nq_bookmarks', JSON.stringify(next)); } catch {}
     if (user) syncBookmarkChange(state.currentSurah, ayahNum, !exists);
   }
@@ -281,7 +282,7 @@ export default function Reader() {
       setGlobal({ bookmarks: list });
       try { localStorage.setItem('nq_bookmarks', JSON.stringify(list)); } catch {}
     } catch (e) {
-      setGlobal({ toast: errorMessage(e, trNow('تعذّرت مزامنة المفضلة مع حسابك')) + trNow(' — حُفظ التغيير على هذا الجهاز') });
+      setGlobal({ toast: errorMessage(e, coreTrNow('تعذّرت مزامنة المفضلة مع حسابك')) + coreTrNow(' — حُفظ التغيير على هذا الجهاز') });
     }
   }
 
@@ -476,7 +477,7 @@ export default function Reader() {
 }
 
 function Skeleton() {
-  const tr = useTr();
+  const tr = coreTr(useTr());
   return (
     <div className={styles.skel} role="status" aria-label={tr('جاري تحميل السورة')}>
       {[92, 100, 86, 97, 74, 100, 60].map((w, i) => <i key={i} style={{ width: w + '%' }} />)}
@@ -486,7 +487,7 @@ function Skeleton() {
 }
 
 function ErrorBox({ msg, onRetry }) {
-  const tr = useTr();
+  const tr = coreTr(useTr());
   return (
     <div className={styles.errorBox} role="alert">
       <p>{tr(msg)}</p>

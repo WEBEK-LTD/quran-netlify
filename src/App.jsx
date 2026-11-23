@@ -1,6 +1,7 @@
 import { useEffect, useState, lazy, Suspense, Component } from 'react';
 import { useLang, LANGS } from './i18n';
-import { useTr, trNow, surahName } from './l10n';
+import { useTr, surahName } from './l10n';
+import { coreTr, coreTrNow } from './locales/core';
 import { Routes, Route, useLocation, Link } from 'react-router-dom';
 import { useStore, setGlobal } from './store';
 import { SiteHeader, SiteFooter, SiteChrome } from './components/shell/Shell';
@@ -90,7 +91,7 @@ function FullLayout({ children, footer = true }) {
 
 // Shown in place of a page whose feature the admin switched off.
 function FeatureOff() {
-  const tr = useTr();
+  const tr = coreTr(useTr());
   return (
     <div className={styles.notice}>
       <div className={styles.noticeIcon}><Badge8 icon="lock" size={72} /></div>
@@ -102,7 +103,7 @@ function FeatureOff() {
 }
 
 function MaintenancePage({ settings }) {
-  const tr = useTr();
+  const tr = coreTr(useTr());
   return (
     <div className={styles.notice} style={{ minHeight: '100vh' }}>
       <div className={styles.noticeIcon}><Badge8 icon="gear" size={72} /></div>
@@ -116,7 +117,7 @@ function MaintenancePage({ settings }) {
 
 const ANN_KEY = 'nq_dismissed_announcement';
 function AnnouncementBanner({ text }) {
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const [dismissed, setDismissed] = useState(() => { try { return localStorage.getItem(ANN_KEY) || ''; } catch { return ''; } });
   if (!text || dismissed === text) return null;
   return (
@@ -167,7 +168,7 @@ export default function App() {
     if (location.pathname === '/reader') {
       const lastRead = JSON.parse(localStorage.getItem('nq_lastRead') || '{"surah":1,"ayah":1}');
       setTimeout(() => {
-        setGlobal({ toast: trNow('أهلاً بعودتك · آخر قراءة: سورة {name}', { name: surahName(lastRead.surah) }) });
+        setGlobal({ toast: coreTrNow('أهلاً بعودتك · آخر قراءة: سورة {name}', { name: surahName(lastRead.surah) }) });
       }, 900);
     }
   }, []);

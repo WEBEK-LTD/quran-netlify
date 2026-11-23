@@ -5,16 +5,17 @@ import { useAuth } from '../hooks/useAuth';
 import { aiChat, errorMessage } from '../backend';
 import styles from './AIAssistant.module.css';
 import { Icon } from './ornaments/Ornaments';
-import { useTr, trNow, num, surahName } from '../l10n';
+import { useTr, num, surahName } from '../l10n';
+import { coreTr, coreTrNow } from '../locales/core';
 
 // ─── Suggested questions per context ─────────────────────────────────────────
 function getSuggestions(surahNum, ayahNum) {
   const name = surahName(surahNum) || '';
   return [
-    trNow('ما معنى هذه الآية من سورة {name}؟', { name }),
-    trNow('ما الدروس المستفادة من هذه الآية؟'),
-    trNow('كيف أطبّق هذه الآية في حياتي؟'),
-    trNow('ما علاقة هذه الآية بما قبلها؟'),
+    coreTrNow('ما معنى هذه الآية من سورة {name}؟', { name }),
+    coreTrNow('ما الدروس المستفادة من هذه الآية؟'),
+    coreTrNow('كيف أطبّق هذه الآية في حياتي؟'),
+    coreTrNow('ما علاقة هذه الآية بما قبلها؟'),
   ];
 }
 
@@ -38,17 +39,17 @@ function Bubble({ msg }) {
 // user/assistant turns (last 12) and the ayah being read.
 function aiErrorText(e) {
   const code = e && e.code;
-  if (code === 'unauthenticated') return trNow('سجّل الدخول لاستخدام المساعد');
-  if (code === 'ai_not_configured') return trNow('المساعد غير مُفعّل حالياً — لم تُضبط إعداداته بعد من الإدارة');
-  if (code === 'feature_disabled') return trNow('المساعد متوقف مؤقتاً من الإدارة');
-  if (code === 'rate_limited') return '⏳ ' + trNow('وصلت للحد المسموح من الأسئلة هذه الساعة — حاول بعد قليل');
-  return '⚠️ ' + errorMessage(e, trNow('تعذّر الحصول على إجابة، حاول مرة أخرى'));
+  if (code === 'unauthenticated') return coreTrNow('سجّل الدخول لاستخدام المساعد');
+  if (code === 'ai_not_configured') return coreTrNow('المساعد غير مُفعّل حالياً — لم تُضبط إعداداته بعد من الإدارة');
+  if (code === 'feature_disabled') return coreTrNow('المساعد متوقف مؤقتاً من الإدارة');
+  if (code === 'rate_limited') return '⏳ ' + coreTrNow('وصلت للحد المسموح من الأسئلة هذه الساعة — حاول بعد قليل');
+  return '⚠️ ' + errorMessage(e, coreTrNow('تعذّر الحصول على إجابة، حاول مرة أخرى'));
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function AIAssistant() {
   const [state] = useStore();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const { user, loading: authLoading } = useAuth();
   const [open, setOpen]         = useState(false);
   const [messages, setMessages] = useState([]);
@@ -97,7 +98,7 @@ export default function AIAssistant() {
       if (!userRef.current) return;   // the panel shows the sign-in prompt
       const name = surahName(surah || 1) || '';
       clearTimeout(timer);
-      timer = setTimeout(() => sendMessage(trNow('اشرح لي الآية {n} من سورة {name}', { n: d.ayah, name })), 200);
+      timer = setTimeout(() => sendMessage(coreTrNow('اشرح لي الآية {n} من سورة {name}', { n: d.ayah, name })), 200);
     }
     window.addEventListener('openAI', handler);
     return () => { window.removeEventListener('openAI', handler); clearTimeout(timer); };

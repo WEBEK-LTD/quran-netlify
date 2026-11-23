@@ -11,7 +11,8 @@ import { SURAHS_META, JUZ_DATA as JUZ_NAMES } from '../data';
 import { SURAH_AYAH_COUNT, JUZ_DATA, ACHIEVEMENTS, TOTAL_AYAHS, juzSurahRanges } from '../hifzData';
 import { setGlobal } from '../store';
 import { PageHero, Icon, Badge8, Pattern, Divider, toAr } from '../components/ornaments/Ornaments';
-import { useTr, trNow, num, surahName, revelationLabel, intlLocale, isRtl } from '../l10n';
+import { num, surahName, revelationLabel, intlLocale, isRtl } from '../l10n';
+import { useHifzTr, hifzTrNow } from '../locales/hifz';
 import styles from './HifzPage.module.css';
 
 // status → label, css class, glyph (glyph shows only with data-cb="on" / contrast)
@@ -59,18 +60,18 @@ function countAyahs(s1, a1, s2, a2) {
 // Human-readable ward range (handles single-surah and multi-surah wards)
 function wardRangeText(w) {
   const endSurah = w.endSurah || w.surah;
-  if (endSurah === w.surah) return trNow('سورة {s}: الآيات {a}–{b}', { s: sName(w.surah), a: toAr(w.startAyah), b: toAr(w.endAyah) });
-  return trNow('من {s1} {a1} إلى {s2} {a2}', { s1: sName(w.surah), a1: toAr(w.startAyah), s2: sName(endSurah), a2: toAr(w.endAyah) });
+  if (endSurah === w.surah) return hifzTrNow('سورة {s}: الآيات {a}–{b}', { s: sName(w.surah), a: toAr(w.startAyah), b: toAr(w.endAyah) });
+  return hifzTrNow('من {s1} {a1} إلى {s2} {a2}', { s1: sName(w.surah), a1: toAr(w.startAyah), s2: sName(endSurah), a2: toAr(w.endAyah) });
 }
 function wardShort(w) {
-  if (w.mode === 'juz') return trNow('الجزء {n}', { n: toAr(w.juz) });
+  if (w.mode === 'juz') return hifzTrNow('الجزء {n}', { n: toAr(w.juz) });
   const endSurah = w.endSurah || w.surah;
   if (endSurah === w.surah) return `${sName(w.surah)} ${toAr(w.startAyah)}–${toAr(w.endAyah)}`;
   return `${sName(w.surah)} ${toAr(w.startAyah)} ${isRtl() ? '←' : '→'} ${sName(endSurah)} ${toAr(w.endAyah)}`;
 }
 
 export default function HifzPage() {
-  const tr = useTr();
+  const tr = useHifzTr();
   const { user } = useAuth();
   const {
     hifz, setSurahStatus, setDailyWard, markWardDone,
@@ -584,7 +585,7 @@ export default function HifzPage() {
 
 // Choose a surah's memorisation status
 function SurahSheet({ n, status, onPick, onClose }) {
-  const tr = useTr();
+  const tr = useHifzTr();
   const boxRef = useRef(null);
   const m = SURAHS_META[n - 1];
   useEffect(() => {

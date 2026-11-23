@@ -205,3 +205,12 @@ a.nq-card:hover, button.nq-card:hover {
 .nq-corner { position:absolute; width:30px; height:30px; color:var(--gold); pointer-events:none; }
 .nq-corner.tl { top:18px; left:18px; } .nq-corner.tr { top:18px; right:18px; }
 .nq-corner.bl { bottom:18px; left:18px; } .nq-corner.br { bottom:18px; right:18px; }
+
+/* ── languages ── */
+/* Urdu: Reem Kufi distorts Urdu letters — headings use IBM Plex Sans Arabic instead */
+:root[lang="ur"] { --f-title:'IBM Plex Sans Arabic',Tahoma,sans-serif; --f-brand:'IBM Plex Sans Arabic',Tahoma,sans-serif; }
+/* Latin-script languages run longer: keep hero text under the arch peak on phones */
+@media (max-width:520px) {
+  :root:is([lang="en"],[lang="fr"],[lang="tr"],[lang="id"]) .nq-phero { padding-top:84px; }
+  :root:is([lang="en"],[lang="fr"],[lang="tr"],[lang="id"]) .nq-phero h1 { font-size:clamp(1.8rem,8vw,2.4rem); }
+}

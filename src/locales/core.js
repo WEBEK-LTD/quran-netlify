@@ -2,6 +2,8 @@
 // list, the home page, the reader (bar, index, mushaf page, ayah tools, tafsir,
 // player) and the floating widgets (assistant, quick note, share card, toast).
 // Each row: [Arabic source, en, tr, fr, ur, id]. Keys are the exact Arabic strings.
+import { getLang } from '../i18n';
+import { trNow } from '../l10n';
 const ROWS = [
   // ── header · mega menu · drawer · palette · tab bar · footer ──
   ['نور القرآن', 'Nur Al-Quran', 'Nur Al-Kuran', 'Nur Al-Coran', 'نور القرآن', 'Nur Al-Quran'],
@@ -386,3 +388,24 @@ const LANGS = ['en', 'tr', 'fr', 'ur', 'id'];
 const out = { en: {}, tr: {}, fr: {}, ur: {}, id: {} };
 for (const [ar, ...t] of ROWS) LANGS.forEach((l, i) => { out[l][ar] = t[i]; });
 export default out;
+
+// Several short keys («القائمة», «ملاحظة», «المتصدرون», …) mean something else on
+// other pages, and a later locale file can override them in the shared
+// dictionary. The chrome, reader and widgets read their own wording first:
+//   const tr = coreTr(useTr());      in components
+//   coreTrNow('…')                   in handlers / utilities
+const fill = (s, vars) => (vars ? s.replace(/\{(\w+)\}/g, (all, k) => (vars[k] !== undefined && vars[k] !== null ? String(vars[k]) : all)) : s);
+export function coreTr(tr) {
+  const f = (ar, vars) => {
+    const own = out[tr.lang] && out[tr.lang][ar];
+    return own ? fill(own, vars) : tr(ar, vars);
+  };
+  f.lang = tr.lang;
+  f.dir = tr.dir;
+  return f;
+}
+export function coreTrNow(ar, vars) {
+  const lang = getLang();
+  const own = out[lang] && out[lang][ar];
+  return own ? fill(own, vars) : trNow(ar, vars);
+}

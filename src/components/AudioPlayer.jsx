@@ -5,7 +5,8 @@ import { getAudioUrl } from '../api';
 import { Icon, toAr } from './ornaments/Ornaments';
 import { displayNumber } from './reader/ayahItems';
 import { readerName, readerShortName } from './reader/readerNames';
-import { useTr, trNow, num, surahName, intlLocale } from '../l10n';
+import { useTr, num, surahName, intlLocale } from '../l10n';
+import { coreTr, coreTrNow } from '../locales/core';
 import styles from './AudioPlayer.module.css';
 
 // ─── Modes ───────────────────────────────────────────────────────────────────
@@ -30,7 +31,7 @@ function isBenignPlayError(err) {
 
 export default function AudioPlayer() {
   const [state]  = useStore();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const audioRef    = useRef(null);
   const modeRef     = useRef('surah');  // ref avoids stale closure in onEnded
   const ayahRef     = useRef(state.audioAyah);
@@ -61,7 +62,7 @@ export default function AudioPlayer() {
 
   function handlePlayError(err, toast = 'تعذّر تشغيل الصوت') {
     if (isBenignPlayError(err)) return;
-    setGlobal({ toast: trNow(toast), isPlaying: false });
+    setGlobal({ toast: coreTrNow(toast), isPlaying: false });
   }
 
   // ── load + play whenever playTrigger fires ────────────────────────────────
@@ -88,9 +89,9 @@ export default function AudioPlayer() {
     const reader = READERS.find(r => r.id === state.reader);
     const shown = displayNumber(surah, ayah);
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: `${surahName(surah)} — ${shown === null ? trNow('البسملة') : trNow('الآية {n}', { n: num(shown) })}`,
-      artist: reader ? readerName(reader) : trNow('القرآن الكريم'),
-      album: trNow('نور القرآن'),
+      title: `${surahName(surah)} — ${shown === null ? coreTrNow('البسملة') : coreTrNow('الآية {n}', { n: num(shown) })}`,
+      artist: reader ? readerName(reader) : coreTrNow('القرآن الكريم'),
+      album: coreTrNow('نور القرآن'),
     });
     navigator.mediaSession.setActionHandler('previoustrack', prev);
     navigator.mediaSession.setActionHandler('nexttrack',     next);
@@ -146,7 +147,7 @@ export default function AudioPlayer() {
     if (ayahRef.current < max)
       setGlobal({ audioAyah: ayahRef.current + 1, playTrigger: Date.now() });
     else
-      setGlobal({ isPlaying: false, toast: trNow('انتهت سورة {name}', { name: surahName(surah) }) });
+      setGlobal({ isPlaying: false, toast: coreTrNow('انتهت سورة {name}', { name: surahName(surah) }) });
   }
 
   // Play whole surah from ayah 1
@@ -191,7 +192,7 @@ export default function AudioPlayer() {
         .catch(err => handlePlayError(err));
       setGlobal({ audioAyah: nextAyah, isPlaying: true });
     } else {
-      setGlobal({ isPlaying: false, toast: trNow('انتهت سورة {name}', { name: surahName(curSurah) }) });
+      setGlobal({ isPlaying: false, toast: coreTrNow('انتهت سورة {name}', { name: surahName(curSurah) }) });
     }
   }
 
@@ -243,7 +244,7 @@ export default function AudioPlayer() {
     const audio = audioRef.current;
     if (!audio || !audio.getAttribute('src')) return;
     audio.pause();
-    setGlobal({ isPlaying: false, toast: trNow(LOAD_ERROR_TOAST) });
+    setGlobal({ isPlaying: false, toast: coreTrNow(LOAD_ERROR_TOAST) });
   }
 
   function seekTo(e) {

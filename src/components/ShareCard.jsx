@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { SURAHS_META } from '../data';
-import { useTr, trNow, num, surahName } from '../l10n';
+import { useTr, num, surahName } from '../l10n';
+import { coreTr, coreTrNow } from '../locales/core';
 import styles from './ShareCard.module.css';
 
 const THEMES = [
@@ -13,7 +14,7 @@ const THEMES = [
 
 
 export default function ShareCard() {
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const [ayahData, setAyahData] = useState(null); // { surah, ayah, text }
   const [open, setOpen]         = useState(false);
   const [copied, setCopied]     = useState(false);
@@ -96,7 +97,7 @@ export default function ShareCard() {
       ctx.fillStyle = t.accent + 'aa';
       ctx.font = '26px Cairo, Arial';
       ctx.direction = tr.dir;
-      ctx.fillText(trNow('{name} {s}:{a}', { name: surahName(ayahData.surah), s: num(ayahData.surah), a: num(ayahData.ayah) }), W / 2, H - 98);
+      ctx.fillText(coreTrNow('{name} {s}:{a}', { name: surahName(ayahData.surah), s: num(ayahData.surah), a: num(ayahData.ayah) }), W / 2, H - 98);
       ctx.direction = 'rtl';
     }
 
@@ -130,7 +131,7 @@ export default function ShareCard() {
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], 'ayah.png', { type: 'image/png' });
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: trNow('آية قرآنية') });
+        await navigator.share({ files: [file], title: coreTrNow('آية قرآنية') });
       } else {
         downloadImage();
       }

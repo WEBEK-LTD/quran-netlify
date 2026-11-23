@@ -86,3 +86,11 @@
   .card::before { inset:6px; }
   .text { text-align:center; }
 }
+
+/* Translations run longer than Arabic: on phones start the hero text below the arch's peak
+   so the eyebrow and title don't cross the arch (Arabic keeps its original spacing). */
+@media (max-width:520px) {
+  :global(html:not([lang="ar"])) .page :global(.nq-phero) { padding-top:124px; }
+  :global(html:not([lang="ar"])) .page :global(.nq-phero > .nq-eyebrow) { letter-spacing:.1em; }
+  :global(html:not([lang="ar"])) .page :global(.nq-phero h1) { font-size:clamp(1.9rem,8.4vw,2.4rem); }
+}

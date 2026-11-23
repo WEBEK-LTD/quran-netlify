@@ -5,7 +5,8 @@ import { useStore, setGlobal } from '../store';
 import { SURAHS_META, JUZ_DATA, HIZB_DATA } from '../data';
 import { Icon, Badge8, toAr } from './ornaments/Ornaments';
 import { displayNumber, normWord } from './reader/ayahItems';
-import { useTr, trNow, surahName, revelationLabel, isRtl } from '../l10n';
+import { useTr, surahName, revelationLabel, isRtl } from '../l10n';
+import { coreTr, coreTrNow } from '../locales/core';
 import styles from './Sidebar.module.css';
 
 const MOBILE = 860;
@@ -27,12 +28,12 @@ const TABS = [
 
 function ayahLabel(surah, kufi) {
   const n = displayNumber(surah, kufi);
-  return n === null ? trNow('البسملة') : trNow('الآية {n}', { n: toAr(n) });
+  return n === null ? coreTrNow('البسملة') : coreTrNow('الآية {n}', { n: toAr(n) });
 }
 
 export default function Sidebar() {
   const [state]     = useStore();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const rtl = isRtl(tr.lang);
   const [tab, setTab]       = useState('surahs');
   const [filter, setFilter] = useState('');

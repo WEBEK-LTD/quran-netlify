@@ -10,7 +10,8 @@ import { useAuth } from '../hooks/useAuth';
 import { listKhatmat, createKhatma, updateKhatma, deleteKhatma as apiDeleteKhatma, errorMessage } from '../backend';
 import { TRANSLATIONS, getLang } from '../i18n';
 import { PageHero, Icon, Badge8, Pattern, toAr } from '../components/ornaments/Ornaments';
-import { useTr, trNow, num, surahName, intlLocale, isRtl } from '../l10n';
+import { num, surahName, intlLocale, isRtl } from '../l10n';
+import { useHifzTr, hifzTrNow } from '../locales/hifz';
 import styles from './KhatmaPage.module.css';
 
 const KHATMA_KEY = 'nq_khatmat';
@@ -55,7 +56,7 @@ const TYPE_KEY_TR = {
   reading: 'نوع الختمة: قراءة', memorizing: 'نوع الختمة: حفظ', daily: 'نوع الختمة: ورد يومي',
   listening: 'نوع الختمة: استماع', needsReview: 'نوع الختمة: مراجعة',
 };
-const typeLabel = key => (getLang() === 'ar' ? TYPES[key].label : trNow(TYPE_KEY_TR[key]));
+const typeLabel = key => (getLang() === 'ar' ? TYPES[key].label : hifzTrNow(TYPE_KEY_TR[key]));
 
 // Older entries stored the translated label (in whatever UI language was active)
 function typeKeyOf(stored) {
@@ -72,10 +73,10 @@ function typeKeyOf(stored) {
 // Arabic counting of days: يوم · يومان · ٣–١٠ أيام · ١١+ يوماً
 // (each Arabic form is its own translation key; other languages pluralise there)
 function daysAr(n) {
-  if (n === 1) return trNow('يوم واحد');
-  if (n === 2) return trNow('يومان');
-  if (n >= 3 && n <= 10) return trNow('{n} أيام', { n: toAr(n) });
-  return trNow('{n} يوماً', { n: toAr(n) });
+  if (n === 1) return hifzTrNow('يوم واحد');
+  if (n === 2) return hifzTrNow('يومان');
+  if (n >= 3 && n <= 10) return hifzTrNow('{n} أيام', { n: toAr(n) });
+  return hifzTrNow('{n} يوماً', { n: toAr(n) });
 }
 const fmtDate = (s, opts = { year: 'numeric', month: 'long', day: 'numeric' }) => {
   const d = parseLocalDate(s);
@@ -85,16 +86,16 @@ const fmtDate = (s, opts = { year: 'numeric', month: 'long', day: 'numeric' }) =
 const ayahRefLine = (ar, s, a) => (isRtl() ? ar : `${ar} — ${surahName(s)} ${s}:${a}`);
 // Count of khatmat with the Arabic number agreement (other languages: one form per key)
 function khatmaCount(n) {
-  if (n === 1) return trNow('{one} ختمة', { one: toAr(n) });
-  if (n === 2) return trNow('{n} ختمتان', { n: toAr(n) });
-  if (n <= 10) return trNow('{n} ختمات', { n: toAr(n) });
-  return trNow('{n} ختمة', { n: toAr(n) });
+  if (n === 1) return hifzTrNow('{one} ختمة', { one: toAr(n) });
+  if (n === 2) return hifzTrNow('{n} ختمتان', { n: toAr(n) });
+  if (n <= 10) return hifzTrNow('{n} ختمات', { n: toAr(n) });
+  return hifzTrNow('{n} ختمة', { n: toAr(n) });
 }
 
 const EMPTY_FORM = () => ({ start: localDateStr(), end: '', type: 'reading', notes: '' });
 
 export default function KhatmaPage() {
-  const tr = useTr();
+  const tr = useHifzTr();
   const { user, loading: authLoading } = useAuth();
   const { progressPct, completedSurahs } = useHifz(user?.id);
   const [khatmat, setKhatmat] = useState(loadKhatmat);
@@ -134,7 +135,7 @@ export default function KhatmaPage() {
         try { localStorage.setItem(mergedFlag(user.id), '1'); } catch {}
         if (alive) setKhatmat(server.map(fromApi));
       } catch (e) {
-        if (alive) { setError(errorMessage(e, trNow('تعذّر تحميل ختماتك من حسابك'))); setKhatmat([]); }
+        if (alive) { setError(errorMessage(e, hifzTrNow('تعذّر تحميل ختماتك من حسابك'))); setKhatmat([]); }
       }
       if (alive) setListLoading(false);
     })();
@@ -165,7 +166,7 @@ export default function KhatmaPage() {
         const item = fromApi(saved);
         setKhatmat(prev => editingId != null ? prev.map(k => (k.id === editingId ? item : k)) : [item, ...prev]);
       } catch (e) {
-        if (aliveRef.current) { setFormErr(errorMessage(e, trNow('تعذّر حفظ الختمة، حاول مجدداً'))); setSaving(false); }
+        if (aliveRef.current) { setFormErr(errorMessage(e, hifzTrNow('تعذّر حفظ الختمة، حاول مجدداً'))); setSaving(false); }
         return;
       }
       setSaving(false);
@@ -186,7 +187,7 @@ export default function KhatmaPage() {
         await apiDeleteKhatma(id);
         if (aliveRef.current) setKhatmat(prev => prev.filter(k => k.id !== id));
       } catch (e) {
-        if (aliveRef.current) setError(errorMessage(e, trNow('تعذّر حذف الختمة، حاول مجدداً')));
+        if (aliveRef.current) setError(errorMessage(e, hifzTrNow('تعذّر حذف الختمة، حاول مجدداً')));
       }
       if (aliveRef.current) { setSaving(false); setConfirmDel(null); }
       return;

@@ -4,6 +4,7 @@
 // `flag` ties an item to an admin feature switch (settings.features).
 // Wording rule: plain names only — no "AI"/"smart" labels or sparkle icons.
 import { translate } from './l10n';
+import CORE from './locales/core';
 import { getLang } from './i18n';
 
 export const FEATURE_GROUPS = [
@@ -47,13 +48,16 @@ export const FEATURE_GROUPS = [
 
 // Titles/descriptions in the other site languages come from src/locales/core.js
 // (keyed by the Arabic source strings above).
+// (this area's own wording first, so another page's meaning of a short key never leaks in)
+const tx = (lang, ar) => (lang !== 'ar' && CORE[lang] && CORE[lang][ar]) || translate(lang, ar);
+
 export function featureText(item, lang = getLang()) {
-  return { title: translate(lang, item.title), desc: translate(lang, item.desc) };
+  return { title: tx(lang, item.title), desc: tx(lang, item.desc) };
 }
 
 // Group heading in the visitor's language.
 export function groupTitle(group, lang = getLang()) {
-  return translate(lang, group.title);
+  return tx(lang, group.title);
 }
 
 // Groups filtered for the current visitor (admin feature switches, guest/user).

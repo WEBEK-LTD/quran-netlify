@@ -7,7 +7,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getLeaderboard, errorMessage } from '../backend';
 import { PageHero, Icon, Badge8, toAr } from '../components/ornaments/Ornaments';
-import { useTr, trNow, num, surahName, intlLocale, isRtl } from '../l10n';
+import { num, surahName, intlLocale, isRtl } from '../l10n';
+import { useHifzTr, hifzTrNow } from '../locales/hifz';
 import styles from './LeaderboardPage.module.css';
 
 const PERIODS = [
@@ -36,7 +37,7 @@ function initials(name) {
 }
 
 export default function LeaderboardPage() {
-  const tr = useTr();
+  const tr = useHifzTr();
   const { user } = useAuth();
   const [tab, setTab]       = useState('reading');
   const [period, setPeriod] = useState('week');
@@ -56,7 +57,7 @@ export default function LeaderboardPage() {
     setData([]);
     getLeaderboard(tab, period)
       .then(rows => { if (alive) setData(rows || []); })
-      .catch(e => { if (alive) setLoadErr(errorMessage(e, trNow('حدث خطأ أثناء الاتصال بالخادم، حاول مجدداً لاحقاً.'))); })
+      .catch(e => { if (alive) setLoadErr(errorMessage(e, hifzTrNow('حدث خطأ أثناء الاتصال بالخادم، حاول مجدداً لاحقاً.'))); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [tab, period, user?.id]);

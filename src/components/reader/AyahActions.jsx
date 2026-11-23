@@ -3,10 +3,11 @@
 // `variant="inline"` row of ghost buttons inside an ayah card (ayah-by-ayah view)
 import { Icon } from '../ornaments/Ornaments';
 import { useTr } from '../../l10n';
+import { coreTr } from '../../locales/core';
 import styles from './AyahActions.module.css';
 
 export default function AyahActions({ variant = 'inline', refLabel, bookmarked, playing, on, onClose, className = '' }) {
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const acts = [
     { id: 'play',     icon: playing ? 'pause' : 'head', label: playing ? tr('إيقاف') : tr('استماع'), aria: playing ? tr('إيقاف التلاوة') : tr('الاستماع إلى الآية') },
     { id: 'tafsir',   icon: 'book',     label: tr('التفسير'),  aria: tr('عرض التفسير') },

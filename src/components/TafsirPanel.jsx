@@ -4,7 +4,8 @@ import { SURAHS_META } from '../data';
 import { fetchAyahWithTafsir } from '../api';
 import { Icon, Badge8, Divider, toAr } from './ornaments/Ornaments';
 import { displayNumber, juzRange } from './reader/ayahItems';
-import { useTr, trNow, num, surahName, revelationLabel } from '../l10n';
+import { useTr, num, surahName, revelationLabel } from '../l10n';
+import { coreTr, coreTrNow } from '../locales/core';
 import styles from './TafsirPanel.module.css';
 
 // ─── Word Explainer (static map for common Quranic words) ────────────────────
@@ -53,13 +54,13 @@ function ayahTitleAr(surah, kufi) {
 
 function ayahTitle(surah, kufi) {
   const n = displayNumber(surah, kufi);
-  if (n === null) return trNow('البسملة');
-  return typeof n === 'string' ? trNow('الآيتان {n}', { n: toAr(n) }) : trNow('الآية {n}', { n: toAr(n) });
+  if (n === null) return coreTrNow('البسملة');
+  return typeof n === 'string' ? coreTrNow('الآيتان {n}', { n: toAr(n) }) : coreTrNow('الآية {n}', { n: toAr(n) });
 }
 
 export default function TafsirPanel() {
   const [state] = useStore();
-  const tr = useTr();
+  const tr = coreTr(useTr());
   const { tafsirSurah, tafsirAyah } = state;
 
   const [activeEdition, setActiveEdition]   = useState('ar.muyassar');
@@ -89,7 +90,7 @@ export default function TafsirPanel() {
 
     Promise.all(promises)
       .then(([d1, d2]) => { if (cancelled) return; setData(d1); if (d2) setData2(d2); setLoading(false); })
-      .catch(() => { if (cancelled) return; setLoading(false); setGlobal({ toast: trNow('تعذّر تحميل التفسير') }); });
+      .catch(() => { if (cancelled) return; setLoading(false); setGlobal({ toast: coreTrNow('تعذّر تحميل التفسير') }); });
     return () => { cancelled = true; };
   }, [tafsirSurah, tafsirAyah, activeEdition, compareMode, compareEdition]);
 
@@ -282,8 +283,8 @@ export default function TafsirPanel() {
               if (!data) return;
               const text = `${data.text}\n\nالتفسير (${edName(activeEdition)}):\n${data.tafsir}\n\n— سورة ${meta[0]}، ${ayahTitleAr(tafsirSurah, tafsirAyah)}`;
               navigator.clipboard.writeText(text)
-                .then(() => setGlobal({ toast: trNow('تم نسخ الآية والتفسير') }))
-                .catch(() => setGlobal({ toast: trNow('تعذّر النسخ') }));
+                .then(() => setGlobal({ toast: coreTrNow('تم نسخ الآية والتفسير') }))
+                .catch(() => setGlobal({ toast: coreTrNow('تعذّر النسخ') }));
             }}>
             <Icon name="copy" />{tr('نسخ')}
           </button>

@@ -6,7 +6,7 @@ import { SURAHS_META } from '../data';
 import { normalizeArabic } from '../arabic';
 import { PageHero, Icon, Badge8, Corners, Divider, AyahMark, toAr } from '../components/ornaments/Ornaments';
 import { useTr, surahName, revelationLabel } from '../l10n';
-import { trCount } from '../locales/library';
+import { scoped, trCount } from '../locales/library';
 import styles from './IjazaPage.module.css';
 
 // ─── القراءات العشر المتواترة + رواياتها ──────────────────────────────────────
@@ -185,7 +185,7 @@ function tabFromHash() {
 
 // ─── Surah Selector ───────────────────────────────────────────────────────────
 function SurahSelector({ selected, onChange }) {
-  const tr = useTr();
+  const tr = scoped(useTr());
   const trc = (key, n, vars) => trCount(tr, key, n, vars);
   const [open,   setOpen]   = useState(false);
   const [search, setSearch] = useState('');
@@ -246,7 +246,7 @@ function Notice({ icon = 'bell', tone = 'warn', role = 'note', children }) {
 
 // One run of ayahs, each clickable to play (when onPlay is given)
 function AyahRun({ list, playingAyah, onPlay }) {
-  const tr = useTr();
+  const tr = scoped(useTr());
   return list.map(a => (
     <span key={a.number}
       className={`${styles.ayahSpan} ${playingAyah === a.number ? styles.ayahPlaying : ''} ${onPlay ? styles.ayahClick : ''}`}
@@ -263,7 +263,7 @@ function AyahRun({ list, playingAyah, onPlay }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function IjazaPage() {
-  const tr = useTr();
+  const tr = scoped(useTr());
   const trc = (key, n, vars) => trCount(tr, key, n, vars);
   const ltr = tr.dir === 'ltr';
   const [tab,        setTabState] = useState(tabFromHash);   // mushaf | qiraat | chain | ijaza
@@ -728,7 +728,7 @@ export default function IjazaPage() {
 }
 
 function Waiting() {
-  const tr = useTr();
+  const tr = scoped(useTr());
   return (
     <div className={styles.waiting} aria-busy="true" aria-label={tr('جارٍ تحميل السورة')}>
       <span /><span /><span /><span />
