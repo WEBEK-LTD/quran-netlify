@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /*
  * Renders the PNG images used in emails (email clients do not render SVG) from the real
- * brand SVGs in public/brand/. Output: public/brand/email/{header,divider,footer-mark}.png
+ * brand SVGs in public/brand/. Output: public/brand/email/{header,divider,footer-mark}.png,
+ * copied to api/public/email/ (emails load them from the API host).
  *
  *   node api/tools/render-email-assets.js
  *
@@ -18,6 +19,7 @@ const { chromium } = require('playwright');
 const ROOT = path.resolve(__dirname, '..', '..');
 const BRAND = path.join(ROOT, 'public', 'brand');
 const OUT = path.join(BRAND, 'email');
+const API_COPY = path.join(ROOT, 'api', 'public', 'email');
 
 /** Inline a brand SVG at a given size (keeps its own viewBox and gradients). */
 function svg(file, height, extra = '') {
@@ -142,6 +144,7 @@ function footerMark() {
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
+  fs.mkdirSync(API_COPY, { recursive: true });
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ deviceScaleFactor: 2, viewport: { width: 700, height: 300 } });
   const pg = await ctx.newPage();
@@ -159,6 +162,7 @@ function footerMark() {
         execFileSync('convert', [file, '-strip', '+dither', '-colors', '192', 'PNG8:' + file]);
       } catch { /* ImageMagick not installed: keep the full-colour PNG */ }
     }
+    fs.copyFileSync(file, path.join(API_COPY, name)); // emails load them from the API host
     console.log(name, (fs.statSync(file).size / 1024).toFixed(1) + ' KB');
   }
   await browser.close();

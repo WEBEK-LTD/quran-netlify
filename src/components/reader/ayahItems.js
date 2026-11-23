@@ -16,25 +16,41 @@ export function normWord(str) {
     .replace(/[﻿​-‏⁠]/g, '')
     .replace(/[ؐ-ًؚ-ٰٟۖ-ۭ࣓-ࣿـ]/g, '')
     .replace(/[آأإٱٲٳ]/g, 'ا')
-    .replace(/ى/g, 'ي')
+    .replace(/[ىیۍې]/g, 'ي')
+    .replace(/[کڪ]/g, 'ك')
+    .replace(/[ۀہە]/g, 'ه')
     .replace(/[^ء-ي]/g, '');
 }
 
 const BASMALA_WORDS = ['بسم', 'الله', 'الرحمن', 'الرحيم'];
 
+// Letter skeleton of a word/text: Arabic letters only, unified forms, no marks.
+const BASMALA_SKELETON = /^بسماللهالرحما?نالرحيم/;
+
 // Strip the basmala from the start of ayah 1 ONLY if the text really starts with it
-// (alquran.cloud includes it, quran.com does not).
+// (alquran.cloud includes it, quran.com does not). Compared on the letter skeleton
+// across word boundaries, so any spacing, tatweel, small letters or mark variants match.
 export function stripBasmala(text) {
-  const tokens = String(text || '').trim().split(/\s+/);
-  if (tokens.length <= BASMALA_WORDS.length) return text;
-  const starts = BASMALA_WORDS.every((w, i) => normWord(tokens[i]) === w);
-  if (!starts) return text;
-  return tokens.slice(BASMALA_WORDS.length).join(' ').trim() || text;
+  const src = String(text || '');
+  if (!BASMALA_SKELETON.test(normWord(src))) return text;
+  const tokens = src.trim().split(/\s+/);
+  let acc = '';
+  for (let i = 0; i < tokens.length; i++) {
+    acc += normWord(tokens[i]);
+    const m = acc.match(BASMALA_SKELETON);
+    if (m && m[0].length === acc.length) {
+      const rest = tokens.slice(i + 1).join(' ').trim();
+      return rest || text;
+    }
+    if (acc.length > 24) break;
+  }
+  return text;
 }
 
 function isBasmala(text) {
-  const t = String(text || '').trim().split(/\s+/).map(normWord).filter(Boolean);
-  return t.length === 4 && BASMALA_WORDS.every((w, i) => t[i] === w);
+  const sk = normWord(text);
+  const m = sk.match(BASMALA_SKELETON);
+  return !!m && m[0].length === sk.length;
 }
 
 // Split Kufi Fatiha 7 after the first «عليهم». null when not found.

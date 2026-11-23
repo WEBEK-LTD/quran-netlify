@@ -99,7 +99,7 @@ final class SupportController
     {
         try {
             $t = Db::one(
-                'SELECT t.id, t.subject, u.email, u.name FROM support_tickets t JOIN users u ON u.id = t.user_id WHERE t.id = ?',
+                'SELECT u.*, t.subject FROM support_tickets t JOIN users u ON u.id = t.user_id WHERE t.id = ?',
                 [$ticketId]
             );
             if ($t === null) {
@@ -117,7 +117,7 @@ final class SupportController
                 $claimed = true;
             }
             if ($claimed) {
-                Mailer::sendTeamMessage((string) $t['email'], (string) $t['name'], (string) $t['subject'], $body, $newThread);
+                Mailer::sendTeamMessage((string) $t['email'], (string) $t['name'], (string) $t['subject'], $body, $newThread, AuthController::userLang($t));
             }
         } catch (\Throwable $e) {
             error_log('[nq] ticket notify failed: ' . $e->getMessage());

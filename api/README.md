@@ -54,7 +54,8 @@
   وإن فشل الإرسال يظهر رد الخادم (مثل `535` عند خطأ كلمة المرور).
   يُفضّل أن يكون عنوان المرسل على نفس النطاق (مثل `no-reply@nuralquran.net`)،
   وتأكد من تفعيل *Email Deliverability* (SPF/DKIM) في cPanel حتى لا تذهب الرسائل إلى «الرسائل المزعجة».
-- **صور الرسائل**: تُحمَّل من `https://nuralquran.net/brand/email/` (ترويسة، فاصل، شعار صغير)، فهي تُنشر مع الموقع (مجلد `public/brand/email/`).
+- **صور الرسائل وخطوطها**: تُحمَّل من `https://api.nuralquran.net/email/` (الصور، وخطوط الموقع في `email/fonts/`)، فهي تُرفع مع محتويات `api/public/`.
+- **لغة الرسائل**: تُرسل كل رسالة بلغة حساب المستخدم (العربية، English، Türkçe، Français، اردو، Indonesia) حسب لغة الواجهة عند التسجيل أو الدخول أو تغيير اللغة.
 
 ## التحديث لاحقاً
 
@@ -91,8 +92,8 @@ DB_NAME=nq_test DB_USER=nq DB_PASS=nqpass123 api/tests/run-local.sh
 - **تصميم الرسائل**: كل الرسائل تُبنى من قالب واحد في `app/Core/Mailer.php` (`Mailer::render()`). لمعاينتها دون إرسال:
 
 ```bash
-php api/tests/email-preview.php                           # يكتب api/storage/mail/preview/*.html و *.txt
-php api/tests/email-preview.php --shots=/tmp/email-shots  # ولقطات شاشة بعرض 600 و 375، فاتح وداكن (يحتاج Playwright)
+php api/tests/email-preview.php                           # يكتب api/storage/mail/preview/<الرسالة>-<اللغة>.html و .txt بكل اللغات الست
+php api/tests/email-preview.php --shots=/tmp/email-shots  # ولقطات شاشة لمجموعة ممثلة (يحتاج Playwright)؛ أضف --all لكل اللغات والأحجام
 ```
 
 - **صور الرسائل** (`public/brand/email/*.png`) مولّدة من ملفات الشعار SVG. لإعادة توليدها بعد تعديل الشعار

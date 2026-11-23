@@ -4,7 +4,7 @@
 // A few helpers keep their old "returns true/false" shape so pages change little.
 
 import { api, request, ApiError, API_BASE, CLIENT, setToken } from './apiClient';
-import { setAuthUser, refreshAuth, signOutAuth } from './hooks/useAuth';
+import { setAuthUser, getAuthUser, refreshAuth, signOutAuth } from './hooks/useAuth';
 
 export { ApiError, API_BASE };
 
@@ -49,6 +49,15 @@ export function errorMessage(err, fallback = 'حدث خطأ غير متوقع، 
 }
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
+// The UI language goes with sign-up/login/reset so the server emails the user in it.
+const EMAIL_LANGS = ['ar', 'en', 'tr', 'fr', 'ur', 'id'];
+function uiLang() {
+  try {
+    const l = localStorage.getItem('nq_ui_lang');
+    return EMAIL_LANGS.includes(l) ? l : 'ar';
+  } catch { return 'ar'; }
+}
+
 function takeSession(data) {
   if (data && data.token) setToken(data.token);   // native app only (no-op on web)
   if (data && data.user) setAuthUser(data.user);
@@ -56,18 +65,18 @@ function takeSession(data) {
 }
 
 export async function signInWithEmail(email, password) {
-  const data = await api.post('/auth/login', { email: String(email).trim(), password });
+  const data = await api.post('/auth/login', { email: String(email).trim(), password, lang: uiLang() });
   return takeSession(data);
 }
 
 export async function signUpWithEmail(email, password, name) {
-  const data = await api.post('/auth/signup', { name: String(name).trim(), email: String(email).trim(), password });
+  const data = await api.post('/auth/signup', { name: String(name).trim(), email: String(email).trim(), password, lang: uiLang() });
   return takeSession(data);
 }
 
 // Full-page navigation to the API's Google flow.
 export function googleStartUrl(next = '/dashboard') {
-  return `${API_BASE}/auth/google/start?next=${enc(next)}&client=${CLIENT}`;
+  return `${API_BASE}/auth/google/start?next=${enc(next)}&client=${CLIENT}&lang=${uiLang()}`;
 }
 export function signInWithGoogle(next = '/dashboard') {
   window.location.href = googleStartUrl(next);
@@ -87,7 +96,7 @@ export async function verifyEmail(token) {
   return d && d.user;
 }
 export async function resendVerification() { return api.post('/auth/resend-verification'); }
-export async function forgotPassword(email) { return api.post('/auth/forgot-password', { email: String(email).trim() }); }
+export async function forgotPassword(email) { return api.post('/auth/forgot-password', { email: String(email).trim(), lang: uiLang() }); }
 // kept name
 export const resetPasswordEmail = forgotPassword;
 export async function resetPassword(token, password) { return api.post('/auth/reset-password', { token, password }); }
@@ -104,6 +113,17 @@ export async function updateProfile(fields) {
   return d && d.user;
 }
 export async function updateUserName(name) { return updateProfile({ name: String(name).trim() }); }
+
+// When a signed-in user switches the UI language (i18n setLang fires 'nq-lang-change'),
+// store it on the account so future emails use it.
+if (typeof window !== 'undefined') {
+  window.addEventListener('nq-lang-change', (e) => {
+    const lang = e && e.detail;
+    const user = getAuthUser();
+    if (!user || !EMAIL_LANGS.includes(lang) || user.lang === lang) return;
+    updateProfile({ lang }).catch(() => {});
+  });
+}
 
 export async function deleteAccount({ password, confirm } = {}) {
   const body = password ? { password } : { confirm: confirm || 'DELETE' };

@@ -10,6 +10,8 @@ use NQ\Core\Db;
 use NQ\Core\Http;
 use NQ\Core\Integrations;
 use NQ\Core\Mailer;
+use NQ\Core\MailText;
+use NQ\Core\Migrations;
 use NQ\Core\Redirect;
 use NQ\Core\Request;
 use NQ\Core\Settings;
@@ -64,10 +66,19 @@ final class GoogleController
         }
         $next = self::safeNext($r->q('next'));
         $state = Crypto::token();
-        Db::exec(
-            'INSERT INTO oauth_states (state_hash, next_path, client, created_at, expires_at) VALUES (?, ?, ?, ?, ?)',
-            [Crypto::hash($state), $next, $client, Db::now(), Db::now(self::STATE_TTL)]
-        );
+        $lang = $r->q('lang');
+        $lang = is_string($lang) && in_array($lang, MailText::LANGS, true) ? $lang : null;
+        if ($lang !== null && Migrations::ready()) {
+            Db::exec(
+                'INSERT INTO oauth_states (state_hash, next_path, client, lang, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+                [Crypto::hash($state), $next, $client, $lang, Db::now(), Db::now(self::STATE_TTL)]
+            );
+        } else {
+            Db::exec(
+                'INSERT INTO oauth_states (state_hash, next_path, client, created_at, expires_at) VALUES (?, ?, ?, ?, ?)',
+                [Crypto::hash($state), $next, $client, Db::now(), Db::now(self::STATE_TTL)]
+            );
+        }
         if (random_int(1, 20) === 1) {
             Db::exec('DELETE FROM oauth_states WHERE expires_at < ?', [Db::now()]);
         }
@@ -134,6 +145,8 @@ final class GoogleController
             return self::fail('email_unverified', $client);
         }
 
+        // UI language the visitor used when starting sign-in (null when not sent)
+        $lang = isset($row['lang']) && in_array($row['lang'], MailText::LANGS, true) ? (string) $row['lang'] : null;
         $user = Db::one('SELECT id FROM users WHERE google_sub = ?', [$sub]);
         if ($user === null) {
             $byEmail = Db::one('SELECT id, google_sub FROM users WHERE email = ?', [$email]);
@@ -153,17 +166,25 @@ final class GoogleController
                 $name = mb_substr(trim((string) ($p['name'] ?? '')), 0, 100) ?: mb_substr(explode('@', $email)[0], 0, 100);
                 $pic = (string) ($p['picture'] ?? '');
                 $pic = str_starts_with($pic, 'https://') && strlen($pic) <= 500 ? $pic : null;
-                $id = Db::insert(
-                    'INSERT INTO users (email, name, avatar_url, google_sub, email_verified_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    [$email, $name, $pic, $sub, Db::now(), Db::now(), Db::now()]
-                );
-                $user = ['id' => $id];
-                Mailer::sendWelcome($email, $name); // Google addresses are already verified
+                $id = $lang !== null && Migrations::ready()
+                    ? Db::insert(
+                        'INSERT INTO users (email, name, lang, avatar_url, google_sub, email_verified_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                        [$email, $name, $lang, $pic, $sub, Db::now(), Db::now(), Db::now()]
+                    )
+                    : Db::insert(
+                        'INSERT INTO users (email, name, avatar_url, google_sub, email_verified_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        [$email, $name, $pic, $sub, Db::now(), Db::now(), Db::now()]
+                    );
+                $user = ['id' => $id, 'new' => true];
+                Mailer::sendWelcome($email, $name, $lang ?? MailText::DEFAULT); // Google addresses are already verified
             }
         }
         $uid = (int) $user['id'];
         if (Auth::activeBan($uid) !== null) {
             return self::fail('banned', $client);
+        }
+        if ($lang !== null && empty($user['new']) && Migrations::ready()) {
+            Db::exec('UPDATE users SET lang = ? WHERE id = ?', [$lang, $uid]); // same as a password login
         }
         $token = Auth::startSession($r, $uid);
         if ($client === 'app') {

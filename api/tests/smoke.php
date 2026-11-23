@@ -658,6 +658,33 @@ if ($LOCAL !== null) {
     $ta['token'] = (string) (data($li2)['token'] ?? '');
 }
 
+section('Email language');
+$E = ['email' => "emre+{$run}@example.com", 'pw' => 'emre-pass-123', 'ip' => '10.11.0.1'];
+$badLang = req('POST', '/auth/signup', ['name' => 'Emre', 'email' => $E['email'], 'password' => $E['pw'], 'lang' => 'xx'], ['ip' => $E['ip']]);
+check('signup with unknown lang → 422', $badLang['status'] === 422 && isset($badLang['json']['error']['fields']['lang']), desc($badLang));
+$eSu = req('POST', '/auth/signup', ['name' => 'Emre', 'email' => $E['email'], 'password' => $E['pw'], 'lang' => 'en'], ['ip' => $E['ip']]);
+$te = ['token' => (string) (data($eSu)['token'] ?? ''), 'ip' => $E['ip']];
+check('signup stores lang (User.lang)', $eSu['status'] === 201 && (data($eSu)['user']['lang'] ?? '') === 'en' && (data($su)['user']['lang'] ?? '') === 'ar', desc($eSu));
+if ($LOCAL !== null) {
+    $ev = mails($E['email']);
+    check('verification email follows the user language (en subject)', count($ev) === 1 && str_starts_with((string) $ev[0]['subject'], 'Confirm your email')
+        && str_contains((string) $ev[0]['text'], 'Assalamu alaikum') && (string) ($ev[0]['lang'] ?? '') === 'en', json_encode($ev[0] ?? null, JSON_UNESCAPED_UNICODE));
+}
+$pl = req('PATCH', '/auth/profile', ['lang' => 'fr'], $te);
+$plBad = req('PATCH', '/auth/profile', ['lang' => 'de'], $te);
+check('PATCH profile updates lang; unknown lang → 422', (data($pl)['user']['lang'] ?? '') === 'fr' && $plBad['status'] === 422, desc($pl));
+$eLogin = req('POST', '/auth/login', ['email' => $E['email'], 'password' => $E['pw'], 'lang' => 'id'], ['ip' => $E['ip']]);
+check('login with another lang updates the stored lang', (data($eLogin)['user']['lang'] ?? '') === 'id'
+    && (data(req('GET', '/auth/me', null, ['token' => (string) (data($eLogin)['token'] ?? ''), 'ip' => $E['ip']]))['user']['lang'] ?? '') === 'id', desc($eLogin));
+if ($LOCAL !== null) {
+    req('POST', '/auth/forgot-password', ['email' => $E['email'], 'lang' => 'tr'], ['ip' => '10.11.0.2']);
+    req('POST', '/auth/forgot-password', ['email' => $E['email']], ['ip' => '10.11.0.3']);
+    $er = mails($E['email'], '— Nur Al-');
+    $subjects = array_map(static fn (array $m): string => (string) $m['subject'], $er);
+    check('reset email uses the request lang, else the account lang (tr, then id)', in_array('Şifrenizi sıfırlayın — Nur Al-Kuran', $subjects, true)
+        && in_array('Atur ulang kata sandi — Nur Al-Quran', $subjects, true), implode(' | ', $subjects));
+}
+
 $D = ['email' => "dana+{$run}@example.com", 'pw' => 'dana-pass-12', 'ip' => '10.8.0.1'];
 $dSu = req('POST', '/auth/signup', ['name' => 'دانة', 'email' => $D['email'], 'password' => $D['pw']], ['ip' => $D['ip']]);
 $td = ['token' => (string) (data($dSu)['token'] ?? ''), 'ip' => $D['ip']];

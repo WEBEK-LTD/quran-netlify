@@ -13,6 +13,12 @@ final class Auth
     public const USER_COLS = 'u.id, u.email, u.name, u.avatar_url, u.gender, u.birthdate, u.is_admin,
         u.email_verified_at, u.show_on_leaderboard, u.password_hash, u.google_sub, u.created_at, u.last_seen_at';
 
+    /** USER_COLS plus columns added by Migrations (only once they exist, so an old schema keeps working). */
+    public static function userCols(): string
+    {
+        return self::USER_COLS . (Migrations::ready() ? ', u.lang' : '');
+    }
+
     /** Resolve the session from `Authorization: Bearer` or the cookie. Never throws for a bad token. */
     public static function resolve(Request $r): void
     {
@@ -33,7 +39,7 @@ final class Auth
             return;
         }
         $row = Db::one(
-            'SELECT s.id AS sid, s.expires_at, s.last_used_at, ' . self::USER_COLS . '
+            'SELECT s.id AS sid, s.expires_at, s.last_used_at, ' . self::userCols() . '
              FROM sessions s JOIN users u ON u.id = s.user_id
              WHERE s.token_hash = ? AND s.expires_at > ?',
             [Crypto::hash($token), Db::now()]
@@ -153,13 +159,13 @@ final class Auth
     /** @return array<string,mixed>|null */
     public static function findUser(int $id): ?array
     {
-        return Db::one('SELECT ' . self::USER_COLS . ' FROM users u WHERE u.id = ?', [$id]);
+        return Db::one('SELECT ' . self::userCols() . ' FROM users u WHERE u.id = ?', [$id]);
     }
 
     /** @return array<string,mixed>|null */
     public static function findByEmail(string $email): ?array
     {
-        return Db::one('SELECT ' . self::USER_COLS . ' FROM users u WHERE u.email = ?', [mb_strtolower($email)]);
+        return Db::one('SELECT ' . self::userCols() . ' FROM users u WHERE u.email = ?', [mb_strtolower($email)]);
     }
 
     /** Public User shape. @param array<string,mixed> $u @return array<string,mixed> */

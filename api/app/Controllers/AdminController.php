@@ -103,7 +103,7 @@ final class AdminController
         $w = ' WHERE ' . implode(' AND ', $where);
         $total = (int) Db::value("SELECT COUNT(*) {$from}{$w}", array_merge([$now], $params));
         $rows = Db::all(
-            'SELECT ' . Auth::USER_COLS . ", b.user_id AS ban_uid, b.reason AS ban_reason, b.until AS ban_until,
+            'SELECT ' . Auth::userCols() . ", b.user_id AS ban_uid, b.reason AS ban_reason, b.until AS ban_until,
                 (SELECT COUNT(*) FROM reading_log l WHERE l.user_id = u.id) AS ayahs_total
              {$from}{$w} ORDER BY u.id DESC LIMIT ? OFFSET ?",
             array_merge([$now], $params, [$per, $off])
@@ -389,7 +389,7 @@ final class AdminController
             case 'mail':
                 $to = (string) $r->user['email'];
                 $smtp = Mailer::transport() === 'smtp';
-                $ok = Mailer::sendTest($to, (string) $r->user['name']);
+                $ok = Mailer::sendTest($to, (string) $r->user['name'], AuthController::userLang((array) $r->user));
                 if ($ok) {
                     $via = $smtp ? ' عبر SMTP (' . Integrations::get('smtp_host') . ')' : ' من خادم الموقع';
                     return ['ok' => true, 'message' => 'تم إرسال رسالة تجريبية' . $via . ' إلى ' . $to . '. تحقق من صندوق الوارد (والرسائل المزعجة).'];

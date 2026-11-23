@@ -7,6 +7,8 @@ use NQ\Core\ApiError;
 use NQ\Core\Auth;
 use NQ\Core\Db;
 use NQ\Core\Mailer;
+use NQ\Core\MailText;
+use NQ\Core\Migrations;
 use NQ\Core\RateLimit;
 use NQ\Core\Reply;
 use NQ\Core\Request;
@@ -15,6 +17,31 @@ use NQ\Core\V;
 
 final class AuthController
 {
+    /**
+     * Optional UI language from the request (ar, en, tr, fr, ur, id).
+     * $strict: an unknown value is a 422 (signup/profile); otherwise it is ignored (login/forgot).
+     * @param array<string,mixed> $b
+     */
+    private static function langParam(array $b, bool $strict): ?string
+    {
+        if (!isset($b['lang']) || $b['lang'] === '') {
+            return null;
+        }
+        if (is_string($b['lang']) && in_array($b['lang'], MailText::LANGS, true)) {
+            return $b['lang'];
+        }
+        if ($strict) {
+            throw ApiError::validation(['lang' => 'اللغة غير مدعومة (ar, en, tr, fr, ur, id).']);
+        }
+        return null;
+    }
+
+    /** The language stored on a user row (Arabic when unknown). @param array<string,mixed> $u */
+    public static function userLang(array $u): string
+    {
+        return MailText::lang($u['lang'] ?? null);
+    }
+
     public static function signup(Request $r): Reply
     {
         RateLimit::hit('signup', ['ip:' . $r->ip]);
@@ -25,14 +52,20 @@ final class AuthController
         $name = (string) V::str($b, 'name', 100);
         $email = V::email($b);
         $password = V::password($b);
+        $lang = self::langParam($b, true) ?? MailText::DEFAULT;
         if (Db::value('SELECT id FROM users WHERE email = ?', [$email]) !== null) {
             throw new ApiError(422, 'email_taken', null, ['fields' => ['email' => 'هذا البريد الإلكتروني مسجّل مسبقاً.']]);
         }
         try {
-            $id = Db::insert(
-                'INSERT INTO users (email, name, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-                [$email, $name, password_hash($password, PASSWORD_DEFAULT), Db::now(), Db::now()]
-            );
+            $id = Migrations::ready()
+                ? Db::insert(
+                    'INSERT INTO users (email, name, lang, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+                    [$email, $name, $lang, password_hash($password, PASSWORD_DEFAULT), Db::now(), Db::now()]
+                )
+                : Db::insert(
+                    'INSERT INTO users (email, name, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+                    [$email, $name, password_hash($password, PASSWORD_DEFAULT), Db::now(), Db::now()]
+                );
         } catch (\PDOException $e) {
             if (($e->errorInfo[1] ?? 0) === 1062) {
                 throw new ApiError(422, 'email_taken', null, ['fields' => ['email' => 'هذا البريد الإلكتروني مسجّل مسبقاً.']]);
@@ -40,7 +73,7 @@ final class AuthController
             throw $e;
         }
         $token = Auth::startSession($r, $id);
-        Mailer::sendVerification($email, $name, Auth::issueEmailToken($id, 'verify'));
+        Mailer::sendVerification($email, $name, Auth::issueEmailToken($id, 'verify'), $lang);
         $user = Auth::findUser($id);
         return Reply::created(['user' => Auth::shape((array) $user), 'token' => $token]);
     }
@@ -68,6 +101,11 @@ final class AuthController
         if (password_needs_rehash($hash, PASSWORD_DEFAULT)) {
             Db::exec('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($password, PASSWORD_DEFAULT), (int) $user['id']]);
         }
+        $lang = self::langParam($b, false);
+        if ($lang !== null && $lang !== self::userLang($user) && Migrations::ready()) {
+            Db::exec('UPDATE users SET lang = ? WHERE id = ?', [$lang, (int) $user['id']]);
+            $user['lang'] = $lang;
+        }
         $token = Auth::startSession($r, (int) $user['id']);
         return ['user' => Auth::shape($user), 'token' => $token];
     }
@@ -94,7 +132,7 @@ final class AuthController
         $first = Db::exec('UPDATE users SET email_verified_at = ? WHERE id = ? AND email_verified_at IS NULL', [Db::now(), $uid]) === 1;
         $user = (array) Auth::findUser($uid);
         if ($first) {
-            Mailer::sendWelcome((string) $user['email'], (string) $user['name']);
+            Mailer::sendWelcome((string) $user['email'], (string) $user['name'], self::userLang($user));
         }
         return ['user' => Auth::shape($user)];
     }
@@ -105,7 +143,7 @@ final class AuthController
         RateLimit::hit('resend', ['user:' . $uid]);
         $u = (array) $r->user;
         if ($u['email_verified_at'] === null) {
-            Mailer::sendVerification((string) $u['email'], (string) $u['name'], Auth::issueEmailToken($uid, 'verify'));
+            Mailer::sendVerification((string) $u['email'], (string) $u['name'], Auth::issueEmailToken($uid, 'verify'), self::userLang($u));
         }
         return Reply::empty();
     }
@@ -118,7 +156,9 @@ final class AuthController
         $email = V::email($b);
         $user = Auth::findByEmail($email);
         if ($user !== null && Auth::activeBan((int) $user['id']) === null) {
-            Mailer::sendReset($email, (string) $user['name'], Auth::issueEmailToken((int) $user['id'], 'reset'));
+            // the language the visitor is using now, else the account's
+            $lang = self::langParam($b, false) ?? self::userLang($user);
+            Mailer::sendReset($email, (string) $user['name'], Auth::issueEmailToken((int) $user['id'], 'reset'), $lang);
         }
         return Reply::empty();
     }
@@ -137,7 +177,7 @@ final class AuthController
         Auth::revokeAll($uid);
         $u = Auth::findUser($uid);
         if ($u !== null) {
-            Mailer::sendPasswordChanged((string) $u['email'], (string) $u['name'], 'reset');
+            Mailer::sendPasswordChanged((string) $u['email'], (string) $u['name'], 'reset', self::userLang($u));
         }
         return Reply::empty();
     }
@@ -156,7 +196,7 @@ final class AuthController
         }
         Db::exec('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', [password_hash($new, PASSWORD_DEFAULT), Db::now(), $uid]);
         Auth::revokeAll($uid, $r->sessionId);
-        Mailer::sendPasswordChanged((string) $r->user['email'], (string) $r->user['name'], 'change');
+        Mailer::sendPasswordChanged((string) $r->user['email'], (string) $r->user['name'], 'change', self::userLang((array) $r->user));
         return Reply::empty();
     }
 
@@ -169,6 +209,13 @@ final class AuthController
         if (array_key_exists('name', $b)) {
             $sets[] = 'name = ?';
             $params[] = V::str($b, 'name', 100);
+        }
+        if (array_key_exists('lang', $b) && Migrations::ready()) {
+            $lang = self::langParam($b, true);
+            if ($lang !== null) {
+                $sets[] = 'lang = ?';
+                $params[] = $lang;
+            }
         }
         if (array_key_exists('show_on_leaderboard', $b)) {
             $sets[] = 'show_on_leaderboard = ?';

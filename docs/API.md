@@ -19,7 +19,7 @@ This file is the contract between `api/` (server) and `src/` (web + app). Change
 ## Shapes
 
 ```
-User      { id, email, name, avatar_url|null, gender: "male"|"female"|null, birthdate|null,
+User      { id, email, name, lang: "ar"|"en"|"tr"|"fr"|"ur"|"id", avatar_url|null, gender: "male"|"female"|null, birthdate|null,
             is_admin: bool, email_verified: bool, show_on_leaderboard: bool, created_at }
 Bookmark  { surah, ayah, created_at }
 Note      { surah, ayah, text, updated_at }
@@ -48,20 +48,22 @@ Broadcast { id, title, body, type: "info"|"warning"|"success", created_at, expir
 
 | Method | Path | Body | Returns |
 |---|---|---|---|
-| POST | `/auth/signup` | `{name, email, password}` (password ≥ 8) | 201 `{user, token}` and cookie. Sends a verification email. Refused 403 `signup_closed` if `allow_signup` is off; `email_taken` 422 |
-| POST | `/auth/login` | `{email, password}` | `{user, token}` + cookie. `invalid_credentials` 401 |
+| POST | `/auth/signup` | `{name, email, password, lang?}` (password ≥ 8) | 201 `{user, token}` and cookie. Sends a verification email in `lang` (stored on the account, default `ar`; unknown value → 422). Refused 403 `signup_closed` if `allow_signup` is off; `email_taken` 422 |
+| POST | `/auth/login` | `{email, password, lang?}` | `{user, token}` + cookie. `invalid_credentials` 401. A valid `lang` different from the stored one updates it (unknown values are ignored) |
 | POST | `/auth/logout` | | `{}` — revokes the session, clears cookie |
 | GET | `/auth/me` | | `{user}` or 401 |
 | POST | `/auth/verify-email` | `{token}` | `{user}` |
 | POST | `/auth/resend-verification` | | `{}` |
-| POST | `/auth/forgot-password` | `{email}` | `{}` always (no account enumeration) |
+| POST | `/auth/forgot-password` | `{email, lang?}` | `{}` always (no account enumeration). The reset email is in `lang` if given, else the account's language |
 | POST | `/auth/reset-password` | `{token, password}` | `{}` — revokes all sessions |
 | POST | `/auth/change-password` | `{current_password, new_password}` | `{}` — revokes other sessions. Google-only accounts may set a password without `current_password` |
-| PATCH | `/auth/profile` | `{name?, show_on_leaderboard?}` | `{user}` |
+| PATCH | `/auth/profile` | `{name?, show_on_leaderboard?, lang?}` | `{user}` — `lang` is the language of the account's emails |
 | DELETE | `/auth/account` | `{password}` (or `{confirm:"DELETE"}` for Google-only accounts) | `{}` — deletes the user and every row they own; group rooms they own are deleted |
 | GET | `/auth/export` | | all of the user's data as JSON (download) |
-| GET | `/auth/google/start` | `?next=/dashboard&client=web\|app` | 302 to Google |
+| GET | `/auth/google/start` | `?next=/dashboard&client=web\|app&lang=en` | 302 to Google. `lang` is kept in the OAuth state: new accounts get it (and their welcome email in it), existing accounts have it updated |
 | GET | `/auth/google/callback` | (from Google) | web: sets cookie, 302 to `https://nuralquran.net/auth/callback?status=ok&next=…`; app: 302 to `nuralquran://auth?token=…`; error: `…/auth/callback?status=error&reason=…` |
+
+Emails (verification, reset, welcome, password changed, team messages, admin test) are sent in the account's `lang`; ar/ur are right-to-left. Text written by an admin is shown as written.
 
 Email links point to the site, which calls the API:
 - verify: `https://nuralquran.net/auth/callback?type=verify&token=…` → `POST /auth/verify-email`
