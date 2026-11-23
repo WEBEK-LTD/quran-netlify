@@ -2,54 +2,60 @@
   "appId": "net.nuralquran.app",
   "appName": "نور القرآن",
   "webDir": "dist",
-  "bundledWebRuntime": false,
+  "loggingBehavior": "debug",
   "server": {
     "androidScheme": "https",
-    "cleartext": false
+    "iosScheme": "capacitor",
+    "cleartext": false,
+    "allowNavigation": []
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 2500,
-      "launchAutoHide": true,
-      "backgroundColor": "#0f1a12",
+      "launchShowDuration": 1200,
+      "launchAutoHide": false,
+      "launchFadeOutDuration": 250,
+      "backgroundColor": "#060D0A",
       "androidSplashResourceName": "splash",
       "androidScaleType": "CENTER_CROP",
       "showSpinner": false,
-      "splashFullScreen": true,
-      "splashImmersive": true,
-      "iosSpinnerStyle": "small",
-      "spinnerColor": "#c9a84c"
+      "splashFullScreen": false,
+      "splashImmersive": false
     },
     "StatusBar": {
+      "overlaysWebView": false,
       "style": "DARK",
-      "backgroundColor": "#0f1a12"
+      "backgroundColor": "#060D0A"
     },
     "Keyboard": {
       "resize": "body",
-      "style": "DARK",
       "resizeOnFullScreen": true
     },
     "PushNotifications": {
       "presentationOptions": ["badge", "sound", "alert"]
     },
     "LocalNotifications": {
-      "smallIcon": "ic_launcher",
-      "iconColor": "#c9a84c"
+      "smallIcon": "ic_stat_nq",
+      "iconColor": "#C9A84C"
+    },
+    "SystemBars": {
+      "insetsHandling": "css"
     }
   },
   "ios": {
-    "contentInset": "automatic",
+    "contentInset": "never",
     "allowsLinkPreview": false,
     "scrollEnabled": true,
-    "backgroundColor": "#0f1a12",
-    "preferredContentMode": "mobile"
+    "backgroundColor": "#060D0A",
+    "preferredContentMode": "mobile",
+    "limitsNavigationsToAppBoundDomains": false,
+    "appendUserAgent": "NurAlQuranApp"
   },
   "android": {
-    "backgroundColor": "#0f1a12",
+    "backgroundColor": "#060D0A",
     "allowMixedContent": false,
     "captureInput": true,
     "webContentsDebuggingEnabled": false,
-    "minWebViewVersion": 60,
-    "appendUserAgent": "NurAlQuranApp"
+    "appendUserAgent": "NurAlQuranApp",
+    "adjustMarginsForEdgeToEdge": "auto"
   }
 }
