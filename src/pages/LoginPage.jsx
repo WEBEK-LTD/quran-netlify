@@ -22,7 +22,8 @@ export default function LoginPage() {
     return e === 'auth_failed' ? 'تعذّر إكمال تسجيل الدخول، حاول مرة أخرى' : googleErrorText(e);
   });
   const [loading, setLoading]   = useState(false);
-  const [view, setView]         = useState('login'); // 'login' | 'forgot' | 'forgot_sent'
+  // ?view=forgot opens the reset form directly (link in the "password changed" email)
+  const [view, setView]         = useState(() => searchParams.get('view') === 'forgot' ? 'forgot' : 'login'); // 'login' | 'forgot' | 'forgot_sent'
 
   async function handleEmail(e) {
     e.preventDefault();

@@ -1,21 +1,27 @@
+// ─── Tasbih ──────────────────────────────────────────────────────────────────
+// One large tap target ringed by the progress to the target (beads light up
+// as you count), presets, targets, today's totals and the recent sessions.
+// Space / Enter count too. Everything is kept on the device.
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import styles from './TasbihPage.module.css';
+import { PageHero, Icon, Badge8, Corners, toAr } from '../components/ornaments/Ornaments';
 
 const PRESETS = [
-  { id: 'subhan',  label: 'سبحان الله',              ar: 'سُبْحَانَ اللهِ',              target: 33,  color: '#52b788' },
-  { id: 'alhamd',  label: 'الحمد لله',               ar: 'الْحَمْدُ لِلَّهِ',              target: 33,  color: '#c9a84c' },
-  { id: 'akbar',   label: 'الله أكبر',               ar: 'اللهُ أَكْبَرُ',                target: 34,  color: '#f97316' },
-  { id: 'lailla',  label: 'لا إله إلا الله',         ar: 'لَا إِلَهَ إِلَّا اللهُ',       target: 100, color: '#6366f1' },
-  { id: 'astaghf', label: 'أستغفر الله',             ar: 'أَسْتَغْفِرُ اللهَ',             target: 100, color: '#8b5cf6' },
-  { id: 'salah',   label: 'الصلاة على النبي',         ar: 'اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ', target: 100, color: '#f59e0b' },
-  { id: 'hawqala', label: 'حوقلة',                   ar: 'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ', target: 100, color: '#10b981' },
-  { id: 'custom',  label: 'مخصص',                    ar: '',                              target: 100, color: '#94a3b8' },
+  { id: 'subhan',  label: 'سبحان الله',        ar: 'سُبْحَانَ اللهِ',              target: 33  },
+  { id: 'alhamd',  label: 'الحمد لله',         ar: 'الْحَمْدُ لِلَّهِ',              target: 33  },
+  { id: 'akbar',   label: 'الله أكبر',         ar: 'اللهُ أَكْبَرُ',                target: 34  },
+  { id: 'lailla',  label: 'لا إله إلا الله',   ar: 'لَا إِلَهَ إِلَّا اللهُ',       target: 100 },
+  { id: 'astaghf', label: 'أستغفر الله',       ar: 'أَسْتَغْفِرُ اللهَ',             target: 100 },
+  { id: 'salah',   label: 'الصلاة على النبي',  ar: 'اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ', target: 100 },
+  { id: 'hawqala', label: 'الحوقلة',           ar: 'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ', target: 100 },
+  { id: 'custom',  label: 'ذكر مخصّص',         ar: '',                              target: 100 },
 ];
+const TARGETS = [33, 34, 99, 100, 1000];
 
-function toAr(n) {
-  return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
-}
+// ring geometry (viewBox -170..170)
+const R = 138;
+const CIRC = 2 * Math.PI * R;
+
 
 function loadState() {
   try { return JSON.parse(localStorage.getItem('nq_tasbih') || '{}'); } catch { return {}; }
@@ -151,140 +157,130 @@ export default function TasbihPage() {
   const totalToday = tapsRef.current.date === todayStr ? todayTaps : 0;
   const sessionsToday = sessions.filter(s => s.date === todayStr).length;
 
+  function toggleVibrate() {
+    setVibrate(v => !v);
+    try { localStorage.setItem('nq_tasbih_vib', vibrate ? 'off' : 'on'); } catch {}
+  }
+
+  const shownCount = count % target || (count > 0 ? target : 0);
+  const ringFrac = count > 0 && count % target === 0 ? 1 : pct / 100;
+  const phrase = activeId === 'custom' ? (customText.trim() || 'اكتب ذكرك أعلاه') : (preset.ar || preset.label);
+  const beads = target <= 100 ? target : 0;
+  const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return localDay(d); })();
+  const dayLabel = d => d === todayStr ? 'اليوم' : d === yesterday ? 'أمس' : toAr(d.split('-').reverse().join('/'));
+
   return (
     <div className={styles.page}>
-      <div className={styles.topBar}>
-        <Link to="/dashboard" className={styles.backBtn}>← رجوع</Link>
-        <h1 className={styles.pageTitle}>📿 السبحة الإلكترونية</h1>
-        <button className={styles.vibBtn}
-          onClick={() => { setVibrate(v => !v); localStorage.setItem('nq_tasbih_vib', vibrate ? 'off' : 'on'); }}
-          title={vibrate ? 'إيقاف الاهتزاز' : 'تفعيل الاهتزاز'}>
-          {vibrate ? '📳' : '🔕'}
+      <PageHero
+        eyebrow="الذكر"
+        title="السبحة"
+        sub="عدّاد تسبيح بأهداف ودورات، يحفظ جلساتك على جهازك. اضغط الدائرة أو مفتاح المسافة للعدّ."
+      >
+        <button type="button" className="nq-btn ghost sm" onClick={toggleVibrate} aria-pressed={vibrate}>
+          <Icon name={vibrate ? 'phone' : 'x'} />{vibrate ? 'الاهتزاز مفعّل' : 'الاهتزاز متوقف'}
         </button>
-      </div>
+      </PageHero>
 
-      {/* Today stats */}
-      <div className={styles.statsRow}>
-        <div className={styles.statBox}>
-          <div className={styles.statVal}>{toAr(totalToday)}</div>
-          <div className={styles.statLabel}>تسبيحات اليوم</div>
-        </div>
-        <div className={styles.statBox}>
-          <div className={styles.statVal}>{toAr(sessionsToday)}</div>
-          <div className={styles.statLabel}>جلسات اليوم</div>
-        </div>
-        <div className={styles.statBox}>
-          <div className={styles.statVal}>{toAr(sessions.length)}</div>
-          <div className={styles.statLabel}>إجمالي الجلسات</div>
-        </div>
-      </div>
-
-      {/* Preset selector */}
-      <div className={styles.presets}>
-        {PRESETS.map(p => (
-          <button key={p.id}
-            className={`${styles.presetBtn} ${activeId === p.id ? styles.presetActive : ''}`}
-            style={{ '--pc': p.color }}
-            onClick={() => switchPreset(p.id)}>
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Custom text input */}
-      {activeId === 'custom' && (
-        <div className={styles.customWrap}>
-          <input className={styles.customInput}
-            value={customText}
-            onChange={e => updateCustomText(e.target.value)}
-            placeholder="اكتب ذكرك المخصص..."
-            dir="rtl" />
-        </div>
-      )}
-
-      {/* Main counter */}
-      <div className={`${styles.counterWrap} ${flash ? styles.counterFlash : ''}`}
-           style={{ '--cc': preset.color }}>
-
-        {/* Circular progress */}
-        <div className={styles.ring}>
-          <svg viewBox="0 0 200 200" className={styles.ringsvg}>
-            <circle cx="100" cy="100" r="88" className={styles.ringBg} />
-            <circle cx="100" cy="100" r="88" className={styles.ringFill}
-              style={{
-                strokeDasharray: `${2 * Math.PI * 88}`,
-                strokeDashoffset: `${2 * Math.PI * 88 * (1 - pct / 100)}`,
-                stroke: preset.color,
-              }} />
-          </svg>
-
-          {/* Tap button */}
-          <button className={styles.tapBtn} onClick={increment}
-            style={{ '--cc': preset.color }}>
-            <div className={styles.tapCount}>{toAr(count % target || (count > 0 ? target : 0))}</div>
-            <div className={styles.tapLabel}>
-              {activeId === 'custom' ? (customText || 'اضغط') : preset.ar || preset.label}
+      <div className={`nq-wrap ${styles.wrap}`}>
+        <div className={styles.grid}>
+          <section className={`nq-card ${styles.main}`} aria-label="العدّاد">
+            <Corners />
+            <div className={styles.presets} role="group" aria-label="الذكر">
+              {PRESETS.map(p => (
+                <button key={p.id} type="button" className={`nq-pill ${styles.preset} ${activeId === p.id ? 'on' : ''}`}
+                  aria-pressed={activeId === p.id} onClick={() => switchPreset(p.id)}>
+                  {p.id === 'custom' && <Icon name="pen" />}{p.label}
+                </button>
+              ))}
             </div>
-            {completed > 0 && (
-              <div className={styles.tapCompleted}>× {toAr(completed)}</div>
+
+            {activeId === 'custom' && (
+              <label className={`nq-input ${styles.custom}`}>
+                <Icon name="pen" />
+                <span className="nq-sr">نص الذكر المخصّص</span>
+                <input value={customText} onChange={e => updateCustomText(e.target.value)} placeholder="اكتب ذكرك المخصّص…" dir="rtl" />
+              </label>
             )}
-          </button>
-        </div>
 
-        {/* Progress text */}
-        <div className={styles.progress}>
-          <span className={styles.progressCurrent}>{toAr(count % target || (count > 0 ? target : 0))}</span>
-          <span className={styles.progressSep}>/</span>
-          <span className={styles.progressTarget}>{toAr(target)}</span>
-        </div>
+            <div className={`${styles.counterWrap} ${flash ? styles.flash : ''}`}>
+              <svg className={styles.ring} viewBox="-170 -170 340 340" aria-hidden="true">
+                <circle r="160" className={styles.halo} />
+                <circle r={R} className={styles.track} />
+                <circle r={R} className={styles.fill} transform="rotate(-90)"
+                  style={{ strokeDasharray: CIRC, strokeDashoffset: CIRC * (1 - ringFrac) }} />
+                {beads > 0 && Array.from({ length: beads }, (_, i) => {
+                  const a = (i / beads) * 2 * Math.PI - Math.PI / 2;
+                  const on = i < shownCount;
+                  return <circle key={i} cx={(156 * Math.cos(a)).toFixed(1)} cy={(156 * Math.sin(a)).toFixed(1)}
+                    r={beads > 40 ? 2.6 : 4} className={on ? styles.beadOn : styles.bead} />;
+                })}
+              </svg>
+              <button type="button" className={styles.tap} onClick={increment}
+                aria-label={`سبّح: ${activeId === 'custom' ? (customText.trim() || preset.label) : preset.label}، العدد ${toAr(shownCount)} من ${toAr(target)}`}>
+                <svg className={styles.star} viewBox="0 0 40 40" aria-hidden="true"><use href="#nq-star8" /></svg>
+                <span className={`${styles.count} nq-num`} aria-hidden="true">{toAr(shownCount)}</span>
+                <span className={styles.phrase} aria-hidden="true">{phrase}</span>
+                <span className={styles.of} aria-hidden="true">من {toAr(target)}</span>
+              </button>
+            </div>
 
-        {/* Completed rounds */}
-        {completed > 0 && (
-          <div className={styles.completedBadge} style={{ color: preset.color }}>
-            ✅ أكملت {toAr(completed)} {completed === 1 ? 'دورة' : 'دورات'}
-          </div>
-        )}
-      </div>
+            <div className={styles.under} aria-live="polite">
+              {completed > 0
+                ? <span className="nq-pill on"><Icon name="check" />أكملت {toAr(completed)} {completed === 1 ? 'دورة' : completed === 2 ? 'دورتين' : 'دورات'}</span>
+                : <span className={styles.hint}>اضغط الدائرة أو مفتاح المسافة أو Enter للتسبيح</span>}
+            </div>
 
-      {/* Actions */}
-      <div className={styles.actions}>
-        <button className={styles.resetBtn} onClick={reset}>↺ إعادة</button>
-        <div className={styles.targetRow}>
-          <span className={styles.targetLabel}>الهدف:</span>
-          {[33, 34, 99, 100, 1000].map(t => (
-            <button key={t}
-              className={`${styles.targetBtn} ${target === t ? styles.targetActive : ''}`}
-              style={{ '--pc': preset.color }}
-              onClick={() => setTarget(t)}>
-              {toAr(t)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Tap hint */}
-      <div className={styles.hint}>
-        اضغط على الدائرة أو اضغط Space/Enter للتسبيح
-      </div>
-
-      {/* Recent sessions */}
-      {sessions.length > 0 && (
-        <div className={styles.sessions}>
-          <h3 className={styles.sessionsTitle}>📊 آخر الجلسات</h3>
-          <div className={styles.sessionsList}>
-            {sessions.slice(0, 10).map(s => (
-              <div key={s.id} className={styles.sessionRow}>
-                <span className={styles.sessionPreset}>{s.preset}</span>
-                <span className={styles.sessionCount}>{toAr(s.count)} مرة</span>
-                <span className={styles.sessionTime}>{s.date} {s.time}</span>
+            <div className={styles.controls}>
+              <div className={styles.targetRow}>
+                <span className={styles.lbl}>الهدف</span>
+                <div className="nq-seg" role="group" aria-label="الهدف">
+                  {TARGETS.map(t => (
+                    <button key={t} type="button" aria-pressed={target === t} onClick={() => setTarget(t)}>{toAr(t)}</button>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-          {sessions.length > 10 && (
-            <p className={styles.moreHint}>+ {toAr(sessions.length - 10)} جلسة أخرى</p>
-          )}
+              <button type="button" className="nq-btn ghost sm" onClick={reset} disabled={count === 0}>
+                <Icon name="repeat" />تصفير العدّاد
+              </button>
+            </div>
+          </section>
+
+          <aside className={styles.side}>
+            <div className={styles.stats}>
+              <div className={`nq-card ${styles.stat} ${styles.statWide}`}>
+                <Badge8 icon="beads" size={52} />
+                <div><b className="nq-num">{toAr(totalToday)}</b><span>تسبيحة اليوم</span></div>
+              </div>
+              <div className={`nq-card ${styles.stat}`}>
+                <div><b className="nq-num">{toAr(sessionsToday)}</b><span>جلسات اليوم</span></div>
+              </div>
+              <div className={`nq-card ${styles.stat}`}>
+                <div><b className="nq-num">{toAr(sessions.length)}</b><span>كل الجلسات</span></div>
+              </div>
+            </div>
+
+            <section className={`nq-card ${styles.history}`} aria-labelledby="tb-hist">
+              <h2 id="tb-hist" className={styles.hTitle}><Icon name="list" />آخر الجلسات</h2>
+              {sessions.length === 0 ? (
+                <p className={styles.emptyH}>تظهر هنا كل دورة تكملها، مع الذكر ووقت إتمامه.</p>
+              ) : (
+                <ol className={styles.sessions}>
+                  {sessions.slice(0, 10).map(s => (
+                    <li key={s.id} className={styles.session}>
+                      <span className={styles.sName}>{s.preset}</span>
+                      <span className={`${styles.sCount} nq-num`}>{toAr(s.count)}</span>
+                      <span className={styles.sTime}>{dayLabel(s.date)} · {s.time}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {sessions.length > 10 && (
+                <p className={styles.moreH}>و{toAr(sessions.length - 10)} جلسة أخرى محفوظة</p>
+              )}
+            </section>
+          </aside>
         </div>
-      )}
+      </div>
     </div>
   );
 }

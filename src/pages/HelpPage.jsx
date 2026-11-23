@@ -1,148 +1,183 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+// ─── Help: how to use each part of the site, as anchored FAQ sections ───────
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { PageHero, Icon, Badge8, toAr } from '../components/ornaments/Ornaments';
+import { normalizeArabic } from '../arabic';
 import styles from './HelpPage.module.css';
 
 const SECTIONS = [
   {
-    id: 'read', icon: '📖', title: 'قراءة القرآن الكريم', color: '#52b788',
+    id: 'read', icon: 'book', title: 'قراءة القرآن الكريم', link: '/reader',
     items: [
-      { q: 'كيف أقرأ سورة معينة؟', a: 'افتح القائمة الجانبية بضغط ☰ واختر السورة، أو ابحث عنها في صفحة البحث.' },
-      { q: 'كيف أغير حجم الخط؟', a: 'في شريط الأدوات اضغط أ− للتصغير أو أ+ للتكبير. يُحفظ تلقائياً.' },
-      { q: 'كيف أفعّل الترجمة؟', a: 'في شريط الأدوات اختر اللغة. تدعم 16 لغة تظهر تحت كل آية.' },
-      { q: 'كيف أستمع للتلاوة؟', a: 'اضغط أيقونة 🎧 لفتح مشغل الصوت واختر القارئ.' },
-      { q: 'كيف أنتقل لجزء معين؟', a: 'افتح القائمة الجانبية وانتقل لتبويب "أجزاء".' },
+      { q: 'كيف أفتح سورة معيّنة؟', a: 'افتح «المصحف» من القائمة العلوية، ثم اختر السورة من فهرس السور، أو اكتب اسمها في البحث أعلى الصفحة. ويمكنك كتابة رقم الآية مباشرة مثل ٢:٢٥٥.' },
+      { q: 'كيف أكبّر خط المصحف أو أغيّر نوعه؟', a: 'من أدوات القراءة في صفحة المصحف، أو من «الإعدادات ← القراءة والتلاوة» حيث تجد حجم الخط ونوعه (عثماني أو مبسّط) مع معاينة مباشرة. يُحفظ اختيارك تلقائياً.' },
+      { q: 'كيف أُظهر الترجمة تحت الآيات؟', a: 'اختر الترجمة من أدوات القراءة أو من «الإعدادات ← الترجمة الافتراضية». تتوفر ترجمات بأكثر من خمس عشرة لغة.' },
+      { q: 'كيف أقرأ تفسير آية؟', a: 'اضغط على الآية في المصحف ثم اختر «التفسير». تجد التفسير الميسّر وابن كثير والسعدي وغيرها.' },
+      { q: 'كيف أنتقل إلى جزء معيّن؟', a: 'من فهرس المصحف انتقل إلى تبويب «الأجزاء» واختر الجزء الذي تريده.' },
+      { q: 'هل يحفظ الموقع آخر موضع قرأت فيه؟', a: 'نعم، يُحفظ آخر موضع تلقائياً، وتجد زر «تابع» في الصفحة الرئيسية لتعود إليه.' },
     ],
   },
   {
-    id: 'hifz', icon: '📚', title: 'نظام الحفظ', color: '#c9a84c',
+    id: 'listen', icon: 'head', title: 'الاستماع إلى التلاوة', link: '/reader',
     items: [
-      { q: 'كيف أبدأ تسجيل حفظي؟', a: 'اذهب لصفحة /hifz واختر السورة وحدد حالتها.' },
-      { q: 'ما هو الورد اليومي؟', a: 'مقطع تحدده يومياً للحفظ أو المراجعة مع تسجيل سلسلة أيام.' },
-      { q: 'هل يتزامن الحفظ على أجهزة متعددة؟', a: 'نعم — عند تسجيل الدخول يتزامن حفظك تلقائياً.' },
-      { q: 'ما هي الإنجازات؟', a: 'شارات تحفيزية عند حفظ عدد معين من السور أو الأجزاء.' },
+      { q: 'كيف أستمع إلى التلاوة؟', a: 'في صفحة المصحف اضغط زر التشغيل في مشغّل التلاوة أسفل الصفحة، أو اضغط على آية واختر «استمع». تُظلَّل الآية التي تُتلى.' },
+      { q: 'كيف أغيّر القارئ؟', a: 'من مشغّل التلاوة، أو من «الإعدادات ← القارئ». يتوفر عدد من كبار القرّاء.' },
+      { q: 'كيف أكرّر مقطعاً للحفظ؟', a: 'في مشغّل التلاوة اختر التكرار وحدّد عدد المرات، فيعيد القارئ المقطع حتى تحفظه.' },
     ],
   },
   {
-    id: 'prayer', icon: '🕌', title: 'أوقات الصلاة والقبلة', color: '#10b981',
+    id: 'hifz', icon: 'grid', title: 'الحفظ والمراجعة', link: '/hifz',
     items: [
-      { q: 'كيف أعرف مواعيد الصلاة؟', a: 'اذهب لصفحة /prayer-times واكتب اسم مدينتك أو اضغط "تحديد موقعي".' },
-      { q: 'لماذا أختار طريقة الحساب؟', a: 'كل بلد له هيئة رسمية — اختر الهيئة الصحيحة لبلدك.' },
-      { q: 'كيف أعرف اتجاه القبلة؟', a: 'اذهب لـ /qibla واضغط "تحديد موقعي" ثم "تفعيل البوصلة".' },
-      { q: 'كيف أفعّل منبّه الصلاة؟', a: 'في صفحة أوقات الصلاة اضغط 🔕 بجانب أي صلاة لتفعيل المنبّه.' },
+      { q: 'كيف أبدأ تسجيل حفظي؟', a: 'افتح «الحفظ والمراجعة»، واختر السورة، وحدّد حالتها: لم أبدأ، أو أحفظها الآن، أو حفظتها، أو أراجعها.' },
+      { q: 'ما الوِرد اليومي؟', a: 'مقدار تحدّده لنفسك كل يوم للحفظ أو المراجعة، ويُحسب لك عدد الأيام المتتالية التي التزمت فيها.' },
+      { q: 'هل يتزامن حفظي بين أجهزتي؟', a: 'نعم، عند تسجيل الدخول يُحفظ تقدّمك في حسابك ويظهر على كل أجهزتك.' },
     ],
   },
   {
-    id: 'adhkar', icon: '📿', title: 'الأذكار والسبحة', color: '#f97316',
+    id: 'prayer', icon: 'mosque', title: 'مواقيت الصلاة والقبلة', link: '/prayer-times',
     items: [
-      { q: 'كيف أستخدم العدّاد في الأذكار؟', a: 'في صفحة /adhkar اضغط على أي ذكر لتوسيعه ثم اضغط زر العداد.' },
-      { q: 'كيف أستخدم السبحة الإلكترونية؟', a: 'اذهب لـ /tasbih، اختر الذكر المطلوب واضغط على الدائرة الكبيرة.' },
-      { q: 'هل يعمل الاهتزاز في السبحة؟', a: 'نعم على الأجهزة الداعمة — يمكن تفعيله أو إيقافه من الزر العلوي.' },
+      { q: 'كيف أعرف مواقيت الصلاة في مدينتي؟', a: 'افتح «مواقيت الصلاة» واكتب اسم مدينتك، أو اسمح للموقع بتحديد موقعك.' },
+      { q: 'لماذا أختار طريقة الحساب؟', a: 'تعتمد كل دولة هيئة رسمية لحساب المواقيت، فاختر الطريقة المعتمدة في بلدك لتطابق مواقيت مساجدها.' },
+      { q: 'كيف أفعّل التنبيه قبل الصلاة؟', a: 'في صفحة المواقيت فعّل التنبيه بجانب الصلاة التي تريدها، واسمح للمتصفح بإرسال الإشعارات.' },
+      { q: 'كيف أعرف اتجاه القبلة؟', a: 'افتح «القبلة» واسمح بتحديد الموقع؛ يظهر اتجاه الكعبة المشرّفة بالدرجة. على الجوال يمكنك تفعيل البوصلة لتتبّع الاتجاه وأنت تتحرك.' },
     ],
   },
   {
-    id: 'khatma', icon: '📿', title: 'الختمات', color: '#e879f9',
+    id: 'adhkar', icon: 'moon', title: 'الأذكار والسبحة', link: '/adhkar',
     items: [
-      { q: 'ما الفرق بين الختمة الشخصية والجماعية؟', a: 'الشخصية لتتبع ختمتك الفردية. الجماعية للتعاون مع الأهل بتوزيع الأجزاء.' },
-      { q: 'كيف أدعو شخصاً للختمة الجماعية؟', a: 'أنشئ ختمة في /khatma-group واحصل على الكود أو الرابط.' },
+      { q: 'كيف أستخدم عدّاد الأذكار؟', a: 'في «الأذكار والأدعية» اختر الفئة، ثم اضغط على الذكر ليُحسب، ويتقدّم العدّاد حتى يكتمل العدد المسنون.' },
+      { q: 'كيف أستخدم السبحة؟', a: 'افتح «السبحة»، واختر الذكر، ثم اضغط على الدائرة الكبيرة مع كل تسبيحة. يمكنك تحديد هدف يومي.' },
+      { q: 'هل تهتز السبحة مع كل ضغطة؟', a: 'نعم على الأجهزة التي تدعم الاهتزاز، ويمكنك إيقافه من إعدادات السبحة.' },
     ],
   },
   {
-    id: 'radio', icon: '📻', title: 'الراديو الإسلامي', color: '#38bdf8',
+    id: 'khatma', icon: 'users', title: 'الختمات', link: '/khatma-group',
     items: [
-      { q: 'كيف أشغّل محطة راديو؟', a: 'اذهب لـ /radio واضغط على أي بطاقة محطة — تشغيل فوري.' },
-      { q: 'لماذا بعض المحطات لا تشتغل؟', a: 'المحطات من Radio Browser وبعضها قد يتوقف — جرّب محطة أخرى في نفس الفئة.' },
-      { q: 'كيف أتحكم في مستوى الصوت؟', a: 'استخدم شريط الصوت في أعلى الصفحة أو زر كتم الصوت 🔇.' },
+      { q: 'ما الفرق بين ختماتي والختمة الجماعية؟', a: '«ختماتي» لمتابعة ختمتك الشخصية ووِردك اليومي. و«الختمة الجماعية» يجتمع عليها الأهل والأحباب فيتوزّعون الأجزاء، وتُهدى لروح من تحب.' },
+      { q: 'كيف أدعو غيري إلى ختمة جماعية؟', a: 'أنشئ الختمة ثم انسخ رابطها أو رمزها وأرسله؛ يختار كل مشارك جزءاً ويعلّمه عند إتمامه.' },
+      { q: 'هل يحتاج المشاركون إلى حساب؟', a: 'للمشاركة واختيار جزء يحتاج المشارك إلى تسجيل الدخول، وإن فتح الرابط قبل الدخول أُعيد إلى الختمة بعده تلقائياً.' },
     ],
   },
   {
-    id: 'account', icon: '👤', title: 'الحساب والإعدادات', color: '#6366f1',
+    id: 'radio', icon: 'radio', title: 'إذاعة القرآن', link: '/radio',
     items: [
-      { q: 'كيف أسجّل حساباً؟', a: 'اذهب لصفحة /signup وسجّل بالبريد الإلكتروني أو حساب Google.' },
-      { q: 'هل يمكنني استخدام التطبيق بدون حساب؟', a: 'نعم — معظم الميزات تعمل بدون حساب.' },
-      { q: 'كيف أحذف حسابي؟', a: 'من /settings في الأسفل يوجد رابط "حذف الحساب وجميع البيانات".' },
+      { q: 'كيف أشغّل إذاعة؟', a: 'افتح «إذاعة القرآن» واضغط على أي إذاعة ليبدأ البث مباشرة.' },
+      { q: 'لماذا لا تعمل بعض الإذاعات؟', a: 'الإذاعات بثّ مباشر من مصادرها، وقد يتوقف بعضها مؤقتاً. جرّب إذاعة أخرى أو عُد لاحقاً.' },
     ],
   },
   {
-    id: 'pwa', icon: '📱', title: 'تثبيت التطبيق', color: '#2dd4bf',
+    id: 'account', icon: 'user', title: 'الحساب والإعدادات', link: '/settings',
     items: [
-      { q: 'كيف أثبّت التطبيق على iPhone؟', a: 'Safari → أيقونة المشاركة ↑ → "إضافة إلى الشاشة الرئيسية".' },
-      { q: 'كيف أثبّته على Android؟', a: 'Chrome → ⋮ → "إضافة إلى الشاشة الرئيسية".' },
-      { q: 'هل يعمل بدون إنترنت؟', a: 'الهيكل الأساسي يعمل offline. القراءة والصوت تحتاج اتصالاً.' },
+      { q: 'هل أحتاج إلى حساب؟', a: 'لا، تعمل معظم الميزات بدون حساب وتُحفظ بياناتك على جهازك. الحساب يحفظ تقدّمك ويزامنه بين أجهزتك.' },
+      { q: 'كيف أنشئ حساباً؟', a: 'من «تسجيل الدخول» اختر «أنشئ حساباً مجانياً»، وسجّل بالبريد الإلكتروني أو بحساب Google إن كان متاحاً.' },
+      { q: 'كيف أغيّر المظهر إلى الوضع الليلي أو ورق المصحف؟', a: 'من «الإعدادات ← المظهر» اختر أحد الأوضاع: تلقائي، ليلي، نهاري، ورق المصحف، تباين عالٍ. ويمكنك تكبير النص وتقليل الحركة من المكان نفسه.' },
+      { q: 'نسيت كلمة المرور، ماذا أفعل؟', a: 'في صفحة تسجيل الدخول اضغط «نسيت كلمة المرور؟» واكتب بريدك، وستصلك رسالة فيها رابط لتعيين كلمة مرور جديدة.' },
+      { q: 'كيف أحذف حسابي أو أنزّل بياناتي؟', a: 'من «الإعدادات ← الحساب» تجد زر تنزيل نسخة من بياناتك، ورابط «حذف الحساب والبيانات».' },
+    ],
+  },
+  {
+    id: 'pwa', icon: 'phone', title: 'تثبيت التطبيق على الجوال', link: null,
+    items: [
+      { q: 'كيف أثبّته على iPhone؟', a: 'افتح الموقع في Safari، ثم اضغط زر المشاركة، واختر «إضافة إلى الشاشة الرئيسية».' },
+      { q: 'كيف أثبّته على Android؟', a: 'افتح الموقع في Chrome، ثم من قائمة المتصفح اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».' },
+      { q: 'هل يعمل بدون إنترنت؟', a: 'تفتح واجهة الموقع بدون اتصال، أما نص المصحف والتلاوات والمواقيت فتحتاج إلى اتصال لتحميلها.' },
     ],
   },
 ];
 
+const norm = s => normalizeArabic(String(s || '')).toLowerCase();
+
 export default function HelpPage() {
-  const [open,     setOpen]     = useState(null);
   const [openItem, setOpenItem] = useState(null);
   const [search,   setSearch]   = useState('');
+  const { hash } = useLocation();
 
-  const filtered = search.trim()
-    ? SECTIONS.map(sec => ({
-        ...sec,
-        items: sec.items.filter(item => item.q.includes(search) || item.a.includes(search)),
-      })).filter(sec => sec.items.length > 0)
-    : SECTIONS;
+  // jump to #section when arriving with an anchor
+  useEffect(() => {
+    if (!hash) return;
+    const el = document.getElementById(hash.slice(1));
+    if (el) setTimeout(() => el.scrollIntoView({ block: 'start' }), 50);
+  }, [hash]);
+
+  const q = norm(search.trim());
+  const filtered = useMemo(() => (q
+    ? SECTIONS.map(sec => ({ ...sec, items: sec.items.filter(it => norm(it.q).includes(q) || norm(it.a).includes(q)) }))
+        .filter(sec => sec.items.length > 0)
+    : SECTIONS), [q]);
+  const total = filtered.reduce((n, s) => n + s.items.length, 0);
 
   return (
     <div className={styles.page}>
-      <div className={styles.topBar}>
-        <Link to="/dashboard" className={styles.backBtn}>← رجوع</Link>
-        <h1 className={styles.pageTitle}>📘 شرح الاستخدام</h1>
-        <div style={{ width: 70 }} />
-      </div>
+      <PageHero eyebrow="خطوة بخطوة" title="شرح الاستخدام"
+        sub="إجابات مختصرة عن كل ما تحتاجه: القراءة، والاستماع، والحفظ، والصلاة، والختمات، وحسابك." />
 
-      <div className={styles.hero}>
-        <div className={styles.heroIcon}>🌿</div>
-        <div className={styles.heroText}>
-          <div className={styles.heroTitle}>مرحباً بك في نور القرآن</div>
-          <div className={styles.heroSub}>دليل شامل لكل ميزات التطبيق</div>
-        </div>
-      </div>
+      <div className={`nq-wrap ${styles.layout}`}>
+        <aside className={styles.side}>
+          <label className={`nq-input ${styles.search}`}>
+            <Icon name="search" />
+            <span className="nq-sr">ابحث في الأسئلة</span>
+            <input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث في الأسئلة…" />
+            {search && (
+              <button type="button" className={styles.clear} onClick={() => setSearch('')} aria-label="مسح البحث"><Icon name="x" /></button>
+            )}
+          </label>
+          <nav className={styles.toc} aria-label="أقسام الشرح">
+            {SECTIONS.map(s => (
+              <a key={s.id} href={`#${s.id}`} className={styles.tocLink}
+                onClick={e => { e.preventDefault(); document.getElementById(s.id)?.scrollIntoView({ block: 'start', behavior: 'smooth' }); history.replaceState(null, '', `#${s.id}`); }}>
+                <Icon name={s.icon} />{s.title}
+              </a>
+            ))}
+          </nav>
+        </aside>
 
-      <div className={styles.searchWrap}>
-        <span className={styles.searchIcon}>🔍</span>
-        <input className={styles.searchInput} value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="ابحث في الأسئلة الشائعة..." dir="rtl" />
-        {search && <button className={styles.clearSearch} onClick={() => setSearch('')}>✕</button>}
-      </div>
-
-      {filtered.map(sec => (
-        <div key={sec.id} className={styles.section} style={{ '--sec-color': sec.color }}>
-          <div className={styles.secHeader}
-            onClick={() => setOpen(open === sec.id ? null : sec.id)}>
-            <span className={styles.secIcon}>{sec.icon}</span>
-            <span className={styles.secTitle}>{sec.title}</span>
-            <span className={`${styles.secChevron} ${(open === sec.id || search) ? styles.secChevronOpen : ''}`}>‹</span>
-          </div>
-
-          {(open === sec.id || search) && (
-            <div className={styles.secBody}>
-              {sec.items.map((item, idx) => {
-                const itemKey = `${sec.id}-${idx}`;
-                return (
-                  <div key={idx} className={styles.faqItem}>
-                    <div className={styles.faqQ}
-                      onClick={() => setOpenItem(openItem === itemKey ? null : itemKey)}>
-                      <span className={styles.faqQText}>{item.q}</span>
-                      <span className={`${styles.faqChevron} ${openItem === itemKey ? styles.faqChevronOpen : ''}`}>‹</span>
-                    </div>
-                    {openItem === itemKey && (
-                      <div className={styles.faqA}>{item.a}</div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+        <div className={styles.main}>
+          {q && (
+            <p className={styles.found} role="status">
+              {total ? `${toAr(total)} نتيجة لـ «${search.trim()}»` : `لا نتائج لـ «${search.trim()}». جرّب كلمة أخرى، أو راسل الدعم.`}
+            </p>
           )}
-        </div>
-      ))}
 
-      <div className={styles.contactCard}>
-        <div className={styles.contactIcon}>💬</div>
-        <div className={styles.contactText}>لم تجد إجابة لسؤالك؟</div>
-        <Link to="/support" className={styles.contactBtn}>تواصل مع الدعم</Link>
+          {filtered.map(sec => (
+            <section key={sec.id} id={sec.id} className={styles.section} aria-labelledby={`${sec.id}-h`}>
+              <header className={styles.secHead}>
+                <Badge8 icon={sec.icon} size={50} />
+                <h2 id={`${sec.id}-h`} className={styles.secTitle}>{sec.title}</h2>
+                {sec.link && <Link to={sec.link} className={`nq-btn ghost sm ${styles.open}`}>افتح الصفحة</Link>}
+              </header>
+              <div className={styles.items}>
+                {sec.items.map((item, idx) => {
+                  const key = `${sec.id}-${idx}`;
+                  const isOpen = !!q || openItem === key;
+                  return (
+                    <div key={key} className={styles.item} data-open={isOpen ? '1' : '0'}>
+                      <h3 className={styles.qWrap}>
+                        <button type="button" className={styles.q} aria-expanded={isOpen} aria-controls={`a-${key}`}
+                          onClick={() => setOpenItem(openItem === key ? null : key)}>
+                          <span>{item.q}</span>
+                          <Icon name="chev" className={styles.chev} />
+                        </button>
+                      </h3>
+                      <div id={`a-${key}`} className={styles.a} hidden={!isOpen}>{item.a}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+
+          <div className={`nq-card ${styles.contact}`}>
+            <Badge8 icon="chat" size={56} />
+            <div className={styles.contactText}>
+              <h2>لم تجد إجابة سؤالك؟</h2>
+              <p>راسل فريق الدعم وسنرد عليك في أقرب وقت، أو تصفّح دليل المميزات.</p>
+            </div>
+            <div className={styles.contactBtns}>
+              <Link to="/support" className="nq-btn gold"><Icon name="chat" />تواصل مع الدعم</Link>
+              <Link to="/docs" className="nq-btn ghost"><Icon name="list" />دليل المميزات</Link>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

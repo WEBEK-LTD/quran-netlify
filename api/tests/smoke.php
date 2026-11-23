@@ -135,6 +135,21 @@ function mailToken(string $to, string $kind): ?string
     return $found;
 }
 
+/** All logged emails to an address whose subject contains $needle (local mode). @return list<array<string,mixed>> */
+function mails(string $to, string $needle = ''): array
+{
+    global $LOCAL;
+    $file = $LOCAL . '/storage/mail/mail.log';
+    $out = [];
+    foreach (is_file($file) ? (file($file) ?: []) : [] as $line) {
+        $m = json_decode($line, true);
+        if (($m['to'] ?? '') === $to && ($needle === '' || str_contains((string) ($m['subject'] ?? ''), $needle))) {
+            $out[] = $m;
+        }
+    }
+    return $out;
+}
+
 function pdo(): ?PDO
 {
     global $LOCAL;
@@ -435,6 +450,12 @@ $cOther = req('GET', "/support/tickets/{$tid}/messages", null, $tc);
 check("other user can't read the ticket → 404", $cOther['status'] === 404, desc($cOther));
 $bp2 = req('POST', "/support/tickets/{$tid}/messages", ['body' => 'جربت مرة أخرى'], $tb);
 check('user replies', $bp2['status'] === 200 && (data($bp2)['is_admin'] ?? null) === false, desc($bp2));
+$ar2 = req('POST', "/admin/tickets/{$tid}/messages", ['body' => 'هل تم حل المشكلة؟ <b>x</b>'], $tadm);
+if ($LOCAL !== null) {
+    $notices = mails($B['email'], 'فريق الدعم');
+    check('admin replies email the user at most once per ticket per 10 minutes', $ar2['status'] === 200 && count($notices) === 1
+        && str_contains((string) ($notices[0]['text'] ?? ''), '/support'), count($notices) . ' ' . desc($ar2));
+}
 $cl2 = req('PATCH', "/admin/tickets/{$tid}", ['status' => 'closed'], $tadm);
 check('admin closes ticket', $cl2['status'] === 200 && (data($cl2)['status'] ?? '') === 'closed', desc($cl2));
 $closed = req('POST', "/support/tickets/{$tid}/messages", ['body' => 'مرحبا'], $tb);
@@ -494,6 +515,26 @@ $iu = req('PUT', '/admin/integrations', ['nope' => 'x'], $tadm);
 check('unknown integration key → 422', $iu['status'] === 422, desc($iu));
 $ib = req('PUT', '/admin/integrations', ['ai_provider' => 'gemini'], $tadm);
 check('bad ai_provider → 422', $ib['status'] === 422, desc($ib));
+$bad = 0;
+foreach ([['mail_transport' => 'pigeon'], ['smtp_host' => 'mail example.com'], ['smtp_host' => 'https://mail.example.com'], ['smtp_port' => '70000'],
+          ['smtp_port' => '0'], ['smtp_port' => 'abc'], ['smtp_encryption' => 'starttls']] as $badSmtp) {
+    $bad += req('PUT', '/admin/integrations', $badSmtp, $tadm)['status'] === 422 ? 1 : 0;
+}
+check('invalid SMTP settings → 422 (transport, host, port, encryption)', $bad === 7, (string) $bad);
+$SMTP_PW = 'smtp-Secret-pass-9876';
+$is = req('PUT', '/admin/integrations', ['mail_transport' => 'smtp', 'smtp_host' => '127.0.0.1', 'smtp_port' => '9', 'smtp_encryption' => 'ssl',
+    'smtp_username' => 'no-reply@example.com', 'smtp_password' => $SMTP_PW], $tadm);
+$sItems = [];
+foreach ((array) (data($is)['items'] ?? []) as $it) {
+    $sItems[$it['key']] = $it;
+}
+check('SMTP settings saved; password is a secret (never returned)', $is['status'] === 200 && ($sItems['smtp_port']['value'] ?? '') === '9'
+    && ($sItems['smtp_password']['secret'] ?? null) === true && ($sItems['smtp_password']['set'] ?? null) === true && !str_contains($is['raw'], $SMTP_PW), desc($is));
+if ($LOCAL !== null) {
+    $tl = req('POST', '/admin/integrations/test', ['target' => 'mail'], $tadm);
+    check("config mail_transport 'log' keeps priority over SMTP", (data($tl)['ok'] ?? null) === true, desc($tl));
+}
+req('PUT', '/admin/integrations', ['mail_transport' => '', 'smtp_host' => '', 'smtp_port' => '', 'smtp_encryption' => '', 'smtp_username' => '', 'smtp_password' => ''], $tadm);
 $ai = req('POST', '/ai/chat', ['messages' => [['role' => 'user', 'content' => 'ما معنى الفاتحة؟']], 'context' => ['surah' => 1, 'ayah' => 1, 'text' => 'بسم الله الرحمن الرحيم']], $ta);
 check('AI chat with an invalid key → friendly 502 ai_error, no key leak', $ai['status'] === 502 && errc($ai) === 'ai_error' && !str_contains($ai['raw'], $SECRET) && preg_match('/\p{Arabic}/u', (string) ($ai['json']['error']['message'] ?? '')) === 1, desc($ai));
 $aiv = req('POST', '/ai/chat', ['messages' => array_fill(0, 13, ['role' => 'user', 'content' => 'x'])], $ta);
@@ -609,6 +650,11 @@ if ($LOCAL !== null) {
     $A['pw'] = 'alice-pass-3';
     $li2 = req('POST', '/auth/login', ['email' => $A['email'], 'password' => $A['pw']], ['ip' => $A['ip']]);
     check('login with new password', $li2['status'] === 200, desc($li2));
+    $aMails = mails($A['email']);
+    $notice = mails($A['email'], 'تم تغيير كلمة المرور');
+    check('welcome email once after verification; password-changed notice after change + reset (no token inside)',
+        count(mails($A['email'], 'أهلاً بك')) === 1 && count($notice) === 2
+        && !preg_match('/[a-f0-9]{64}/', (string) ($notice[0]['text'] ?? '') . ($notice[1]['text'] ?? '')), count($aMails) . ' mails');
     $ta['token'] = (string) (data($li2)['token'] ?? '');
 }
 

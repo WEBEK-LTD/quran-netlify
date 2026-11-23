@@ -1,53 +1,39 @@
+// ─── Qibla ───────────────────────────────────────────────────────────────────
+// A large compass rose (32-point star, Arabic cardinal letters, the Kaaba on
+// the bearing, emerald needle). With a compass sensor the dial turns with the
+// device; without one it stays north-up and the bearing is shown in degrees.
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './QiblaPage.module.css';
-import { useT, useLang, useDir } from '../i18n';
-import LangSwitcher from '../components/LangSwitcher';
+import { PageHero, Icon, Badge8, Corners, toAr } from '../components/ornaments/Ornaments';
+import QiblaRose, { calcQibla, calcDistance, fmtKm } from './qibla/QiblaRose';
 
-// الكعبة المشرفة
-const KAABA = { lat: 21.4225, lon: 39.8262 };
-
-function toRad(deg) { return deg * Math.PI / 180; }
-function toDeg(rad) { return rad * 180 / Math.PI; }
-
-function calcQibla(lat, lon) {
-  const φ1 = toRad(lat),   λ1 = toRad(lon);
-  const φ2 = toRad(KAABA.lat), λ2 = toRad(KAABA.lon);
-  const Δλ = λ2 - λ1;
-  const y = Math.sin(Δλ) * Math.cos(φ2);
-  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-  return (toDeg(Math.atan2(y, x)) + 360) % 360;
-}
-
-function calcDistance(lat, lon) {
-  const R = 6371;
-  const φ1 = toRad(lat), φ2 = toRad(KAABA.lat);
-  const Δφ = toRad(KAABA.lat - lat), Δλ = toRad(KAABA.lon - lon);
-  const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
-  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-}
-
-function toArabicNums(n) {
-  return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+// المدينة المحفوظة في صفحة المواقيت — لعرض القبلة فوراً قبل طلب الموقع
+function savedPlace() {
+  try {
+    const lat = parseFloat(localStorage.getItem('nq_pray_lat'));
+    const lon = parseFloat(localStorage.getItem('nq_pray_lon'));
+    if (!isFinite(lat) || !isFinite(lon)) return null;
+    return { lat, lon, name: localStorage.getItem('nq_pray_city') || '' };
+  } catch { return null; }
 }
 
 export default function QiblaPage() {
-  const t = useT();
-  const dir = useDir();
-  const [location,  setLocation]  = useState(null);
-  const [heading,   setHeading]   = useState(null); // compass heading
-  const [qibla,     setQibla]     = useState(null); // qibla direction (true north)
+  const [saved] = useState(savedPlace);
+  const [location,  setLocation]  = useState(null);   // من GPS
+  const [heading,   setHeading]   = useState(null);   // compass heading
   const [error,     setError]     = useState('');
   const [loading,   setLoading]   = useState(false);
-  const [distance,  setDistance]  = useState(null);
   const [accuracy,  setAccuracy]  = useState(null);
   const [aligned,   setAligned]   = useState(false);
   // idle | needs-permission | listening | active | unavailable | denied
   const [compassStatus, setCompassStatus] = useState('idle');
-  const compassRef  = useRef(null);
-  const needleRef   = useRef(null);
   const stopRef     = useRef(null);   // يزيل مستمعي الحساسات الحاليين
   const gotHeading  = useRef(false);
+
+  const place = location || saved;
+  const qibla = place ? calcQibla(place.lat, place.lon) : null;          // من الشمال الحقيقي
+  const distance = place ? calcDistance(place.lat, place.lon) : null;
 
   function requestLocation() {
     setLoading(true); setError('');
@@ -59,18 +45,14 @@ export default function QiblaPage() {
         const { latitude: lat, longitude: lon, accuracy: acc } = pos.coords;
         setLocation({ lat, lon });
         setAccuracy(Math.round(acc));
-        const q = calcQibla(lat, lon);
-        const d = calcDistance(lat, lon);
-        setQibla(q);
-        setDistance(d);
         setLoading(false);
       },
       err => {
         setError(
-          err?.code === 1 ? 'رُفض إذن الموقع — اسمح بالوصول للموقع من إعدادات المتصفح' :
-          err?.code === 2 ? 'تعذّر تحديد موقعك حالياً — تأكد من تشغيل GPS' :
-          err?.code === 3 ? 'انتهت مهلة تحديد الموقع — حاول مرة أخرى' :
-                            'تعذّر تحديد موقعك — تأكد من تفعيل إذن الموقع'
+          err?.code === 1 ? 'رُفض إذن الموقع. اسمح بالوصول إلى الموقع من إعدادات المتصفح' :
+          err?.code === 2 ? 'تعذّر تحديد موقعك حالياً. تأكّد من تشغيل خدمة الموقع' :
+          err?.code === 3 ? 'انتهت مهلة تحديد الموقع. حاول مرة أخرى' :
+                            'تعذّر تحديد موقعك. تأكّد من تفعيل إذن الموقع'
         );
         setLoading(false);
       },
@@ -140,15 +122,15 @@ export default function QiblaPage() {
     setAligned(diff < 5);
   }, [heading, qibla]);
 
-  // The dial is rotated by -heading (north stays north on screen); the needle
-  // lives inside the dial, so it only needs the qibla bearing from north.
-  const needleRotation = qibla ?? 0;
-  // زاوية القبلة بالنسبة لاتجاه الجهاز (لعرض النص فقط)
+  // زاوية القبلة بالنسبة لاتجاه الجهاز (موجبة = إلى اليمين)
   const relativeQibla = heading !== null && qibla !== null
     ? (qibla - heading + 360) % 360
     : qibla ?? 0;
-
-  const compassRotation = heading !== null ? -heading : 0;
+  const turnText = (() => {
+    if (heading === null || qibla === null) return null;
+    const r = Math.round(relativeQibla);
+    return r <= 180 ? `استدر ${toAr(r)}° إلى اليمين` : `استدر ${toAr(360 - r)}° إلى اليسار`;
+  })();
 
   function handleRequestCompassPermission() {
     setError('');
@@ -165,155 +147,138 @@ export default function QiblaPage() {
     startCompass();
   }
 
+  const placeLabel = location ? 'موقعك الحالي' : saved ? (saved.name || 'مدينتك المحفوظة') : '';
+
   return (
     <div className={styles.page}>
-      <div className={styles.topBar}>
-        <Link to="/dashboard" className={styles.backBtn}>{t('back')}</Link>
-        <h1 className={styles.pageTitle}>{t('qiblaTitle')}</h1>
-        <LangSwitcher compact={true} />
-      </div>
-
-      {/* Info card */}
-      <div className={styles.infoCard}>
-        <div className={styles.kaabaIcon}>🕋</div>
-        <div>
-          <div className={styles.infoTitle}>{t('qiblaTitle')}</div>
-          <div className={styles.infoSub}>{t('qiblaDesc')}</div>
-        </div>
-        {distance && (
-          <div className={styles.distanceBadge}>
-            🗺 {toArabicNums(distance.toLocaleString())} كم
-          </div>
-        )}
-      </div>
-
-      {/* Compass */}
-      <div className={styles.compassWrap}>
-        <div
-          className={`${styles.compass} ${aligned ? styles.compassAligned : ''}`}
-          ref={compassRef}
-          style={{ transform: `rotate(${compassRotation}deg)` }}
-        >
-          {/* Cardinal directions */}
-          <div className={`${styles.cardinal} ${styles.cardinalN}`}>N</div>
-          <div className={`${styles.cardinal} ${styles.cardinalE}`}>E</div>
-          <div className={`${styles.cardinal} ${styles.cardinalS}`}>S</div>
-          <div className={`${styles.cardinal} ${styles.cardinalW}`}>W</div>
-
-          {/* Degree marks */}
-          {Array.from({ length: 36 }).map((_, i) => (
-            <div key={i} className={`${styles.tick} ${i % 9 === 0 ? styles.tickMajor : ''}`}
-              style={{ transform: `rotate(${i * 10}deg)` }} />
-          ))}
-
-          {/* Qibla needle */}
-          {qibla !== null && (
-            <div
-              className={`${styles.needle} ${aligned ? styles.needleAligned : ''}`}
-              ref={needleRef}
-              style={{ transform: `rotate(${needleRotation}deg)` }}
-            >
-              <div className={styles.needleHead}>🕋</div>
-              <div className={styles.needleLine} />
-              <div className={styles.needleTail} />
-            </div>
-          )}
-
-          {/* Center dot */}
-          <div className={styles.centerDot} />
-        </div>
-
-        {/* Alignment indicator */}
-        {qibla !== null && (
-          <div className={`${styles.alignBadge} ${aligned ? styles.alignBadgeOn : ''}`}>
-            {aligned ? t('qiblaFacing') : `اتجه ${Math.round(relativeQibla)}° نحو القبلة`}
-          </div>
-        )}
-
-        {/* Compass sensor status */}
-        {compassStatus === 'unavailable' && (
-          <div className={styles.sensorNote}>
-            🧭 لا يوجد مستشعر بوصلة في هذا الجهاز/المتصفح — القرص ثابت والشمال للأعلى. استخدم زاوية القبلة{qibla !== null ? ` (${Math.round(qibla)}° من الشمال)` : ''} مع بوصلة حقيقية.
-          </div>
-        )}
-        {compassStatus === 'denied' && (
-          <div className={styles.sensorNote}>🧭 تم رفض إذن البوصلة — يمكنك السماح به من إعدادات المتصفح ثم الضغط على "تفعيل البوصلة".</div>
-        )}
-        {compassStatus === 'listening' && (
-          <div className={styles.sensorNote}>🧭 جاري قراءة البوصلة… حرّك الهاتف على شكل رقم ٨ للمعايرة</div>
-        )}
-      </div>
-
-      {/* Stats */}
-      {qibla !== null && (
-        <div className={styles.statsRow}>
-          <div className={styles.statBox}>
-            <div className={styles.statVal}>{Math.round(qibla)}°</div>
-            <div className={styles.statLabel}>{t('qiblaTitle')}</div>
-          </div>
-          {heading !== null && (
-            <div className={styles.statBox}>
-              <div className={styles.statVal}>{Math.round(heading)}°</div>
-              <div className={styles.statLabel}>{t('deviceDirection')}</div>
-            </div>
-          )}
-          {accuracy !== null && (
-            <div className={styles.statBox}>
-              <div className={styles.statVal}>{toArabicNums(accuracy)}م</div>
-              <div className={styles.statLabel}>{t('locationAccuracy')}</div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Buttons */}
-      <div className={styles.btnRow}>
-        {!location ? (
-          <button className={styles.mainBtn} onClick={requestLocation} disabled={loading}>
-            {loading
-              ? <><span className={styles.spin}>⟳</span> جاري التحديد...</>
-              : '📡 تحديد موقعي'}
-          </button>
-        ) : (
-          <button className={styles.secondaryBtn} onClick={requestLocation}>
-            🔄 تحديث الموقع
-          </button>
-        )}
+      <PageHero
+        eyebrow="اتجاه الكعبة المشرّفة"
+        title="القبلة"
+        ayah="فَوَلِّ وَجْهَكَ شَطْرَ ٱلْمَسْجِدِ ٱلْحَرَامِ"
+        ayahRef="سورة البقرة · ١٤٤"
+        sub="حدّد موقعك ليُحسب اتجاه القبلة بالدرجة من الشمال الحقيقي، وفعّل البوصلة ليدور القرص مع هاتفك."
+      >
+        <button type="button" className="nq-btn gold sm" onClick={requestLocation} disabled={loading}>
+          {loading ? <span className={styles.spinner} aria-hidden="true" /> : <Icon name="pin" />}
+          {loading ? 'جارٍ تحديد الموقع…' : location ? 'تحديث موقعي' : 'تحديد موقعي'}
+        </button>
         {compassStatus !== 'active' && (
-          <button className={styles.compassBtn} onClick={handleRequestCompassPermission}>
-            🧭 تفعيل البوصلة
+          <button type="button" className="nq-btn ghost sm" onClick={handleRequestCompassPermission}>
+            <Icon name="compass" />تفعيل البوصلة
           </button>
         )}
-      </div>
+      </PageHero>
 
-      {error && <div className={styles.errorMsg}>⚠️ {error}</div>}
+      <div className={`nq-wrap ${styles.wrap}`}>
+        {error && <div className={styles.error} role="alert"><Icon name="x" />{error}</div>}
 
-      {/* Instructions */}
-      <div className={styles.instructionCard}>
-        <h3 className={styles.instrTitle}>{t('howToUse')}</h3>
-        <div className={styles.instrList}>
-          <div className={styles.instrStep}>
-            <span className={styles.instrNum}>١</span>
-            اضغط "تحديد موقعي" للحصول على موقعك الجغرافي
-          </div>
-          <div className={styles.instrStep}>
-            <span className={styles.instrNum}>٢</span>
-            اضغط "تفعيل البوصلة" للسماح بالوصول للبوصلة (خاصةً على iOS)
-          </div>
-          <div className={styles.instrStep}>
-            <span className={styles.instrNum}>٣</span>
-            أدر هاتفك حتى يشير السهم الذهبي 🕋 مباشرة للأمام
-          </div>
-          <div className={styles.instrStep}>
-            <span className={styles.instrNum}>٤</span>
-            عند مواجهة القبلة ستظهر رسالة خضراء تأكيداً ✅
+        <div className={styles.grid}>
+          <section className={`nq-card ${styles.roseCard} ${aligned ? styles.isAligned : ''}`} aria-label="بوصلة القبلة">
+            <Corners />
+            <div className={styles.roseWrap}>
+              <QiblaRose bearing={qibla} heading={heading} large aligned={aligned} className={styles.rose}
+                label={qibla != null ? `القبلة ${toAr(Math.round(qibla))} درجة من الشمال${heading != null ? `، والجهاز يتجه ${toAr(Math.round(heading))} درجة` : ''}` : 'بوصلة القبلة — حدّد موقعك أولاً'} />
+            </div>
+
+            <div className={styles.status} aria-live="polite">
+              {qibla === null ? (
+                <span className={styles.badge}><Icon name="pin" />حدّد موقعك لمعرفة اتجاه القبلة</span>
+              ) : aligned ? (
+                <span className={`${styles.badge} ${styles.badgeOk}`}><Icon name="check" />أنت الآن مستقبل القبلة</span>
+              ) : turnText ? (
+                <span className={styles.badge}><Icon name="compass" />{turnText}</span>
+              ) : (
+                <span className={styles.badge}><Icon name="compass" />القبلة {toAr(Math.round(qibla))}° من الشمال باتجاه عقارب الساعة</span>
+              )}
+            </div>
+
+            {compassStatus === 'unavailable' && (
+              <p className={styles.note}>لا يوجد مستشعر بوصلة في هذا الجهاز أو المتصفح، لذا يبقى القرص ثابتاً والشمال إلى الأعلى. استخدم زاوية القبلة{qibla !== null ? ` (${toAr(Math.round(qibla))}° من الشمال)` : ''} مع بوصلة حقيقية.</p>
+            )}
+            {compassStatus === 'denied' && (
+              <p className={styles.note}>رُفض إذن البوصلة. اسمح به من إعدادات المتصفح ثم اضغط «تفعيل البوصلة».</p>
+            )}
+            {compassStatus === 'needs-permission' && (
+              <p className={styles.note}>يحتاج جهازك إلى إذنك لقراءة البوصلة. اضغط «تفعيل البوصلة».</p>
+            )}
+            {compassStatus === 'listening' && (
+              <p className={styles.note}>جارٍ قراءة البوصلة… حرّك الهاتف على شكل الرقم ٨ لمعايرتها.</p>
+            )}
+          </section>
+
+          <div className={styles.side}>
+            <div className={`nq-card ${styles.bearing}`}>
+              <span className="nq-eyebrow">زاوية القبلة</span>
+              <b className={`${styles.big} nq-num`}>{qibla != null ? `${toAr(Math.round(qibla))}°` : '—'}</b>
+              <span className={styles.muted}>{qibla != null ? 'من الشمال الحقيقي باتجاه عقارب الساعة' : 'لم يُحدَّد الموقع بعد'}</span>
+              {placeLabel && <span className="nq-pill on"><Icon name="pin" />{placeLabel}</span>}
+              {!location && saved && (
+                <button type="button" className={styles.linkBtn} onClick={requestLocation} disabled={loading}>استخدم موقعي الحالي بدلاً منها</button>
+              )}
+            </div>
+
+            <div className={styles.stats}>
+              <div className={`nq-card ${styles.stat}`}>
+                <Badge8 icon="globe" size={44} />
+                <div>
+                  <b className="nq-num">{distance != null ? `${fmtKm(distance)} كم` : '—'}</b>
+                  <span>إلى الكعبة المشرّفة</span>
+                </div>
+              </div>
+              <div className={`nq-card ${styles.stat}`}>
+                <Badge8 icon="compass" size={44} />
+                <div>
+                  <b className="nq-num">{heading !== null ? `${toAr(Math.round(heading))}°` : '—'}</b>
+                  <span>اتجاه الجهاز</span>
+                </div>
+              </div>
+              {accuracy !== null && (
+                <div className={`nq-card ${styles.stat}`}>
+                  <Badge8 icon="pin" size={44} />
+                  <div>
+                    <b className="nq-num">{toAr(accuracy)} م</b>
+                    <span>دقة الموقع</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Link to="/prayer-times" className={`nq-card ${styles.toPrayer}`}>
+              <Badge8 icon="mosque" size={44} />
+              <span><b>مواقيت الصلاة</b><small>مواقيت مدينتك والصلاة القادمة</small></span>
+              <Icon name="back" className={styles.flip} />
+            </Link>
           </div>
         </div>
-      </div>
 
-      {/* Dua */}
-      <div className={styles.duaCard}>
-        <div className={styles.duaText}>{t('qibla_dua')}</div>
+        <section className={styles.sec} aria-labelledby="qb-how">
+          <div className={styles.secHead}>
+            <span className="nq-eyebrow">خطوات قليلة</span>
+            <h2 id="qb-how" className="nq-h-sec">كيف تستخدم البوصلة</h2>
+          </div>
+          <ol className={styles.steps}>
+            {[
+              ['تحديد الموقع', 'اضغط «تحديد موقعي» لنحسب اتجاه القبلة من موقعك الجغرافي بدقة.'],
+              ['تفعيل البوصلة', 'اضغط «تفعيل البوصلة» للسماح بقراءة اتجاه الهاتف (مطلوب على أجهزة iOS).'],
+              ['الاستدارة', 'أمسك الهاتف أفقياً وأدِره حتى تصبح الكعبة تحت المؤشّر الذهبي أعلى القرص.'],
+              ['الاستقبال', 'عند مواجهة القبلة يتحوّل المؤشّر إلى اللون الأخضر وتظهر رسالة التأكيد.'],
+            ].map(([h, p], i) => (
+              <li key={i} className={`nq-card ${styles.step}`}>
+                <Badge8 size={48}>{toAr(i + 1)}</Badge8>
+                <h3>{h}</h3>
+                <p>{p}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className={styles.sec}>
+          <figure className={`nq-card ${styles.dua}`}>
+            <Corners />
+            <figcaption className="nq-eyebrow">دعاء</figcaption>
+            <blockquote className={styles.duaText}>اللهمّ بلّغنا الكعبة المشرّفة، وارزقنا زيارة بيتك الحرام</blockquote>
+          </figure>
+        </section>
       </div>
     </div>
   );

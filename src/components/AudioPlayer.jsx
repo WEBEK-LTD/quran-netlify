@@ -294,7 +294,7 @@ export default function AudioPlayer() {
 
       <div className={styles.meta}>
         <b title={`${readerObj.name} · ${meta[0]} · ${ayahText}`}>
-          {readerShort} · {meta[0]} · <span className={styles.ayahNo}>{ayahText}</span>
+          <span className={styles.rName}>{readerShort} · </span>{meta[0]} · <span className={styles.ayahNo}>{ayahText}</span>
         </b>
         <div className={styles.track} onClick={seekTo} onKeyDown={seekKey}
           role="slider" tabIndex={0} aria-label="موضع التلاوة"
@@ -371,6 +371,10 @@ export default function AudioPlayer() {
             </div>
             <button type="button" className={`nq-btn ghost sm ${styles.fromStart}`} onClick={() => { playSurah(); setShowMore(false); }}>
               <Icon name="play" />تشغيل السورة من أولها
+            </button>
+            <button type="button" className={`nq-btn ghost sm ${styles.menuClose}`}
+              onClick={() => { audioRef.current?.pause(); setShowMore(false); setGlobal({ showAudio: false, isPlaying: false }); }}>
+              <Icon name="x" />إغلاق المشغّل
             </button>
             <div className={styles.menuSec}>
               <span className={styles.menuLbl}>القارئ</span>

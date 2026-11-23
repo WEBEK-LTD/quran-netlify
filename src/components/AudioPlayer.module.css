@@ -1,6 +1,7 @@
 /* ── Floating player dock ──────────────────────────────────────────────── */
 .dock {
-  --dw: min(780px, calc(var(--cw, 100vw) - 32px));
+  --dw: min(860px, calc(var(--cw, 100vw) - 32px));
+  container: dock / inline-size;
   position: fixed; z-index: 44;
   bottom: var(--dock-bottom, 16px);
   inset-inline-start: calc(var(--side-w, 0px) + (var(--cw, 100vw) - var(--dw)) / 2);
@@ -48,6 +49,8 @@
 .sm { width: 42px; height: 42px; display: grid; place-items: center; border: 0; background: transparent; border-radius: 12px; color: var(--text); padding: 0; flex: none; }
 .sm:hover, .smOn { background: var(--hl); color: var(--gold); }
 .sm :global(.nq-ico) { width: 20px; height: 20px; }
+/* filled media glyphs: keep the stroke so the bar of ⏮ / ⏭ shows */
+.ctl :global(.nq-ico.fill) { stroke: currentColor; stroke-width: 1.6; }
 .close { color: var(--muted); }
 
 /* more menu */
@@ -73,6 +76,8 @@
 .range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--gold2); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--gold); cursor: pointer; }
 .range::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--gold2); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--gold); cursor: pointer; }
 .fromStart { justify-self: start; }
+.menuClose { display: none !important; justify-self: start; }
+.menuClose :global(.nq-ico) { width: 16px; height: 16px; }
 .fromStart :global(.nq-ico) { width: 16px; height: 16px; color: var(--gold); fill: currentColor; stroke: none; }
 .readers { display: grid; gap: 2px; max-height: 220px; overflow: auto; margin-inline: -6px; }
 .readerItem { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 0; background: transparent; text-align: start; font-size: .88rem; }
@@ -81,11 +86,16 @@
 .readerItem :global(.nq-ico) { width: 18px; height: 18px; }
 
 /* ── responsive ────────────────────────────────────────────────────────── */
-@media (max-width: 1000px) {
+/* repeat / speed pills only when there is room (both are also in the options menu) */
+@container dock (max-width: 820px) {
   .chips { display: none; }
 }
 @media (max-width: 760px) {
-  .dock { gap: 8px; padding: 7px 8px 7px 10px; border-radius: 18px; --dw: calc(100vw - 20px); inset-inline-start: 10px; }
+  /* leave the bottom-left corner to the assistant's floating button */
+  .dock { gap: 6px; padding: 7px 8px 7px 10px; border-radius: 18px; inset-inline-start: auto; left: 80px; right: 10px; width: auto; }
+  .rName { display: none; }
+  .close { display: none; }            /* moved into the options menu */
+  .menuClose { display: inline-flex !important; }
   .rc { display: none; }
   .meta b { font-size: .82rem; }
   .meta small { display: none; }

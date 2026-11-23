@@ -166,12 +166,12 @@ export default function Reader() {
   useEffect(() => {
     if (!state.scrollToAyah || loading || loadedSurah !== state.currentSurah) return;
     const target = state.scrollToAyah;
-    const t = setTimeout(() => {
+    // (no cleanup: clearing scrollToAyah below re-runs this effect)
+    setTimeout(() => {
       const el = document.getElementById(`ayah-${target}`);
       if (el) el.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
     }, 200);
     setGlobal({ scrollToAyah: null });
-    return () => clearTimeout(t);
   }, [state.scrollToAyah, state.currentSurah, loadedSurah, loading]);
 
   // Reading progress bar (page scroll)
@@ -222,7 +222,9 @@ export default function Reader() {
     setSel({ uid: item.uid, kufi: item.kufi });
     setBarOpen(true);
     const num = item.kufi;
-    setGlobal({ currentAyah: num });
+    // an open tafsir follows the selection
+    if (state.showTafsir) setGlobal({ currentAyah: num, tafsirAyah: num, tafsirSurah: state.currentSurah });
+    else setGlobal({ currentAyah: num });
     localStorage.setItem('nq_lastRead', JSON.stringify({ surah: state.currentSurah, ayah: num }));
     // حفظ تاريخ اليوم للـ streak المحلي (يشتغل حتى بدون حساب)
     const today = (() => {

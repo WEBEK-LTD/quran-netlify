@@ -197,6 +197,7 @@ final class AdminController
             return $id;
         });
         self::audit($r, 'user.message', 'user:' . $u['id'] . ' ' . $u['email'], ['ticket_id' => $id, 'subject' => $subject]);
+        SupportController::notifyUser($id, $body, true);
         return Reply::created(SupportController::ticketShape((array) Db::one(SupportController::ticketSql(false) . ' WHERE t.id = ?', [$id]), true));
     }
 
@@ -336,6 +337,22 @@ final class AdminController
                 if ($key === 'mail_from_name' && mb_strlen($value) > 100) {
                     throw ApiError::validation(['mail_from_name' => 'الاسم طويل جداً.']);
                 }
+                if ($key === 'mail_transport' && !in_array($value, ['server', 'smtp'], true)) {
+                    throw ApiError::validation(['mail_transport' => 'القيم المسموحة: server أو smtp.']);
+                }
+                if ($key === 'smtp_host' && (strlen($value) > 253
+                    || !preg_match('/^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/', $value))) {
+                    throw ApiError::validation(['smtp_host' => 'اسم الخادم غير صالح (مثال: mail.example.com).']);
+                }
+                if ($key === 'smtp_port' && (!preg_match('/^\d{1,5}$/', $value) || (int) $value < 1 || (int) $value > 65535)) {
+                    throw ApiError::validation(['smtp_port' => 'رقم المنفذ يجب أن يكون بين 1 و 65535.']);
+                }
+                if ($key === 'smtp_encryption' && !in_array($value, ['tls', 'ssl', 'none'], true)) {
+                    throw ApiError::validation(['smtp_encryption' => 'القيم المسموحة: tls أو ssl أو none.']);
+                }
+                if ($key === 'smtp_username' && strlen($value) > 254) {
+                    throw ApiError::validation(['smtp_username' => 'اسم المستخدم طويل جداً.']);
+                }
             }
             $values[(string) $key] = $value;
         }
@@ -371,9 +388,14 @@ final class AdminController
                 }
             case 'mail':
                 $to = (string) $r->user['email'];
-                [$text, $html] = Mailer::template('السلام عليكم،', 'هذه رسالة تجريبية للتأكد من أن إرسال البريد يعمل.', null, null, 'لا حاجة للرد.');
-                $ok = Mailer::send($to, 'رسالة تجريبية — ' . Settings::get('app_name'), $text, $html);
-                return ['ok' => $ok, 'message' => $ok ? 'تم إرسال رسالة تجريبية إلى ' . $to . '. تحقق من صندوق الوارد (والرسائل المزعجة).' : 'فشل إرسال البريد. تحقق من إعدادات البريد في الاستضافة.'];
+                $smtp = Mailer::transport() === 'smtp';
+                $ok = Mailer::sendTest($to, (string) $r->user['name']);
+                if ($ok) {
+                    $via = $smtp ? ' عبر SMTP (' . Integrations::get('smtp_host') . ')' : ' من خادم الموقع';
+                    return ['ok' => true, 'message' => 'تم إرسال رسالة تجريبية' . $via . ' إلى ' . $to . '. تحقق من صندوق الوارد (والرسائل المزعجة).'];
+                }
+                $why = Mailer::lastError();
+                return ['ok' => false, 'message' => 'فشل إرسال البريد' . ($smtp ? ' عبر SMTP' : '') . '. ' . ($why !== '' ? $why : 'تحقق من إعدادات البريد في الاستضافة.')];
             default:
                 if (!Integrations::googleConfigured()) {
                     return ['ok' => false, 'message' => 'يجب إدخال Client ID و Client Secret الخاصين بـ Google.'];
@@ -442,6 +464,7 @@ final class AdminController
         $status = $t['status'] === 'closed' ? 'closed' : 'pending';
         Db::exec('UPDATE support_tickets SET status = ?, updated_at = ? WHERE id = ?', [$status, Db::now(), (int) $t['id']]);
         self::audit($r, 'ticket.reply', 'ticket:' . $t['id']);
+        SupportController::notifyUser((int) $t['id'], $body, false);
         return $msg;
     }
 

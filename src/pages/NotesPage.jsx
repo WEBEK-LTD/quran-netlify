@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react';
+// ─── Notes ───────────────────────────────────────────────────────────────────
+// Personal notes on ayahs (nq_notes), merged with the account when signed in.
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { saveNote, loadNotes, deleteNote } from '../backend';
 import { SURAHS_META } from '../data';
 import { setGlobal } from '../store';
-import styles from './NotesPage.module.css';
-import { useT, useLang, useDir } from '../i18n';
-import LangSwitcher from '../components/LangSwitcher';
 import { normalizeArabic } from '../arabic';
+import { PageHero, Icon, Badge8, Corners, Divider, AyahMark, toAr } from '../components/ornaments/Ornaments';
+import { useAyahText } from './FavoritesPage/ayahText';
+import styles from './NotesPage.module.css';
 
 const LOCAL_KEY = 'nq_notes';
 function loadLocal() { try { const v = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; } }
@@ -28,8 +30,6 @@ function mergeNotes(server, local) {
 }
 
 export default function NotesPage() {
-  const t = useT();
-  const dir = useDir();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [notes,   setNotes]   = useState([]);
@@ -37,6 +37,7 @@ export default function NotesPage() {
   // editing: { surah, ayah (نص الحقل), text, origSurah?, origAyah? }
   const [editing, setEditing] = useState(null);
   const [filter,  setFilter]  = useState('');
+  const [order,   setOrder]   = useState('recent'); // recent | mushaf
   const [saving,  setSaving]  = useState(false);
   const [message, setMessage] = useState('');
   const [confirmDel, setConfirmDel] = useState(null); // { surah, ayah }
@@ -100,9 +101,10 @@ export default function NotesPage() {
     if (user) {
       let ok = await saveNote(user.id, surah, ayah, text).catch(() => false);
       if (ok && moveFrom) ok = await deleteNote(user.id, moveFrom.surah, moveFrom.ayah).catch(() => false);
-      if (ok === false) setMessage('⚠️ تعذّر حفظ الملاحظة على حسابك — حُفظت على هذا الجهاز فقط');
+      if (ok === false) setMessage('تعذّر حفظ الملاحظة على حسابك — حُفظت على هذا الجهاز فقط');
     }
     setEditing(null); setSaving(false);
+    setGlobal({ toast: 'حُفظت الملاحظة' });
   }
 
   async function doDelete(surah, ayah) {
@@ -112,7 +114,7 @@ export default function NotesPage() {
     saveLocal(loadLocal().filter(n => !sameAyah(n, surah, ayah)));
     if (user) {
       const ok = await deleteNote(user.id, surah, ayah).catch(() => false);
-      if (ok === false) setMessage('⚠️ تعذّر حذف الملاحظة من حسابك — حُذفت من هذا الجهاز فقط');
+      if (ok === false) setMessage('تعذّر حذف الملاحظة من حسابك — حُذفت من هذا الجهاز فقط');
     }
   }
 
@@ -122,140 +124,207 @@ export default function NotesPage() {
   }
 
   const qNorm = normalizeArabic(filter).trim();
-  const filtered = notes.filter(n => {
-    if (!qNorm) return true;
-    return normalizeArabic(n.text).includes(qNorm)
-      || normalizeArabic(SURAHS_META[n.surah-1]?.[0] || '').includes(qNorm)
-      || String(n.surah).includes(filter.trim());
-  });
+  const filtered = useMemo(() => {
+    const out = notes.filter(n => {
+      if (!qNorm) return true;
+      return normalizeArabic(n.text).includes(qNorm)
+        || normalizeArabic(SURAHS_META[n.surah - 1]?.[0] || '').includes(qNorm)
+        || String(n.surah).includes(filter.trim());
+    });
+    if (order === 'mushaf') out.sort((a, b) => a.surah - b.surah || a.ayah - b.ayah);
+    return out;
+  }, [notes, qNorm, filter, order]);
+  const surahCount = useMemo(() => new Set(notes.map(n => n.surah)).size, [notes]);
 
   return (
     <div className={styles.page}>
-      <div className={styles.topBar}>
-        <Link to="/reader" className={styles.backBtn}>{t('back')}</Link>
-        <h1>{t('notesTitle')}</h1>
-        <LangSwitcher compact={true} />
-        <button className={styles.newBtn} onClick={openNew}>{t('addNote')}</button>
-      </div>
+      <PageHero eyebrow="دفتر التدبّر" title="ملاحظاتي" sub="خواطرك وفوائدك على الآيات، محفوظة مع موضعها في المصحف.">
+        <button type="button" className="nq-btn gold" onClick={openNew}><Icon name="plus" />ملاحظة جديدة</button>
+      </PageHero>
 
-      <div className={styles.searchBar}>
-        <span>🔍</span>
-        <input type="text" {...{placeholder: t('search_notes')}} value={filter}
-          onChange={e => setFilter(e.target.value)} dir="rtl" />
-        {filter && <button onClick={() => setFilter('')}>✕</button>}
-      </div>
+      <div className={`nq-wrap ${styles.body}`}>
+        {!authLoading && !user && (
+          <div className={styles.notice} role="note">
+            <Icon name="lock" />
+            <span>ملاحظاتك محفوظة على هذا الجهاز فقط. سجّل الدخول لتصلك على كل أجهزتك.</span>
+            <Link to="/login" className="nq-btn ghost sm">تسجيل الدخول</Link>
+          </div>
+        )}
+        {message && <p className={styles.alert} role="alert"><Icon name="x" />{message}</p>}
 
-      {message && (
-        <p role="alert" style={{ color: '#f87171', fontSize: 13, textAlign: 'center', margin: '0 0 12px' }}>{message}</p>
-      )}
-
-      {confirmDel && (
-        <div className={styles.modalBackdrop} onClick={e => e.target === e.currentTarget && setConfirmDel(null)}>
-          <div className={styles.modal} role="alertdialog" aria-modal="true">
-            <h3>هل تريد حذف هذه الملاحظة؟</h3>
-            <p style={{ fontSize: 14, color: 'var(--text2)' }}>
-              {SURAHS_META[confirmDel.surah - 1]?.[0]} — الآية {confirmDel.ayah}
-            </p>
-            <div className={styles.modalActions}>
-              <button className={styles.cancelBtn} onClick={() => setConfirmDel(null)}>{t('cancel')}</button>
-              <button className={styles.saveBtn} style={{ background: '#ef4444', color: '#fff' }} autoFocus
-                onClick={() => doDelete(confirmDel.surah, confirmDel.ayah)}>🗑️ حذف</button>
+        {loading ? (
+          <div className={styles.grid} aria-busy="true" aria-label="جارٍ تحميل الملاحظات">
+            {[0, 1, 2].map(i => <div key={i} className={`nq-card ${styles.skel}`}><span /><span /><span /></div>)}
+          </div>
+        ) : notes.length === 0 ? (
+          <div className={`nq-card ${styles.empty}`}>
+            <Corners />
+            <Badge8 icon="pen" size={84} />
+            <h2 className={styles.emptyTitle}>دفترك ينتظر أول خاطرة</h2>
+            <p className={styles.emptyText}>اكتب ملاحظة على أي آية: فائدة سمعتها، أو معنى استوقفك، أو دعاء تذكّرته. تجدها هنا، وتنتقل منها إلى الآية في المصحف.</p>
+            <Divider />
+            <div className={styles.emptyActs}>
+              <button type="button" className="nq-btn gold" onClick={openNew}><Icon name="plus" />اكتب أول ملاحظة</button>
+              <Link to="/reader" className="nq-btn ghost"><Icon name="book" />افتح المصحف</Link>
             </div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div className={styles.tools}>
+              <label className={`nq-input ${styles.search}`}>
+                <Icon name="search" />
+                <input type="search" value={filter} onChange={e => setFilter(e.target.value)} dir="rtl"
+                  placeholder="ابحث في ملاحظاتك أو باسم السورة" aria-label="ابحث في الملاحظات" />
+                {filter && <button type="button" className={styles.clear} onClick={() => setFilter('')} aria-label="مسح البحث"><Icon name="x" /></button>}
+              </label>
+              <div className="nq-seg" role="group" aria-label="الترتيب">
+                <button type="button" aria-pressed={order === 'recent'} onClick={() => setOrder('recent')}>الأحدث</button>
+                <button type="button" aria-pressed={order === 'mushaf'} onClick={() => setOrder('mushaf')}>ترتيب المصحف</button>
+              </div>
+            </div>
+            <p className={styles.count} aria-live="polite">
+              <b className="nq-num">{toAr(filtered.length)}</b> {filtered.length === notes.length ? 'ملاحظة' : `من ${toAr(notes.length)} ملاحظة`}
+              <span aria-hidden="true"> · </span>على {toAr(surahCount)} سورة
+            </p>
+
+            {filtered.length === 0 ? (
+              <div className={`nq-card ${styles.noRes}`}>
+                <Badge8 icon="search" />
+                <p>لا توجد ملاحظة تطابق «{filter}». جرّب كلمة أخرى أو اسم سورة.</p>
+                <button type="button" className="nq-btn ghost sm" onClick={() => setFilter('')}>عرض كل الملاحظات</button>
+              </div>
+            ) : (
+              <ul className={styles.grid}>
+                {filtered.map(note => (
+                  <NoteCard key={noteKey(note)} note={note}
+                    onOpen={() => goToAyah(note.surah, note.ayah)}
+                    onEdit={() => openEdit(note)}
+                    onDelete={() => setConfirmDel({ surah: note.surah, ayah: note.ayah })} />
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </div>
+
+      {confirmDel && (
+        <Modal onClose={() => setConfirmDel(null)} role="alertdialog" labelId="del-title" small>
+          <Badge8 icon="x" />
+          <h2 id="del-title" className={styles.modalTitle}>حذف هذه الملاحظة؟</h2>
+          <p className={styles.muted}>سورة {SURAHS_META[confirmDel.surah - 1]?.[0]} · الآية {toAr(confirmDel.ayah)}. لا يمكن التراجع عن الحذف.</p>
+          <div className={styles.modalActions}>
+            <button type="button" className="nq-btn ghost" onClick={() => setConfirmDel(null)}>إلغاء</button>
+            <button type="button" className={`nq-btn ${styles.danger}`} autoFocus
+              onClick={() => doDelete(confirmDel.surah, confirmDel.ayah)}><Icon name="x" />حذف</button>
+          </div>
+        </Modal>
       )}
 
       {editing && (
-        <div className={styles.modalBackdrop} onClick={e => e.target === e.currentTarget && setEditing(null)}>
-          <div className={styles.modal}>
-            <h3>{isEditingExisting ? t('edit') : t('addNote')}</h3>
-            <div className={styles.modalFields}>
-              <div className={styles.fieldRow}>
-                <div className={styles.field}>
-                  <label>{t('surah_label')}</label>
-                  <select value={editing.surah}
-                    onChange={e => setEditing(v => ({ ...v, surah: parseInt(e.target.value), ayah: '1' }))}>
-                    {SURAHS_META.map((m, i) => <option key={i} value={i+1}>{i+1}. {m[0]}</option>)}
-                  </select>
-                </div>
-                <div className={styles.field}>
-                  <label>{t('ayah_label')}</label>
-                  <input type="number" min="1" max={maxAyah} inputMode="numeric"
-                    value={editing.ayah} onChange={e => setEditing(v => ({ ...v, ayah: e.target.value }))}
-                    aria-invalid={!ayahValid} />
-                </div>
-              </div>
-              {!ayahValid && (
-                <p style={{ color: '#f87171', fontSize: 12, margin: 0 }}>
-                  رقم الآية يجب أن يكون بين ١ و{String(maxAyah).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d])}
-                </p>
-              )}
-              {conflict && (
-                <p style={{ color: '#f59e0b', fontSize: 12, margin: 0 }}>
-                  ⚠️ توجد ملاحظة على هذه الآية وسيتم استبدالها
-                  {' '}
-                  {!isEditingExisting && (
-                    <button type="button"
-                      style={{ background: 'none', border: 'none', color: 'var(--gold)', textDecoration: 'underline', cursor: 'pointer', fontSize: 12, padding: 0 }}
-                      onClick={() => openEdit(conflict)}>
-                      (تعديل الملاحظة الموجودة بدلاً من ذلك)
-                    </button>
-                  )}
-                </p>
-              )}
-              <div className={styles.field}>
-                <label>{t('note_label')}</label>
-                <textarea rows={6} {...{placeholder: t('write_note')}} value={editing.text}
-                  onChange={e => setEditing(v => ({ ...v, text: e.target.value }))} dir="rtl" autoFocus />
-              </div>
-            </div>
-            <div className={styles.modalActions}>
-              <button className={styles.cancelBtn} onClick={() => setEditing(null)}>{t('cancel')}</button>
-              <button className={styles.saveBtn} onClick={handleSave} disabled={saving || !editing.text.trim() || !ayahValid}>
-                {saving ? '...' : '💾 حفظ'}
-              </button>
-            </div>
+        <Modal onClose={() => setEditing(null)} labelId="edit-title">
+          <h2 id="edit-title" className={styles.modalTitle}>{isEditingExisting ? 'تعديل الملاحظة' : 'ملاحظة جديدة'}</h2>
+          <div className={styles.fieldRow}>
+            <label className={styles.field}>
+              <span>السورة</span>
+              <select value={editing.surah}
+                onChange={e => setEditing(v => ({ ...v, surah: parseInt(e.target.value), ayah: '1' }))}>
+                {SURAHS_META.map((m, i) => <option key={i} value={i + 1}>{toAr(i + 1)}. {m[0]}</option>)}
+              </select>
+            </label>
+            <label className={`${styles.field} ${styles.ayahField}`}>
+              <span>الآية</span>
+              <input type="number" min="1" max={maxAyah} inputMode="numeric"
+                value={editing.ayah} onChange={e => setEditing(v => ({ ...v, ayah: e.target.value }))}
+                aria-invalid={!ayahValid} />
+            </label>
           </div>
-        </div>
-      )}
-
-      {loading ? (
-        <div className={styles.loading}><div className={styles.spinner} /></div>
-      ) : filtered.length === 0 ? (
-        <div className={styles.empty}>
-          <span>📝</span>
-          <p>{filter ? 'لا توجد نتائج' : 'لا توجد ملاحظات بعد'}</p>
-          <small>{filter ? 'جرّب كلمة أخرى' : 'اضغط + جديد أو ✏️ بجانب أي آية'}</small>
-          {!filter && <button className={styles.createBtn} onClick={openNew}>إنشاء أول ملاحظة</button>}
-        </div>
-      ) : (
-        <>
-          <p className={styles.count}>{filtered.length} ملاحظة</p>
-          <div className={styles.grid}>
-            {filtered.map((note, i) => {
-              const meta = SURAHS_META[note.surah - 1];
-              const date = note.updated_at ? new Date(note.updated_at).toLocaleDateString('ar-EG', { day:'numeric', month:'short' }) : '';
-              return (
-                <div key={noteKey(note)} className={styles.card}>
-                  <div className={styles.cardTop}>
-                    <div className={styles.ref} onClick={() => goToAyah(note.surah, note.ayah)}>
-                      <span className={styles.surahDot}>{note.surah}</span>
-                      <span>{meta?.[0]} — الآية {note.ayah}</span>
-                    </div>
-                    {date && <span className={styles.date}>{date}</span>}
-                  </div>
-                  <p className={styles.noteText}>{note.text}</p>
-                  <div className={styles.cardActions}>
-                    <button onClick={() => goToAyah(note.surah, note.ayah)}>{t('go_to_ayah')}</button>
-                    <button onClick={() => openEdit(note)}>✏️ تعديل</button>
-                    <button className={styles.deleteBtn} onClick={() => setConfirmDel({ surah: note.surah, ayah: note.ayah })}>🗑️</button>
-                  </div>
-                </div>
-              );
-            })}
+          {!ayahValid && (
+            <p className={styles.fieldErr}>رقم الآية يجب أن يكون بين ١ و{toAr(maxAyah)}</p>
+          )}
+          {ayahValid && <AyahPreview surah={editing.surah} ayah={ayahNum} />}
+          {conflict && (
+            <p className={styles.fieldWarn}>
+              توجد ملاحظة على هذه الآية وستُستبدل.
+              {!isEditingExisting && (
+                <> <button type="button" className={styles.linkBtn} onClick={() => openEdit(conflict)}>عدّل الملاحظة الموجودة بدلاً من ذلك</button></>
+              )}
+            </p>
+          )}
+          <label className={styles.field}>
+            <span>الملاحظة</span>
+            <textarea rows={6} placeholder="اكتب ملاحظتك…" value={editing.text}
+              onChange={e => setEditing(v => ({ ...v, text: e.target.value }))} dir="rtl" autoFocus />
+          </label>
+          <div className={styles.modalActions}>
+            <button type="button" className="nq-btn ghost" onClick={() => setEditing(null)}>إلغاء</button>
+            <button type="button" className="nq-btn gold" onClick={handleSave} disabled={saving || !editing.text.trim() || !ayahValid}>
+              <Icon name="check" />{saving ? 'جارٍ الحفظ…' : 'حفظ'}
+            </button>
           </div>
-        </>
+        </Modal>
       )}
     </div>
+  );
+}
+
+function Modal({ onClose, labelId, role = 'dialog', small, children }) {
+  const ref = useRef(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    const prev = document.activeElement;
+    const onKey = e => { if (e.key === 'Escape') closeRef.current(); };
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); try { prev?.focus?.(); } catch {} };
+  }, []);
+  return (
+    <div className="nq-overlay" style={{ zIndex: 200 }}>
+      <div className="nq-scrim" onClick={onClose} />
+      <div className={styles.modalPos}>
+        <div ref={ref} className={`nq-card ${styles.modal} ${small ? styles.modalSm : ''}`} role={role} aria-modal="true" aria-labelledby={labelId}>
+          <button type="button" className={`nq-ibtn ${styles.modalX}`} onClick={onClose} aria-label="إغلاق"><Icon name="x" /></button>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AyahPreview({ surah, ayah }) {
+  const { text, failed } = useAyahText(surah, ayah);
+  if (failed) return null;
+  return (
+    <div className={styles.preview}>
+      {text ? <p className={`nq-q ${styles.previewQ}`} lang="ar">{text} <AyahMark n={ayah} /></p> : <span className={styles.qWait}><i /></span>}
+    </div>
+  );
+}
+
+function NoteCard({ note, onOpen, onEdit, onDelete }) {
+  const meta = SURAHS_META[note.surah - 1];
+  const name = meta?.[0] || '';
+  const { text } = useAyahText(note.surah, note.ayah);
+  const date = note.updated_at ? new Date(note.updated_at).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  return (
+    <li className={`nq-card ${styles.card}`}>
+      <header className={styles.cardHead}>
+        <Badge8 size={46}>{toAr(note.surah)}</Badge8>
+        <div className={styles.cardTitle}>
+          <h3>سورة {name}</h3>
+          <span>الآية {toAr(note.ayah)}{date && <> · <time dateTime={note.updated_at}>{date}</time></>}</span>
+        </div>
+      </header>
+      <button type="button" className={styles.quote} onClick={onOpen} aria-label={`افتح سورة ${name} عند الآية ${toAr(note.ayah)} في المصحف`}>
+        {text
+          ? <span className={`nq-q ${styles.quoteQ}`} lang="ar">{text} <AyahMark n={note.ayah} /></span>
+          : <span className={styles.qWait} aria-hidden="true"><i /></span>}
+      </button>
+      <p className={styles.noteText}>{note.text}</p>
+      <footer className={styles.cardActs}>
+        <button type="button" className="nq-btn ghost sm" onClick={onOpen}><Icon name="book" />الآية في المصحف</button>
+        <button type="button" className="nq-btn ghost sm" onClick={onEdit}><Icon name="pen" />تعديل</button>
+        <button type="button" className={`nq-ibtn ${styles.del}`} onClick={onDelete} aria-label={`حذف الملاحظة على الآية ${toAr(note.ayah)} من سورة ${name}`}><Icon name="x" /></button>
+      </footer>
+    </li>
   );
 }

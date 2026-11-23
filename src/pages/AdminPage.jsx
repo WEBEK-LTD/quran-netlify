@@ -971,7 +971,14 @@ const FIELD_META = {
   anthropic_api_key:    { label: 'مفتاح Anthropic API', secret: true, ltr: true },
   mail_from_address:    { label: 'عنوان المرسل', placeholder: 'no-reply@nuralquran.net', ltr: true, type: 'email' },
   mail_from_name:       { label: 'اسم المرسل', placeholder: 'نور القرآن' },
+  mail_transport:       { label: 'طريقة الإرسال', select: [['', 'من خادم الموقع'], ['smtp', 'SMTP']] },
+  smtp_host:            { label: 'خادم SMTP', placeholder: 'mail.nuralquran.net', ltr: true },
+  smtp_port:            { label: 'المنفذ', placeholder: '465', ltr: true, type: 'number' },
+  smtp_username:        { label: 'اسم المستخدم', placeholder: 'no-reply@nuralquran.net', ltr: true },
+  smtp_password:        { label: 'كلمة المرور', secret: true, ltr: true },
+  smtp_encryption:      { label: 'التشفير', select: [['', 'تلقائي حسب المنفذ'], ['tls', 'TLS — المنفذ 587'], ['ssl', 'SSL — المنفذ 465'], ['none', 'بدون']] },
 };
+const SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_username', 'smtp_password', 'smtp_encryption'];
 
 const INTEGRATION_GROUPS = [
   {
@@ -986,8 +993,9 @@ const INTEGRATION_GROUPS = [
   },
   {
     id: 'mail', icon: '✉️', title: 'مرسل البريد', test: 'mail',
-    hint: 'العنوان والاسم اللذان تُرسل بهما رسائل تأكيد البريد واستعادة كلمة المرور.',
-    keys: ['mail_from_address', 'mail_from_name'],
+    hint: 'العنوان والاسم اللذان تُرسل بهما رسائل الموقع (تأكيد البريد، استعادة كلمة المرور، التنبيهات الأمنية، ورسائل الدعم)، وطريقة الإرسال: من خادم الموقع أو عبر SMTP.',
+    smtpHint: 'لصندوق بريد cPanel: الخادم mail.<نطاقك> (مثل mail.nuralquran.net)، المنفذ 465 مع SSL، واسم المستخدم هو عنوان البريد كاملاً — ويُفضّل أن يكون هو نفسه «عنوان المرسل».',
+    keys: ['mail_from_address', 'mail_from_name', 'mail_transport', ...SMTP_KEYS],
   },
 ];
 
@@ -1019,7 +1027,9 @@ function IntegrationsTab() {
   }, [res.data === null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const provider = draft.ai_provider ?? initialValue(byKey.ai_provider);
+  const transport = draft.mail_transport ?? initialValue(byKey.mail_transport);
   function visibleKeys(g) {
+    if (g.id === 'mail') return g.keys.filter(k => transport === 'smtp' || !SMTP_KEYS.includes(k));
     if (g.id !== 'ai') return g.keys;
     return g.keys.filter(k =>
       (k !== 'openai_api_key' && k !== 'anthropic_api_key') ||
@@ -1099,6 +1109,7 @@ function IntegrationsTab() {
                   onChange={v => setDraft(d => ({ ...d, [k]: v }))}
                   onClear={on => { setClear(c => ({ ...c, [k]: on })); if (on) setDraft(d => ({ ...d, [k]: '' })); }}/>
               ))}
+              {g.smtpHint && transport === 'smtp' && <p className={styles.integrationHint}>{g.smtpHint}</p>}
 
               {st.error && <div className={styles.formError} role="alert">⚠️ {st.error}</div>}
               <div className={styles.integrationActions}>

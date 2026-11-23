@@ -128,6 +128,8 @@
 
 /* ── responsive ────────────────────────────────────────────────────────── */
 @media (max-width: 760px) {
+  /* the ayah tools always sit above the dock's slot (keeps clear of the assistant button) */
+  .center, .center.withDock { --abar-bottom: calc(var(--dock-bottom, 78px) + var(--dock-h, 64px) + 10px); }
   .center { padding-bottom: 90px; gap: 14px; }
   .center.withDock { padding-bottom: 160px; }
   .page { padding: 12px; }

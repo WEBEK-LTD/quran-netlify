@@ -67,10 +67,6 @@ export default function SignupPage() {
     <AuthStage label="إنشاء حساب">
       <AuthHead title={t('signupTitle')} sub="حساب مجاني يحفظ تقدّمك في القراءة والحفظ، ويزامنه على كل أجهزتك." />
 
-      {settings.maintenance_mode && (
-        <Alert tone="warn">الموقع في صيانة مؤقتة، وقد لا يتاح إنشاء الحسابات حتى تنتهي.</Alert>
-      )}
-
       {settings.google_login && (<>
         <GoogleButton onClick={handleGoogle} disabled={loading}>التسجيل بحساب Google</GoogleButton>
         <OrLine>أو بالبريد الإلكتروني</OrLine>

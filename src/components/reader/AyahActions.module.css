@@ -3,7 +3,8 @@
   position: fixed; z-index: 42;
   bottom: var(--abar-bottom, 16px);
   inset-inline-start: calc(var(--side-w, 0px) + (var(--cw, 100vw) - var(--abar-w)) / 2);
-  --abar-w: min(820px, calc(var(--cw, 100vw) - 32px));
+  --abar-w: min(900px, calc(var(--cw, 100vw) - 32px));
+  container: abar / inline-size;
   width: var(--abar-w);
   display: flex; align-items: center; gap: 10px;
   padding: 8px 8px 8px 8px; padding-inline-start: 16px;
@@ -19,7 +20,8 @@
 @keyframes barIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 .ref { font-family: var(--f-title); font-weight: 700; font-size: 1.05rem; color: var(--gold); white-space: nowrap; }
-.barBtns { display: flex; gap: 2px; flex: 1; justify-content: flex-end; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.barBtns { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.barBtns > :first-child { margin-inline-start: auto; } /* pushes the buttons to the end, but never clips them */
 .barBtns::-webkit-scrollbar { display: none; }
 .bBtn { display: inline-flex; align-items: center; gap: 6px; padding: 0 11px; min-height: 42px; border-radius: 12px; border: 0; background: transparent; font-size: .84rem; font-weight: 500; color: var(--text); white-space: nowrap; flex: none; }
 .bBtn :global(.nq-ico) { width: 19px; height: 19px; color: var(--gold); }
@@ -36,7 +38,13 @@
 .iBtn :global(.nq-ico) { width: 17px; height: 17px; color: var(--gold); }
 .iBtn.pressed { border-color: var(--gold) !important; background: var(--hl) !important; }
 
-@media (max-width: 1100px) {
+/* narrow bar: first drop the reference; narrower still, drop the labels (icons keep their
+   aria-label/title) and bring the reference back */
+@container abar (max-width: 850px) {
+  .ref { display: none; }
+}
+@container abar (max-width: 720px) {
+  .ref { display: inline; }
   .bBtn { padding: 0 9px; }
   .bBtn span { display: none; }
   .bBtn :global(.nq-ico) { width: 21px; height: 21px; }

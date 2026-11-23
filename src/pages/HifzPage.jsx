@@ -1,22 +1,35 @@
-import { useState, useEffect } from 'react';
+// ─── Hifz ────────────────────────────────────────────────────────────────────
+// Hero ﴿ولقد يسرنا القرآن للذكر﴾, KPIs, 30 juz rings, the 114-surah heat map
+// (status by colour AND glyph in colour-blind / contrast modes), today's review
+// queue, the daily ward (form + 14-day record), distribution and achievements.
+// Data: useHifz (localStorage `nq_hifz`, synced to the account when signed in).
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useHifz, localDateStr } from '../hifzStore';
 import { useAuth } from '../hooks/useAuth';
-import { SURAHS_META, toArabicNum } from '../data';
+import { SURAHS_META, JUZ_DATA as JUZ_NAMES } from '../data';
 import { SURAH_AYAH_COUNT, JUZ_DATA, ACHIEVEMENTS, TOTAL_AYAHS, juzSurahRanges } from '../hifzData';
 import { setGlobal } from '../store';
+import { PageHero, Icon, Badge8, Pattern, Divider, toAr } from '../components/ornaments/Ornaments';
 import styles from './HifzPage.module.css';
-import { useT, useLang, useDir } from '../i18n';
-import LangSwitcher from '../components/LangSwitcher';
 
-const STATUS_LABELS = {
-  none:       { label: 'لم يبدأ',    color: '#6b7c65', bg: 'rgba(107,124,101,0.1)' },
-  inProgress: { label: 'قيد الحفظ',  color: '#c9a84c', bg: 'rgba(201,168,76,0.12)' },
-  completed:  { label: 'محفوظ ✓',    color: '#52b788', bg: 'rgba(82,183,136,0.12)' },
-  review:     { label: 'للمراجعة',   color: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
+// status → label, css class, glyph (glyph shows only with data-cb="on" / contrast)
+const STATUS = {
+  completed:  { label: 'محفوظة',       cls: 'mem',   glyph: '✓' },
+  review:     { label: 'تحتاج مراجعة', cls: 'rev',   glyph: '↻' },
+  inProgress: { label: 'قيد الحفظ',    cls: 'learn', glyph: '✎' },
+  none:       { label: 'لم تبدأ',      cls: 'none',  glyph: '' },
+};
+const STATUS_ORDER = ['completed', 'review', 'inProgress', 'none'];
+
+const ACH_ICON = {
+  first_surah: 'bookmark', short_surahs: 'star', five_surahs: 'list', ten_surahs: 'grid',
+  half_quran: 'book', full_quran: 'trophy', week_streak: 'calendar', month_streak: 'moon',
+  hundred_ayahs: 'doc', five_hundred: 'scroll', daily_ward: 'sun',
 };
 
-const NEXT_STATUS = { none: 'inProgress', inProgress: 'completed', completed: 'review', review: 'none' };
+const arNum = n => toAr(String(n).replace('.', '٫'));
+const sName = n => SURAHS_META[n - 1]?.[0] || '';
 
 // Advance `n` ayahs from (surah, ayah) across surah boundaries → last ayah of the range
 function advanceAyahs(surah, ayah, n) {
@@ -41,81 +54,36 @@ function countAyahs(s1, a1, s2, a2) {
 
 // Human-readable ward range (handles single-surah and multi-surah wards)
 function wardRangeText(w) {
-  const name = n => SURAHS_META[n - 1]?.[0] || '';
   const endSurah = w.endSurah || w.surah;
-  if (endSurah === w.surah) {
-    return `سورة ${name(w.surah)}: الآية ${w.startAyah} → ${w.endAyah}`;
-  }
-  return `من ${name(w.surah)} ${w.startAyah} إلى ${name(endSurah)} ${w.endAyah}`;
+  if (endSurah === w.surah) return `سورة ${sName(w.surah)}: الآيات ${toAr(w.startAyah)}–${toAr(w.endAyah)}`;
+  return `من ${sName(w.surah)} ${toAr(w.startAyah)} إلى ${sName(endSurah)} ${toAr(w.endAyah)}`;
 }
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function BigProgressRing({ pct }) {
-  const r = 54; const circ = 2 * Math.PI * r;
-  const offset = circ - (pct / 100) * circ;
-  return (
-    <svg width="140" height="140" viewBox="0 0 140 140" className={styles.ring}>
-      <circle cx="70" cy="70" r={r} fill="none" stroke="var(--border)" strokeWidth="10"/>
-      <circle cx="70" cy="70" r={r} fill="none"
-        stroke="url(#ringGrad)" strokeWidth="10"
-        strokeDasharray={circ} strokeDashoffset={offset}
-        strokeLinecap="round"
-        style={{ transform:'rotate(-90deg)', transformOrigin:'center', transition:'stroke-dashoffset 1s ease' }}
-      />
-      <defs>
-        <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="var(--green2)"/>
-          <stop offset="100%" stopColor="var(--gold)"/>
-        </linearGradient>
-      </defs>
-      <text x="70" y="66" textAnchor="middle" fill="var(--gold)" fontSize="18" fontWeight="700" fontFamily="Cairo">{pct}%</text>
-      <text x="70" y="84" textAnchor="middle" fill="var(--text3)" fontSize="10" fontFamily="Cairo"></text>
-    </svg>
-  );
+function wardShort(w) {
+  if (w.mode === 'juz') return `الجزء ${toAr(w.juz)}`;
+  const endSurah = w.endSurah || w.surah;
+  if (endSurah === w.surah) return `${sName(w.surah)} ${toAr(w.startAyah)}–${toAr(w.endAyah)}`;
+  return `${sName(w.surah)} ${toAr(w.startAyah)} ← ${sName(endSurah)} ${toAr(w.endAyah)}`;
 }
-
-function MiniBar({ pct, color = 'var(--gold)' }) {
-  return (
-    <div className={styles.miniBar}>
-      <div className={styles.miniBarFill} style={{ width: `${pct}%`, background: color }} />
-    </div>
-  );
-}
-
-function AchievementBadge({ achievement, unlocked }) {
-  return (
-    <div className={`${styles.badge} ${unlocked ? styles.badgeUnlocked : styles.badgeLocked}`}
-      title={achievement.desc}>
-      <span className={styles.badgeIcon}>{achievement.icon}</span>
-      <span className={styles.badgeTitle}>{achievement.title}</span>
-      {!unlocked && <div className={styles.badgeLock}>🔒</div>}
-    </div>
-  );
-}
-
-// ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function HifzPage() {
-  const t = useT();
-  const dir = useDir();
   const { user } = useAuth();
   const {
     hifz, setSurahStatus, setDailyWard, markWardDone,
-    completedSurahs, inProgressSurahs, memorizedAyahs, progressPct, todayDone, streak, bestStreak
+    completedSurahs, inProgressSurahs, memorizedAyahs, progressPct, todayDone, streak, bestStreak,
   } = useHifz(user?.id);
 
-  const [activeTab,  setActiveTab]  = useState('tracker');  // tracker | ward | stats | achievements
-  const [viewMode,   setViewMode]   = useState('surahs');   // surahs | juz
+  const [mapView,    setMapView]    = useState('map');       // map | list
+  const [picked,     setPicked]     = useState(null);        // surah number in the status sheet
+  const [queueAll,   setQueueAll]   = useState(false);
+  const [wardOpen,   setWardOpen]   = useState(false);
   const [wardForm,   setWardForm]   = useState({ surah: 1, startAyah: 1, endAyah: 7, mode: 'surah', juz: 1, count: 5 });
   const [wardError,  setWardError]  = useState('');
   const [notification, setNotification] = useState(null);
+  const wardRef = useRef(null);
 
-  // Request notification permission
+  // Offer to enable notifications on this device
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      setNotification('default');
-    }
+    if ('Notification' in window && Notification.permission === 'default') setNotification('default');
   }, []);
 
   async function requestNotifications() {
@@ -123,16 +91,14 @@ export default function HifzPage() {
     let perm;
     try { perm = await Notification.requestPermission(); } catch { perm = Notification.permission; }
     setNotification(perm);
-    if (perm === 'granted') {
-      await showTestNotification();
-    }
+    if (perm === 'granted') await showTestNotification();
   }
 
   // Shows a single confirmation notification. Android Chrome forbids
   // `new Notification()` — use the service worker registration when available.
   // NOTE: no daily schedule exists yet; we only confirm notifications work.
   async function showTestNotification() {
-    const title = 'نور القرآن 🌙';
+    const title = 'نور القرآن';
     const opts  = { body: 'تم تفعيل الإشعارات — تذكّر وردك اليومي من القرآن الكريم', icon: '/icon.svg' };
     try {
       if ('serviceWorker' in navigator) {
@@ -140,20 +106,15 @@ export default function HifzPage() {
           navigator.serviceWorker.ready,
           new Promise(r => setTimeout(() => r(null), 3000)),
         ]);
-        if (reg?.showNotification) { await reg.showNotification(title, opts); }
-        else { new Notification(title, opts); }
+        if (reg?.showNotification) await reg.showNotification(title, opts);
+        else new Notification(title, opts);
       } else {
         new Notification(title, opts);
       }
-      setGlobal({ toast: '✅ تم تفعيل الإشعارات على هذا الجهاز' });
+      setGlobal({ toast: 'تم تفعيل الإشعارات على هذا الجهاز' });
     } catch {
-      setGlobal({ toast: '⚠️ تعذّر عرض الإشعار على هذا المتصفح' });
+      setGlobal({ toast: 'تعذّر عرض الإشعار على هذا المتصفح' });
     }
-  }
-
-  function handleSurahStatusClick(surahNum) {
-    const current = hifz.surahStatus[surahNum] || 'none';
-    setSurahStatus(surahNum, NEXT_STATUS[current]);
   }
 
   function saveWard() {
@@ -164,41 +125,40 @@ export default function HifzPage() {
     if (mode === 'juz') {
       const juz = parseInt(wardForm.juz, 10);
       const row = JUZ_DATA[juz - 1];
-      if (!row) { setWardError('اختر جزءاً صحيحاً (1–30)'); return; }
+      if (!row) { setWardError('اختر جزءاً صحيحاً (١–٣٠)'); return; }
       const [, s1, a1, s2, a2] = row;
-      ward = { mode: 'juz', juz, surah: s1, startAyah: a1, endSurah: s2, endAyah: a2,
-               ayahCount: countAyahs(s1, a1, s2, a2) };
+      ward = { mode: 'juz', juz, surah: s1, startAyah: a1, endSurah: s2, endAyah: a2, ayahCount: countAyahs(s1, a1, s2, a2) };
     } else {
       const s1  = parseInt(wardForm.surah, 10);
       const max = SURAH_AYAH_COUNT[s1 - 1];
       const a1  = parseInt(wardForm.startAyah, 10);
       if (!max) { setWardError('اختر سورة صحيحة'); return; }
-      if (!Number.isFinite(a1) || a1 < 1 || a1 > max) {
-        setWardError(`آية البداية يجب أن تكون بين 1 و ${max}`); return;
-      }
+      if (!Number.isFinite(a1) || a1 < 1 || a1 > max) { setWardError(`آية البداية يجب أن تكون بين ١ و${toAr(max)}`); return; }
       if (mode === 'ayahs') {
         const n = parseInt(wardForm.count, 10);
-        if (!Number.isFinite(n) || n < 1 || n > 50) { setWardError('عدد الآيات يجب أن يكون بين 1 و 50'); return; }
+        if (!Number.isFinite(n) || n < 1 || n > 50) { setWardError('عدد الآيات يجب أن يكون بين ١ و٥٠'); return; }
         const { endSurah, endAyah } = advanceAyahs(s1, a1, n);
-        ward = { mode: 'ayahs', surah: s1, startAyah: a1, endSurah, endAyah,
-                 ayahCount: countAyahs(s1, a1, endSurah, endAyah) };
+        ward = { mode: 'ayahs', surah: s1, startAyah: a1, endSurah, endAyah, ayahCount: countAyahs(s1, a1, endSurah, endAyah) };
       } else {
         const a2 = parseInt(wardForm.endAyah, 10);
-        if (!Number.isFinite(a2) || a2 < a1 || a2 > max) {
-          setWardError(`آية النهاية يجب أن تكون بين ${a1} و ${max}`); return;
-        }
+        if (!Number.isFinite(a2) || a2 < a1 || a2 > max) { setWardError(`آية النهاية يجب أن تكون بين ${toAr(a1)} و${toAr(max)}`); return; }
         ward = { mode: 'surah', surah: s1, startAyah: a1, endSurah: s1, endAyah: a2, ayahCount: a2 - a1 + 1 };
       }
     }
-
     setDailyWard(ward);
-    setGlobal({ toast: '✅ تم تحديد وردك اليومي' });
+    setWardOpen(false);
+    setGlobal({ toast: 'تم تحديد وردك اليومي' });
   }
 
   function setWardField(field, raw) {
     const v = parseInt(raw, 10);
     setWardError('');
     setWardForm(w => ({ ...w, [field]: Number.isFinite(v) ? v : '' }));
+  }
+
+  function goToWard() {
+    setWardOpen(true);
+    requestAnimationFrame(() => wardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   const surahMax = SURAH_AYAH_COUNT[wardForm.surah - 1] || 7;
@@ -210,18 +170,17 @@ export default function HifzPage() {
     return { surah: s1, startAyah: a1, endSurah: s2, endAyah: a2, ayahCount: countAyahs(s1, a1, s2, a2) };
   })();
 
-  // Ward history chart (last 14 days)
+  // Ward record: last 14 days
   const last14 = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (13 - i));
     const dateStr = localDateStr(d);
     const rec = hifz.wardHistory?.find(h => h.date === dateStr);
-    return { dateStr, completed: !!rec?.completed, ayahs: rec?.wardAyahs || 0 };
+    return { d, dateStr, completed: !!rec?.completed, ayahs: rec?.wardAyahs || 0 };
   });
+  const done14 = last14.filter(d => d.completed).length;
 
-  // Stats
-  // Per-juz progress by ayah ranges: ayahs of completed surahs that fall
-  // inside the juz ÷ total ayahs of the juz
-  const juzProgress = JUZ_DATA.map(([juz]) => {
+  // Per-juz progress by ayah ranges: ayahs of completed surahs inside the juz ÷ ayahs of the juz
+  const juzProgress = useMemo(() => JUZ_DATA.map(([juz]) => {
     let done = 0, total = 0;
     for (const { surah, from, to } of juzSurahRanges(juz)) {
       const n = to - from + 1;
@@ -230,423 +189,428 @@ export default function HifzPage() {
     }
     const pct = total ? Math.floor((done / total) * 100) : 0;
     return { juz, done, total, pct: done === total && total ? 100 : pct };
-  });
+  }), [hifz.surahStatus]);
+  const fullJuz = juzProgress.filter(j => j.pct === 100).length;
+
+  const counts = useMemo(() => {
+    const c = { completed: 0, review: 0, inProgress: 0, none: 0 };
+    for (let n = 1; n <= 114; n++) c[hifz.surahStatus[n] || 'none'] = (c[hifz.surahStatus[n] || 'none'] || 0) + 1;
+    return c;
+  }, [hifz.surahStatus]);
+
+  // Today's queue: the ward, then surahs to review, then surahs being memorised
+  const queue = useMemo(() => {
+    const q = [];
+    for (let n = 1; n <= 114; n++) if (hifz.surahStatus[n] === 'review') q.push({ n, kind: 'review' });
+    for (let n = 1; n <= 114; n++) if (hifz.surahStatus[n] === 'inProgress') q.push({ n, kind: 'learn' });
+    return q;
+  }, [hifz.surahStatus]);
+  const queueShown = queueAll ? queue : queue.slice(0, hifz.dailyWard ? 4 : 5);
+  const todayCount = queue.length + (hifz.dailyWard && !todayDone ? 1 : 0);
+
+  const ward = hifz.dailyWard;
+  const unlocked = hifz.unlockedAchievements || [];
 
   return (
     <div className={styles.page}>
-      {/* Top bar */}
-      <div className={styles.topBar}>
-        <Link to="/" className={styles.backBtn}>{t('reader')}</Link>
-        <h1>{t('hifzTitle')}</h1>
-        <LangSwitcher compact={true} />
-        <Link to="/dashboard" className={styles.backBtn}>{t('dashboard')}</Link>
-      </div>
+      <PageHero
+        eyebrow="رحلة الحفظ"
+        title="ما حفظته، وما ينتظرك"
+        ayah="وَلَقَدْ يَسَّرْنَا ٱلْقُرْءَانَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍ"
+        ayahRef="سورة القمر · ١٧"
+        sub="خطوة كل يوم، ومراجعة لا تنقطع."
+      >
+        {ward ? (
+          <Link className="nq-btn gold" to={`/reader?surah=${ward.surah}&ayah=${ward.startAyah}`}>
+            <Icon name="book" />ورد اليوم: {wardShort(ward)}
+          </Link>
+        ) : (
+          <button type="button" className="nq-btn gold" onClick={goToWard}><Icon name="sun" />حدّد وردك اليومي</button>
+        )}
+        <Link className="nq-btn ghost" to="/dashboard"><Icon name="chart" />لوحة التقدّم</Link>
+      </PageHero>
 
-      {/* Hero stats */}
-      <div className={styles.heroCard}>
-        <BigProgressRing pct={progressPct} />
-        <div className={styles.heroStats}>
-          <div className={styles.heroStat}>
-            <span className={styles.heroVal}>{completedSurahs}</span>
-            <span className={styles.heroLbl}>{t('memorized_surahs')}</span>
+      <div className="nq-wrap">
+        {/* ── KPIs ── */}
+        <div className={styles.kpis}>
+          <div className={`nq-card ${styles.kpi}`}>
+            <b className="nq-num">{toAr(completedSurahs)}</b>
+            <span>سورة محفوظة</span>
+            <small>{toAr(memorizedAyahs)} آية من {toAr(TOTAL_AYAHS)}</small>
           </div>
-          <div className={styles.heroStat}>
-            <span className={styles.heroVal}>{memorizedAyahs.toLocaleString('ar')}</span>
-            <span className={styles.heroLbl}>{t('memorized_ayahs')}</span>
+          <div className={`nq-card ${styles.kpi}`}>
+            <b className="nq-num">{arNum(progressPct)}٪</b>
+            <span>من القرآن الكريم</span>
+            <span className={styles.kpiBar} aria-hidden="true"><i style={{ width: `${Math.min(100, progressPct)}%` }} /></span>
           </div>
-          <div className={styles.heroStat}>
-            <span className={styles.heroVal} style={{ color: '#f97316' }}>{streak} 🔥</span>
-            <span className={styles.heroLbl}>يوم متتالي</span>
+          <div className={`nq-card ${styles.kpi}`}>
+            <b className="nq-num">{toAr(streak)}</b>
+            <span>{streak === 1 ? 'يوم ورد' : 'يوماً متتالياً'}</span>
+            <small>أفضلها {toAr(bestStreak)}</small>
           </div>
-          <div className={styles.heroStat}>
-            <span className={styles.heroVal} style={{ color: 'var(--green3)' }}>{inProgressSurahs}</span>
-            <span className={styles.heroLbl}>قيد الحفظ</span>
+          <div className={`nq-card ${styles.kpi}`}>
+            <b className="nq-num">{toAr(todayCount)}</b>
+            <span>في قائمة اليوم</span>
+            <small>{toAr(counts.review)} للمراجعة · {toAr(inProgressSurahs)} قيد الحفظ</small>
           </div>
         </div>
 
-        {/* Ward status */}
-        {hifz.dailyWard && (
-          <div className={styles.wardStatus}>
-            <div className={styles.wardInfo}>
-              <span>الورد اليومي: {hifz.dailyWard.mode === 'juz' ? `الجزء ${toArabicNum(hifz.dailyWard.juz)}` : `سورة ${SURAHS_META[hifz.dailyWard.surah - 1]?.[0] || ''}`}</span>
-              <small>{wardRangeText(hifz.dailyWard)} ({hifz.dailyWard.ayahCount} آية)</small>
-            </div>
-            <button
-              className={`${styles.wardDoneBtn} ${todayDone ? styles.wardDoneDone : ''}`}
-              onClick={markWardDone}
-              disabled={todayDone}
-            >
-              {todayDone ? '✅ تم اليوم' : '☑ أنهيت وردي'}
-            </button>
+        {notification === 'default' && (
+          <div className={`nq-card ${styles.notif}`}>
+            <Badge8 icon="bell" size={44} />
+            <p>فعّل الإشعارات على هذا الجهاز. <small>التذكير اليومي التلقائي غير متاح بعد.</small></p>
+            <button type="button" className="nq-btn ghost sm" onClick={requestNotifications}>تفعيل</button>
           </div>
         )}
-      </div>
 
-      {/* Notification banner */}
-      {notification === 'default' && (
-        <div className={styles.notifBanner}>
-          <span>🔔 فعّل الإشعارات على هذا الجهاز (التذكير اليومي التلقائي غير متاح بعد)</span>
-          <button onClick={requestNotifications}>تفعيل</button>
-        </div>
-      )}
+        {/* ── Juz ── */}
+        <section className={styles.sec} aria-labelledby="hz-juz">
+          <div className={styles.secHead}>
+            <h2 id="hz-juz" className={styles.h2}>الأجزاء</h2>
+            <span className={styles.secMeta}>{toAr(fullJuz)} من ٣٠ جزءاً مكتمل الحفظ</span>
+          </div>
+          <ul className={styles.juzgrid}>
+            {juzProgress.map(({ juz, done, total, pct }) => (
+              <li key={juz} className={`nq-card ${styles.juz} ${pct === 100 ? styles.juzFull : ''}`}>
+                <span className={styles.ring} style={{ '--p': pct }} role="img" aria-label={`محفوظ ${toAr(pct)}٪`}>
+                  <b className="nq-num">{toAr(pct)}٪</b>
+                </span>
+                <span className={styles.juzTxt}>
+                  <span className={styles.nm}>الجزء {toAr(juz)}</span>
+                  <small>{JUZ_NAMES[juz - 1]?.name} · {toAr(done)}/{toAr(total)} آية</small>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-      {/* Tabs */}
-      <div className={styles.tabs}>
-        {[
-          { id: 'tracker',      label: '📋 المتابعة' },
-          { id: 'ward',         label: '☀️ الورد اليومي' },
-          { id: 'stats',        label: '📊 الإحصائيات' },
-          { id: 'achievements', label: '🏆 الإنجازات' },
-        ].map(tk => (
-          <button
-            key={tk.id}
-            className={`${styles.tab} ${activeTab === tk.id ? styles.activeTab : ''}`}
-            onClick={() => setActiveTab(tk.id)}
-          >{tk.label}</button>
-        ))}
-      </div>
-
-      {/* ── TRACKER TAB ── */}
-      {activeTab === 'tracker' && (
-        <div className={styles.trackerTab}>
-          <div className={styles.trackerControls}>
-            <div className={styles.viewToggle}>
-              <button className={`${styles.vtBtn} ${viewMode === 'surahs' ? styles.vtActive : ''}`}
-                onClick={() => setViewMode('surahs')}>{t('surahs_view')}</button>
-              <button className={`${styles.vtBtn} ${viewMode === 'juz' ? styles.vtActive : ''}`}
-                onClick={() => setViewMode('juz')}>{t('juz_view')}</button>
-              <button
-                className={`${styles.vtBtn} ${viewMode === 'map' ? styles.vtActive : ''}`}
-                onClick={() => setViewMode('map')}>🗺 خريطة</button>
+        {/* ── Surah map + today's queue ── */}
+        <div className={styles.hgrid}>
+          <section className={`nq-card ${styles.mapCard}`} aria-labelledby="hz-map">
+            <div className={styles.mapHead}>
+              <h2 id="hz-map" className={styles.h2}>خريطة السور</h2>
+              <div className="nq-seg" role="group" aria-label="طريقة العرض">
+                <button type="button" aria-pressed={mapView === 'map'} onClick={() => setMapView('map')}>خريطة</button>
+                <button type="button" aria-pressed={mapView === 'list'} onClick={() => setMapView('list')}>قائمة</button>
+              </div>
             </div>
-            <div className={styles.legend}>
-              {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                <span key={k} className={styles.legendItem}>
-                  <span style={{ background: v.color, width: 8, height: 8, borderRadius: '50%', display: 'inline-block' }} />
-                  {v.label}
+            <div className={styles.lgd}>
+              {STATUS_ORDER.map(k => (
+                <span key={k}>
+                  <i className={`${styles.sw} ${styles[STATUS[k].cls]}`} aria-hidden="true"><b className={styles.g}>{STATUS[k].glyph}</b></i>
+                  {STATUS[k].label} <em className="nq-num">{toAr(counts[k] || 0)}</em>
                 </span>
               ))}
             </div>
-          </div>
+            {mapView === 'map' ? (
+              <div className={styles.hmap}>
+                {SURAHS_META.map((m, i) => {
+                  const n = i + 1;
+                  const st = STATUS[hifz.surahStatus[n] || 'none'];
+                  return (
+                    <button key={n} type="button" className={`${styles.cell} ${styles[st.cls]}`}
+                      onClick={() => setPicked(n)} title={`${m[0]} — ${st.label}`}
+                      aria-label={`${toAr(n)} ${m[0]}: ${st.label}`}>
+                      <span className={styles.n}>{toAr(n)}</span>
+                      {st.glyph && <span className={styles.g} aria-hidden="true">{st.glyph}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={styles.slist}>
+                {SURAHS_META.map((m, i) => {
+                  const n = i + 1;
+                  const key = hifz.surahStatus[n] || 'none';
+                  const st = STATUS[key];
+                  return (
+                    <button key={n} type="button" className={styles.srow} onClick={() => setPicked(n)}
+                      aria-label={`${m[0]}: ${st.label}. غيّر الحالة`}>
+                      <Badge8 size={38}>{toAr(n)}</Badge8>
+                      <span className={styles.srowTxt}>
+                        <span className={styles.srowName}>{m[0]}</span>
+                        <small>{m[3]} · {toAr(m[2])} آية</small>
+                      </span>
+                      <span className={`${styles.stag} ${styles[st.cls]}`}><b className={styles.g}>{st.glyph}</b>{st.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <p className={styles.hint}>اضغط على أي سورة لتحديد حالة حفظها.</p>
+          </section>
 
-          {viewMode === 'surahs' ? (
-            <div className={styles.surahGrid}>
-              {SURAHS_META.map((meta, i) => {
-                const num = i + 1;
-                const status = hifz.surahStatus[num] || 'none';
-                const sl = STATUS_LABELS[status];
-                return (
-                  <div
-                    key={num}
-                    className={styles.surahCard}
-                    style={{ borderColor: sl.color + '44', background: sl.bg }}
-                    onClick={() => handleSurahStatusClick(num)}
-                    title={`اضغط لتغيير حالة الحفظ — ${sl.label}`}
-                  >
-                    <div className={styles.scNum} style={{ color: sl.color }}>{num}</div>
-                    <div className={styles.scName}>{meta[0]}</div>
-                    <div className={styles.scAyahs}>{meta[2]} آية</div>
-                    <div className={styles.scStatus} style={{ color: sl.color, background: sl.bg }}>
-                      {sl.label}
+          <section className={`nq-card ${styles.queue}`} aria-labelledby="hz-q">
+            <h2 id="hz-q" className={styles.h2}>مراجعة اليوم</h2>
+            {ward && (
+              <div className={`${styles.qitem} ${styles.qWard}`}>
+                <Badge8 size={42}>{toAr(ward.surah)}</Badge8>
+                <div className={styles.qtxt}>
+                  <span className={styles.nm}>{wardShort(ward)}</span>
+                  <small>{todayDone ? 'أتممت وردك اليوم، بارك الله فيك' : `ورد اليوم · ${toAr(ward.ayahCount)} آية`}</small>
+                </div>
+                <div className={styles.qacts}>
+                  <Link className="nq-btn ghost sm" to={`/reader?surah=${ward.surah}&ayah=${ward.startAyah}`}>اقرأ</Link>
+                  <button type="button" className={`nq-btn sm ${todayDone ? 'ghost' : 'gold'}`} onClick={markWardDone} disabled={todayDone}>
+                    <Icon name="check" />{todayDone ? 'تمّ اليوم' : 'أنهيت وردي'}
+                  </button>
+                </div>
+              </div>
+            )}
+            {queueShown.map(({ n, kind }) => (
+              <div key={n} className={styles.qitem}>
+                <Badge8 size={42}>{toAr(n)}</Badge8>
+                <div className={styles.qtxt}>
+                  <span className={styles.nm}>{sName(n)}</span>
+                  <small><i className={`${styles.qdot} ${styles[kind === 'review' ? 'rev' : 'learn']}`} aria-hidden="true" />{kind === 'review' ? 'تحتاج مراجعة' : 'قيد الحفظ'} · {toAr(SURAH_AYAH_COUNT[n - 1])} آية</small>
+                </div>
+                <div className={styles.qacts}>
+                  <Link className="nq-btn ghost sm" to={`/reader?surah=${n}&ayah=1`}>{kind === 'review' ? 'راجع' : 'تابع'}</Link>
+                  <button type="button" className="nq-btn ghost sm" onClick={() => setSurahStatus(n, 'completed')}
+                    aria-label={kind === 'review' ? `راجعت سورة ${sName(n)}` : `أتممت حفظ سورة ${sName(n)}`}>
+                    <Icon name="check" />{kind === 'review' ? 'راجعتها' : 'حفظتها'}
+                  </button>
+                </div>
+              </div>
+            ))}
+            {queue.length > queueShown.length && (
+              <button type="button" className={`nq-btn ghost sm ${styles.qmore}`} onClick={() => setQueueAll(true)}>
+                عرض الكل ({toAr(queue.length)})
+              </button>
+            )}
+            {!ward && queue.length === 0 && (
+              <div className={styles.qempty}>
+                <Divider />
+                <p>لا شيء في قائمة اليوم. حدّد وردك اليومي، أو علّم سورة بأنها «قيد الحفظ» أو «تحتاج مراجعة» من الخريطة.</p>
+                <button type="button" className="nq-btn gold sm" onClick={goToWard}><Icon name="sun" />حدّد وردك</button>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* ── Daily ward ── */}
+        <section className={styles.sec} aria-labelledby="hz-ward" ref={wardRef}>
+          <div className={styles.secHead}>
+            <h2 id="hz-ward" className={styles.h2}>الورد اليومي</h2>
+            <span className={styles.secMeta}>قليلٌ دائم خيرٌ من كثيرٍ منقطع</span>
+          </div>
+          <div className={styles.wgrid}>
+            <div className={`nq-card ${styles.wardCard}`}>
+              <Pattern />
+              {ward && !wardOpen && (
+                <div className={styles.wardNow}>
+                  <span className="nq-eyebrow">وردك الحالي</span>
+                  <p className={styles.wardName}>{ward.mode === 'juz' ? `الجزء ${toAr(ward.juz)}` : `سورة ${sName(ward.surah)}`}</p>
+                  <p className={styles.wardRange}>{wardRangeText(ward)} · {toAr(ward.ayahCount)} آية</p>
+                  <div className={styles.wardActs}>
+                    <button type="button" className={`nq-btn ${todayDone ? 'ghost' : 'gold'}`} onClick={markWardDone} disabled={todayDone}>
+                      <Icon name="check" />{todayDone ? 'تمّ ورد اليوم' : 'أنهيت وردي'}
+                    </button>
+                    <button type="button" className="nq-btn ghost" onClick={() => setWardOpen(true)}><Icon name="pen" />تغيير الورد</button>
+                  </div>
+                </div>
+              )}
+              {(!ward || wardOpen) && (
+                <div className={styles.wardForm}>
+                  <h3 className={styles.h3}>{ward ? 'تغيير الورد اليومي' : 'حدّد وردك اليومي'}</h3>
+                  <div className="nq-seg" role="group" aria-label="طريقة تحديد الورد">
+                    {[['surah', 'بالسورة'], ['juz', 'بالجزء'], ['ayahs', 'بعدد الآيات']].map(([m, l]) => (
+                      <button key={m} type="button" aria-pressed={wardForm.mode === m}
+                        onClick={() => { setWardError(''); setWardForm(w => ({ ...w, mode: m })); }}>{l}</button>
+                    ))}
+                  </div>
+
+                  {(wardForm.mode === 'surah' || wardForm.mode === 'ayahs') && (
+                    <div className={styles.fields}>
+                      <label className={styles.field}>
+                        <span>{wardForm.mode === 'ayahs' ? 'البداية من سورة' : 'السورة'}</span>
+                        <select className={styles.ctl} value={wardForm.surah}
+                          onChange={e => {
+                            const s = parseInt(e.target.value, 10);
+                            setWardError('');
+                            setWardForm(w => ({ ...w, surah: s, startAyah: 1, endAyah: SURAH_AYAH_COUNT[s - 1] }));
+                          }}>
+                          {SURAHS_META.map((m, i) => <option key={i + 1} value={i + 1}>{toAr(i + 1)}. {m[0]}</option>)}
+                        </select>
+                      </label>
+                      <div className={styles.fieldRow}>
+                        <label className={styles.field}>
+                          <span>من الآية</span>
+                          <input className={styles.ctl} type="number" inputMode="numeric" min="1" max={surahMax}
+                            value={wardForm.startAyah} onChange={e => setWardField('startAyah', e.target.value)} />
+                        </label>
+                        {wardForm.mode === 'surah' && (
+                          <label className={styles.field}>
+                            <span>إلى الآية</span>
+                            <input className={styles.ctl} type="number" inputMode="numeric" min={wardForm.startAyah || 1} max={surahMax}
+                              value={wardForm.endAyah} onChange={e => setWardField('endAyah', e.target.value)} />
+                          </label>
+                        )}
+                        {wardForm.mode === 'ayahs' && (
+                          <label className={styles.field}>
+                            <span>عدد الآيات يومياً</span>
+                            <input className={styles.ctl} type="number" inputMode="numeric" min="1" max="50"
+                              value={wardForm.count} onChange={e => setWardField('count', e.target.value)} />
+                          </label>
+                        )}
+                      </div>
+                      {wardForm.mode === 'ayahs' && (
+                        <div className={styles.sugg} role="group" aria-label="اقتراحات">
+                          {[3, 5, 10, 20].map(n => (
+                            <button key={n} type="button" className={`nq-pill ${wardForm.count === n ? 'on' : ''}`} aria-pressed={wardForm.count === n}
+                              onClick={() => { setWardError(''); setWardForm(w => ({ ...w, count: n })); }}>
+                              {toAr(n)} آيات
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <p className={styles.summary}>
+                        {wardForm.mode === 'surah'
+                          ? <>عدد الآيات: <strong>{toAr(Number.isFinite(wardSurahCount) ? Math.max(0, wardSurahCount) : 0)}</strong> من سورة {sName(wardForm.surah)}</>
+                          : wardForm.count >= 1
+                            ? <>بـ{toAr(wardForm.count)} آيات يومياً تُتمّ القرآن في نحو <strong>{toAr(Math.ceil(TOTAL_AYAHS / wardForm.count))} يوماً</strong></>
+                            : 'أدخل عدد الآيات'}
+                      </p>
                     </div>
+                  )}
+
+                  {wardForm.mode === 'juz' && (
+                    <div className={styles.fields}>
+                      <label className={styles.field}>
+                        <span>الجزء</span>
+                        <select className={styles.ctl} value={wardForm.juz}
+                          onChange={e => { setWardError(''); setWardForm(w => ({ ...w, juz: parseInt(e.target.value, 10) })); }}>
+                          {Array.from({ length: 30 }, (_, i) => <option key={i + 1} value={i + 1}>الجزء {toAr(i + 1)} — {JUZ_NAMES[i]?.name}</option>)}
+                        </select>
+                      </label>
+                      {juzPreview && <p className={styles.summary}>{wardRangeText(juzPreview)} · <strong>{toAr(juzPreview.ayahCount)} آية</strong></p>}
+                      <p className={styles.summary}>حفظ ربع جزء يومياً يُتمّ القرآن في نحو أربعة أشهر.</p>
+                    </div>
+                  )}
+
+                  {wardError && <p className={styles.err} role="alert">{wardError}</p>}
+                  <div className={styles.wardActs}>
+                    <button type="button" className="nq-btn gold" onClick={saveWard}><Icon name="check" />حفظ الورد</button>
+                    {ward && <button type="button" className="nq-btn ghost" onClick={() => { setWardOpen(false); setWardError(''); }}>إلغاء</button>}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className={`nq-card ${styles.histCard}`}>
+              <h3 className={styles.h3}>سجل الأيام · آخر ١٤ يوماً</h3>
+              <ol className={styles.cal}>
+                {last14.map(d => (
+                  <li key={d.dateStr} className={`${styles.day} ${d.completed ? styles.dayDone : ''} ${d.dateStr === localDateStr() ? styles.dayToday : ''}`}
+                    title={d.dateStr}>
+                    <small>{d.d.toLocaleDateString('ar-EG', { weekday: 'short' })}</small>
+                    <b className="nq-num">{toAr(d.d.getDate())}</b>
+                    <span className={styles.dayMark} aria-hidden="true">{d.completed ? <Icon name="check" /> : null}</span>
+                    <span className="nq-sr">{d.completed ? 'أتممت الورد' : 'لم يُسجَّل ورد'}</span>
+                  </li>
+                ))}
+              </ol>
+              <div className={styles.histFoot}>
+                <span><b className="nq-num">{toAr(done14)}</b> من ١٤ يوماً</span>
+                <span><b className="nq-num">{toAr(streak)}</b> {streak === 1 ? 'يوم متواصل' : 'أيام متواصلة'}</span>
+                <span>الأفضل <b className="nq-num">{toAr(bestStreak)}</b></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Distribution + achievements ── */}
+        <section className={styles.sec} aria-labelledby="hz-ach">
+          <div className={styles.secHead}>
+            <h2 id="hz-ach" className={styles.h2}>الإحصاءات والإنجازات</h2>
+            <span className={styles.secMeta}>{toAr(unlocked.length)} من {toAr(ACHIEVEMENTS.length)} إنجازاً</span>
+          </div>
+          <div className={styles.sgrid}>
+            <div className={`nq-card ${styles.distCard}`}>
+              <h3 className={styles.h3}>توزيع الحفظ</h3>
+              {STATUS_ORDER.map(k => {
+                const c = counts[k] || 0;
+                const pct = Math.round((c / 114) * 100);
+                return (
+                  <div key={k} className={styles.dist}>
+                    <span className={styles.distLbl}><i className={`${styles.sw} ${styles[STATUS[k].cls]}`} aria-hidden="true"><b className={styles.g}>{STATUS[k].glyph}</b></i>{STATUS[k].label}</span>
+                    <span className={styles.distBar} aria-hidden="true"><i className={styles[STATUS[k].cls]} style={{ width: `${pct}%` }} /></span>
+                    <span className={`nq-num ${styles.distN}`}>{toAr(c)} سورة · {toAr(pct)}٪</span>
                   </div>
                 );
               })}
+              <div className={styles.distFoot}>
+                <div><b className="nq-num">{toAr(memorizedAyahs)}</b><small>آية محفوظة من {toAr(TOTAL_AYAHS)}</small></div>
+                <div><b className="nq-num">{toAr(bestStreak)}</b><small>أطول سلسلة ورد</small></div>
+              </div>
             </div>
-          ) : viewMode === 'map' ? (
-            /* خريطة الحفظ البصرية */
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(52px,1fr))', gap:4, direction:'rtl' }}>
-            {Array.from({ length: 114 }, (_, i) => {
-              const num = i + 1;
-              const status = hifz.surahStatus[num] || 'none';
-              const clr = { none:'transparent', inProgress:'#c9a84c', completed:'#52b788', review:'#60a5fa' }[status];
-              return (
-                <button key={num}
-                  title={SURAHS_META[i][0]}
-                  onClick={() => setSurahStatus(num,
-                    status==='none'?'inProgress':status==='inProgress'?'completed':status==='completed'?'review':'none')}
-                  style={{
-                    padding:'6px 2px', borderRadius:8, cursor:'pointer',
-                    border:'1px solid ' + (status==='none'?'var(--border)':clr),
-                    background: status==='none'?'var(--surface)': clr+'22',
-                    display:'flex', flexDirection:'column', alignItems:'center', gap:2, transition:'all .2s',
-                  }}>
-                  <span style={{fontSize:9,color:'var(--text3)'}}>{num}</span>
-                  <span style={{fontSize:8,fontWeight:700,color:status==='none'?'var(--text3)':clr,lineHeight:1.2,textAlign:'center'}}>
-                    {SURAHS_META[i][0].slice(0,5)}
-                  </span>
-                  <span style={{fontSize:10}}>
-                    {status==='completed'?'✓':status==='inProgress'?'◑':status==='review'?'↺':''}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <div style={{display:'flex',gap:12,marginTop:14,flexWrap:'wrap',fontSize:12,color:'var(--text3)'}}>
-            {[['var(--border)','لم يبدأ'],['#c9a84c','قيد الحفظ'],['#52b788','محفوظ'],['#60a5fa','للمراجعة']].map(([clr,lbl])=>(
-              <span key={lbl} style={{display:'flex',alignItems:'center',gap:5}}>
-                <span style={{width:12,height:12,borderRadius:3,background:clr+'44',border:`1px solid ${clr}`,display:'inline-block'}}/>
-                {lbl}
-              </span>
-            ))}
-          </div>
-        </div>
-          ) : (
-            <div className={styles.juzList}>
-              {juzProgress.map(({ juz, done, total, pct }) => (
-                <div key={juz} className={styles.juzRow}>
-                  <div className={styles.juzNum}>
-                    <span>{juz}</span>
-                    <small>الجزء</small>
-                  </div>
-                  <div className={styles.juzInfo}>
-                    <div className={styles.juzHeader}>
-                      <span>الجزء {toArabicNum(juz)}</span>
-                      <span className={styles.juzPct}>{done}/{total} آية</span>
-                    </div>
-                    <MiniBar pct={pct}
-                      color={pct === 100 ? 'var(--green3)' : pct > 0 ? 'var(--gold)' : 'var(--border)'} />
-                  </div>
-                  <div className={styles.juzPctBig}
-                    style={{ color: pct === 100 ? 'var(--green3)' : 'var(--gold)' }}>
-                    {pct}%
-                  </div>
-                </div>
-              ))}
+            <div className={`nq-card ${styles.achCard}`}>
+              <ul className={styles.ach}>
+                {ACHIEVEMENTS.map(a => {
+                  const on = unlocked.includes(a.id);
+                  return (
+                    <li key={a.id} className={`${styles.badge} ${on ? styles.badgeOn : ''}`}>
+                      <span className={styles.badgeIco}>
+                        <Badge8 icon={on ? (ACH_ICON[a.id] || 'star') : 'lock'} size={56} />
+                      </span>
+                      <b>{a.title}</b>
+                      <small>{toAr(a.desc)}</small>
+                      <span className="nq-sr">{on ? 'مكتسب' : 'غير مكتسب بعد'}</span>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
-          )}
-        </div>
+          </div>
+        </section>
+      </div>
+
+      {picked && (
+        <SurahSheet
+          n={picked}
+          status={hifz.surahStatus[picked] || 'none'}
+          onPick={st => { setSurahStatus(picked, st); setPicked(null); }}
+          onClose={() => setPicked(null)}
+        />
       )}
+    </div>
+  );
+}
 
-      {/* ── WARD TAB ── */}
-      {activeTab === 'ward' && (
-        <div className={styles.wardTab}>
-          <div className={styles.wardFormCard}>
-            <h3>تحديد الورد اليومي</h3>
-
-            <div className={styles.wardModes}>
-              {['surah', 'juz', 'ayahs'].map(m => (
-                <button
-                  key={m}
-                  className={`${styles.wardModeBtn} ${wardForm.mode === m ? styles.wardModeBtnActive : ''}`}
-                  onClick={() => setWardForm(w => ({ ...w, mode: m }))}
-                >
-                  {m === 'surah' ? '📖 بالسورة' : m === 'juz' ? '📕 بالجزء' : '🔢 بعدد الآيات'}
-                </button>
-              ))}
-            </div>
-
-            {(wardForm.mode === 'surah' || wardForm.mode === 'ayahs') && (
-              <div className={styles.wardFields}>
-                <div className={styles.wardField}>
-                  <label>{wardForm.mode === 'ayahs' ? 'البداية من سورة' : 'السورة'}</label>
-                  <select value={wardForm.surah}
-                    onChange={e => {
-                      const s = parseInt(e.target.value, 10);
-                      setWardError('');
-                      setWardForm(w => ({ ...w, surah: s, startAyah: 1, endAyah: SURAH_AYAH_COUNT[s-1] }));
-                    }}>
-                    {SURAHS_META.map((m, i) => (
-                      <option key={i+1} value={i+1}>{i+1}. {m[0]}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className={styles.wardFieldRow}>
-                  <div className={styles.wardField}>
-                    <label>من الآية</label>
-                    <input type="number" min="1" max={surahMax}
-                      value={wardForm.startAyah}
-                      onChange={e => setWardField('startAyah', e.target.value)} />
-                  </div>
-                  {wardForm.mode === 'surah' && (
-                    <div className={styles.wardField}>
-                      <label>إلى الآية</label>
-                      <input type="number" min={wardForm.startAyah || 1} max={surahMax}
-                        value={wardForm.endAyah}
-                        onChange={e => setWardField('endAyah', e.target.value)} />
-                    </div>
-                  )}
-                </div>
-                {wardForm.mode === 'surah' && (
-                  <div className={styles.wardSummary}>
-                    عدد الآيات: <strong>{Number.isFinite(wardSurahCount) ? Math.max(0, wardSurahCount) : 0} آية</strong>
-                    {' '}من سورة {SURAHS_META[wardForm.surah-1][0]}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {wardForm.mode === 'juz' && (
-              <div className={styles.wardFields}>
-                <div className={styles.wardField}>
-                  <label>الجزء</label>
-                  <select value={wardForm.juz}
-                    onChange={e => { setWardError(''); setWardForm(w => ({ ...w, juz: parseInt(e.target.value, 10) })); }}>
-                    {Array.from({ length: 30 }, (_, i) => (
-                      <option key={i+1} value={i+1}>الجزء {toArabicNum(i+1)}</option>
-                    ))}
-                  </select>
-                </div>
-                {juzPreview && (
-                  <div className={styles.wardSummary}>
-                    {wardRangeText(juzPreview)} — <strong>{juzPreview.ayahCount} آية</strong>
-                  </div>
-                )}
-                <div className={styles.wardSummary}>
-                  حفظ ربع جزء يومياً يُكمل القرآن في 4 أشهر 🎯
-                </div>
-              </div>
-            )}
-
-            {wardForm.mode === 'ayahs' && (
-              <div className={styles.wardFields} style={{ marginTop: 14 }}>
-                <div className={styles.wardField}>
-                  <label>عدد الآيات يومياً</label>
-                  <input type="number" min="1" max="50"
-                    value={wardForm.count}
-                    onChange={e => setWardField('count', e.target.value)} />
-                </div>
-                <div className={styles.wardSuggestions}>
-                  {[3, 5, 10, 20].map(n => (
-                    <button key={n}
-                      className={`${styles.suggBtn} ${wardForm.count === n ? styles.suggActive : ''}`}
-                      onClick={() => { setWardError(''); setWardForm(w => ({ ...w, count: n })); }}>
-                      {n} آيات
-                    </button>
-                  ))}
-                </div>
-                {wardForm.count >= 1 && (
-                  <div className={styles.wardSummary}>
-                    بـ {wardForm.count} آيات يومياً ستُنهي القرآن في{' '}
-                    <strong>{Math.ceil(TOTAL_AYAHS / wardForm.count)} يوم</strong>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {wardError && (
-              <div className={styles.wardError} role="alert">⚠️ {wardError}</div>
-            )}
-
-            <button className={styles.saveWardBtn} onClick={saveWard}>
-              💾 حفظ الورد اليومي
+// Choose a surah's memorisation status
+function SurahSheet({ n, status, onPick, onClose }) {
+  const boxRef = useRef(null);
+  const m = SURAHS_META[n - 1];
+  useEffect(() => {
+    const prev = document.activeElement;
+    boxRef.current?.querySelector('[aria-pressed="true"]')?.focus();
+    const onKey = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); prev?.focus?.(); };
+  }, [n]);
+  return (
+    <div className="nq-overlay" role="presentation">
+      <div className="nq-scrim" onClick={onClose} />
+      <div className={`nq-card ${styles.sheet}`} role="dialog" aria-modal="true" aria-labelledby="hz-sheet-t" ref={boxRef}>
+        <button type="button" className={`nq-ibtn ${styles.sheetX}`} onClick={onClose} aria-label="إغلاق"><Icon name="x" /></button>
+        <div className={styles.sheetHead}>
+          <Badge8 size={54}>{toAr(n)}</Badge8>
+          <div>
+            <h2 id="hz-sheet-t" className={styles.sheetName}>سورة {m[0]}</h2>
+            <small>{m[3]} · {toAr(m[2])} آية</small>
+          </div>
+        </div>
+        <div className={styles.sheetOpts} role="group" aria-label="حالة الحفظ">
+          {STATUS_ORDER.map(k => (
+            <button key={k} type="button" className={styles.opt} aria-pressed={status === k} onClick={() => onPick(k)}>
+              <i className={`${styles.sw} ${styles[STATUS[k].cls]}`} aria-hidden="true"><b className={styles.g}>{STATUS[k].glyph}</b></i>
+              {STATUS[k].label}
+              {status === k && <Icon name="check" className={styles.optOn} />}
             </button>
-          </div>
-
-          {/* Ward history */}
-          <div className={styles.wardHistoryCard}>
-            <h3>{t('days_record')} — {t('last_14_days')}</h3>
-            <div className={styles.wardCalendar}>
-              {last14.map((d, i) => (
-                <div key={i}
-                  className={`${styles.calDay} ${d.completed ? styles.calDone : ''}`}
-                  title={d.dateStr}>
-                  <span>{d.completed ? '✓' : '·'}</span>
-                </div>
-              ))}
-            </div>
-            <div className={styles.wardCalLegend}>
-              <span className={styles.calDone2}>✓ تم</span>
-              <span>· لم يتم</span>
-              <span className={styles.streakBadge}>🔥 {streak} يوم متواصل</span>
-            </div>
-          </div>
+          ))}
         </div>
-      )}
-
-      {/* ── STATS TAB ── */}
-      {activeTab === 'stats' && (
-        <div className={styles.statsTab}>
-          {/* Progress bars by status */}
-          <div className={styles.statsCard}>
-            <h3>توزيع الحفظ</h3>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => {
-              const count = Object.values(hifz.surahStatus).filter(s => s === k).length;
-              const pct = Math.round((count / 114) * 100);
-              return (
-                <div key={k} className={styles.distRow}>
-                  <span style={{ color: v.color, minWidth: 80 }}>{v.label}</span>
-                  <div className={styles.distBar}>
-                    <div style={{ width: `${pct}%`, background: v.color, height: '100%', borderRadius: 4, transition: 'width 0.8s ease' }} />
-                  </div>
-                  <span className={styles.distCount}>{count} سورة ({pct}%)</span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Summary stats */}
-          <div className={styles.statsSummaryGrid}>
-            <div className={styles.statsSummaryCard}>
-              <div className={styles.ssIcon}>📖</div>
-              <div className={styles.ssVal}>{memorizedAyahs.toLocaleString()}</div>
-              <div className={styles.ssLbl}>{t('memorized_ayahs')}</div>
-              <div className={styles.ssSub}>من أصل {TOTAL_AYAHS.toLocaleString()}</div>
-            </div>
-            <div className={styles.statsSummaryCard}>
-              <div className={styles.ssIcon}>📚</div>
-              <div className={styles.ssVal}>{completedSurahs}</div>
-              <div className={styles.ssLbl}>سورة مكتملة</div>
-              <div className={styles.ssSub}>من 114 سورة</div>
-            </div>
-            <div className={styles.statsSummaryCard}>
-              <div className={styles.ssIcon}>🔥</div>
-              <div className={styles.ssVal}>{bestStreak}</div>
-              <div className={styles.ssLbl}>أيام متواصلة</div>
-              <div className={styles.ssSub}>أفضل انجاز لك</div>
-            </div>
-            <div className={styles.statsSummaryCard}>
-              <div className={styles.ssIcon}>🎯</div>
-              <div className={styles.ssVal}>{progressPct}%</div>
-              <div className={styles.ssLbl}>نسبة الإنجاز</div>
-              <div className={styles.ssSub}>من القرآن الكريم</div>
-            </div>
-          </div>
-
-          {/* Juz breakdown */}
-          <div className={styles.statsCard}>
-            <h3>تقدم الأجزاء</h3>
-            <div className={styles.juzGrid}>
-              {juzProgress.map(({ juz, pct }) => (
-                <div key={juz}
-                  className={styles.juzCell}
-                  style={{
-                    background: pct === 100 ? 'rgba(82,183,136,0.2)' : pct > 0 ? 'rgba(201,168,76,0.1)' : 'var(--surface2)',
-                    borderColor: pct === 100 ? 'var(--green3)' : pct > 0 ? 'var(--gold)' : 'var(--border)',
-                  }}>
-                  <span style={{ fontSize: 11, color: pct === 100 ? 'var(--green3)' : pct > 0 ? 'var(--gold)' : 'var(--text3)' }}>
-                    {juz}
-                  </span>
-                  <span style={{ fontSize: 9, color: 'var(--text3)' }}>{pct}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── ACHIEVEMENTS TAB ── */}
-      {activeTab === 'achievements' && (
-        <div className={styles.achievementsTab}>
-          <div className={styles.achieveHeader}>
-            <span>🏆 {hifz.unlockedAchievements?.length || 0} / {ACHIEVEMENTS.length} إنجازات مكتسبة</span>
-            <MiniBar pct={Math.round(((hifz.unlockedAchievements?.length || 0) / ACHIEVEMENTS.length) * 100)} color="var(--gold)" />
-          </div>
-          <div className={styles.badgesGrid}>
-            {ACHIEVEMENTS.map(a => (
-              <AchievementBadge
-                key={a.id}
-                achievement={a}
-                unlocked={hifz.unlockedAchievements?.includes(a.id)}
-              />
-            ))}
-          </div>
-          <div className={styles.achieveTip}>
-            💡 اضغط على بطاقات السور في تبويب المتابعة لتغيير حالة الحفظ وفتح الإنجازات
-          </div>
-        </div>
-      )}
+        <Link className="nq-btn ghost" to={`/reader?surah=${n}&ayah=1`}><Icon name="book" />افتحها في المصحف</Link>
+      </div>
     </div>
   );
 }

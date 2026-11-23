@@ -16,6 +16,12 @@ final class Integrations
         'anthropic_api_key'    => ['مفتاح Anthropic', true],
         'mail_from_address'    => ['عنوان البريد المُرسِل', false],
         'mail_from_name'       => ['اسم المُرسِل في البريد', false],
+        'mail_transport'       => ['طريقة إرسال البريد', false],          // server (default, PHP mail()) | smtp
+        'smtp_host'            => ['خادم SMTP', false],
+        'smtp_port'            => ['منفذ SMTP', false],
+        'smtp_username'        => ['اسم مستخدم SMTP', false],
+        'smtp_password'        => ['كلمة مرور SMTP', true],
+        'smtp_encryption'      => ['تشفير SMTP', false],                 // tls (STARTTLS, 587) | ssl (465) | none
     ];
 
     /** @var array<string,string>|null */

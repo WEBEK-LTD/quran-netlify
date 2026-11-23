@@ -1,11 +1,21 @@
+// ─── Adhkar ──────────────────────────────────────────────────────────────────
+// Categories as gilded tabs; each dhikr a framed card (Quran in the Quran
+// face, everything else in Amiri) with a ring counter that is kept for today.
 import { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import styles from './AdhkarPage.module.css';
-import { useT, useLang, useDir } from '../i18n';
-import LangSwitcher from '../components/LangSwitcher';
 import { normalizeArabic } from '../arabic';
+import { PageHero, Icon, Badge8, toAr } from '../components/ornaments/Ornaments';
 
-// CATEGORIES defined inside component
+const CATEGORIES = [
+  { id: 'morning', icon: 'sun',    name: 'أذكار الصباح' },
+  { id: 'evening', icon: 'moon',   name: 'أذكار المساء' },
+  { id: 'sleep',   icon: 'star',   name: 'أذكار النوم' },
+  { id: 'prayer',  icon: 'mosque', name: 'أذكار الصلاة' },
+  { id: 'quran',   icon: 'book',   name: 'أدعية قرآنية' },
+  { id: 'daily',   icon: 'home',   name: 'أذكار يومية' },
+  { id: 'special', icon: 'heart',  name: 'أدعية مأثورة' },
+  { id: 'all',     icon: 'list',   name: 'الكل' },
+];
 
 const ADHKAR = [
   // ─── الصباح ─────────────────────────────────────────────────────────────
@@ -32,7 +42,7 @@ const ADHKAR = [
   { id:7,  cat:'evening', name:'دعاء المساء', count:3,
     ar:'أمسينا وأمسى الملكُ لله، والحمدُ لله، لا إلهَ إلا الله وحدَه لا شريكَ له، له الملكُ وله الحمدُ وهو على كلِّ شيءٍ قدير، ربِّ أسألُك خيرَ ما في هذه الليلةِ وخيرَ ما بعدها، وأعوذُ بكَ من شرِّ ما في هذه الليلةِ وشرِّ ما بعدها',
     source:'مسلم' },
-  { id:8,  cat:'evening', name:'آية الكرسي', count:1,
+  { id:8,  cat:'evening', q:true, name:'آية الكرسي', count:1,
     ar:'اللهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ',
     source:'البقرة ٢٥٥' },
   { id:9,  cat:'evening', name:'التعوذ مساءً', count:3,
@@ -46,11 +56,11 @@ const ADHKAR = [
   { id:11, cat:'sleep', name:'دعاء قبل النوم', count:1,
     ar:'باسمِك اللهم أموتُ وأحيا',
     source:'البخاري' },
-  { id:12, cat:'sleep', name:'آية الكرسي قبل النوم', count:1,
-    ar:'اللهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ...',
+  { id:12, cat:'sleep', q:true, name:'آية الكرسي قبل النوم', count:1,
+    ar:'اللهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ',
     source:'البخاري — من قرأها حُفِظ حتى الصباح' },
-  { id:13, cat:'sleep', name:'المعوذتان', count:3,
-    ar:'قل أعوذُ بربِّ الفلق... قل أعوذُ بربِّ الناس...',
+  { id:13, cat:'sleep', q:true, name:'المعوذتان', count:3,
+    ar:'قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ • مِن شَرِّ مَا خَلَقَ • وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ • وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ • وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ\nقُلْ أَعُوذُ بِرَبِّ النَّاسِ • مَلِكِ النَّاسِ • إِلَٰهِ النَّاسِ • مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ • الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ • مِنَ الْجِنَّةِ وَالنَّاسِ',
     source:'البخاري — ينفثُ في راحتيه ثم يمسح بهما جسده' },
   { id:14, cat:'sleep', name:'التسبيح قبل النوم', count:'33-33-34', target:100,
     ar:'سبحانَ الله (٣٣) • الحمدُ لله (٣٣) • الله أكبر (٣٤)',
@@ -80,22 +90,22 @@ const ADHKAR = [
     source:'البخاري ومسلم' },
 
   // ─── قرآنية ─────────────────────────────────────────────────────────────
-  { id:22, cat:'quran', name:'دعاء موسى', count:1,
+  { id:22, cat:'quran', q:true, name:'دعاء موسى', count:1,
     ar:'رَبِّ إِنِّي لِمَا أَنزَلْتَ إِلَيَّ مِنْ خَيْرٍ فَقِيرٌ',
     source:'القصص ٢٤' },
-  { id:23, cat:'quran', name:'دعاء أيوب', count:1,
+  { id:23, cat:'quran', q:true, name:'دعاء أيوب', count:1,
     ar:'أَنِّي مَسَّنِيَ الضُّرُّ وَأَنتَ أَرْحَمُ الرَّاحِمِينَ',
     source:'الأنبياء ٨٣' },
-  { id:24, cat:'quran', name:'دعاء يونس', count:1,
+  { id:24, cat:'quran', q:true, name:'دعاء يونس', count:1,
     ar:'لَّا إِلَٰهَ إِلَّا أَنتَ سُبْحَانَكَ إِنِّي كُنتُ مِنَ الظَّالِمِينَ',
     source:'الأنبياء ٨٧' },
-  { id:25, cat:'quran', name:'ربنا آتنا', count:1,
+  { id:25, cat:'quran', q:true, name:'ربنا آتنا', count:1,
     ar:'رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ',
     source:'البقرة ٢٠١' },
-  { id:26, cat:'quran', name:'ربنا لا تزغ قلوبنا', count:1,
+  { id:26, cat:'quran', q:true, name:'ربنا لا تزغ قلوبنا', count:1,
     ar:'رَبَّنَا لَا تُزِغْ قُلُوبَنَا بَعْدَ إِذْ هَدَيْتَنَا وَهَبْ لَنَا مِن لَّدُنكَ رَحْمَةً ۚ إِنَّكَ أَنتَ الْوَهَّابُ',
     source:'آل عمران ٨' },
-  { id:27, cat:'quran', name:'دعاء إبراهيم', count:1,
+  { id:27, cat:'quran', q:true, name:'دعاء إبراهيم', count:1,
     ar:'رَبِّ اجْعَلْنِي مُقِيمَ الصَّلَاةِ وَمِن ذُرِّيَّتِي ۚ رَبَّنَا وَتَقَبَّلْ دُعَاءِ',
     source:'إبراهيم ٤٠' },
 
@@ -153,28 +163,66 @@ const ADHKAR_INDEX = ADHKAR.map(d => ({
   text: normalizeArabic(`${d.name} ${d.ar} ${d.source || ''}`),
 }));
 
-function CounterBadge({ count }) {
-  if (!count || count === 1) return null;
-  const display = typeof count === 'number'
-    ? String(count).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d])
-    : count;
-  return <span className={styles.countBadge}>× {display}</span>;
+
+const LONG = 240; // نصوص أطول من هذا تُطوى حتى يطلب القارئ قراءتها كاملة
+const RING = 2 * Math.PI * 27;
+
+function DhikrCard({ dhikr, cnt, expanded, onToggle, onInc, onReset, onCopy, copied, showCat }) {
+  const maxCount = typeof dhikr.count === 'number' ? dhikr.count : (dhikr.target || null);
+  const done = !!(maxCount && cnt >= maxCount);
+  const long = dhikr.ar.length > LONG;
+  const clamp = long && !expanded;
+  const frac = maxCount ? Math.min(1, cnt / maxCount) : 0;
+  const reps = typeof dhikr.count === 'number' ? (dhikr.count > 1 ? `${toAr(dhikr.count)} مرات` : 'مرة واحدة') : toAr(dhikr.count);
+  const cat = CATEGORIES.find(c => c.id === dhikr.cat);
+  return (
+    <article className={`nq-card ${styles.card} ${done ? styles.done : ''}`} aria-labelledby={`dh-${dhikr.id}`}>
+      <header className={styles.cardHead}>
+        <h3 id={`dh-${dhikr.id}`} className={styles.name}>{dhikr.name}</h3>
+        <div className={styles.meta}>
+          {showCat && cat && <span className="nq-pill"><Icon name={cat.icon} />{cat.name}</span>}
+          <span className={`nq-pill ${styles.reps}`}>{dhikr.q ? 'من القرآن الكريم' : 'التكرار'} · {reps}</span>
+        </div>
+      </header>
+
+      <p id={`dt-${dhikr.id}`} className={`${dhikr.q ? styles.quran : styles.text} ${clamp ? styles.clamp : ''}`} lang="ar">{dhikr.ar}</p>
+      {long && (
+        <button type="button" className={styles.more} onClick={onToggle} aria-expanded={expanded} aria-controls={`dt-${dhikr.id}`}>
+          {expanded ? 'إخفاء' : 'اقرأ النص كاملاً'}<Icon name="chev" className={expanded ? styles.up : ''} />
+        </button>
+      )}
+
+      <footer className={styles.foot}>
+        <button type="button" className={styles.counter} onClick={() => !done && onInc()} aria-disabled={done}
+          aria-label={done ? `${dhikr.name}: اكتمل العدد` : `عدّ ${dhikr.name}: ${toAr(cnt)} من ${toAr(maxCount)}`}>
+          <svg className={styles.ringSvg} viewBox="0 0 64 64" aria-hidden="true">
+            <circle cx="32" cy="32" r="27" className={styles.ringBg} />
+            <circle cx="32" cy="32" r="27" className={styles.ringFill}
+              style={{ strokeDasharray: RING, strokeDashoffset: RING * (1 - frac) }} />
+          </svg>
+          {done ? <Icon name="check" className={styles.cIco} /> : <b className="nq-num">{toAr(cnt)}</b>}
+        </button>
+        <div className={styles.cInfo}>
+          <b>{done ? 'اكتمل، تقبّل الله' : cnt > 0 ? `${toAr(cnt)} من ${toAr(maxCount)}` : 'اضغط الدائرة للعدّ'}</b>
+          {dhikr.source && <span className={styles.src}>{dhikr.cat === 'quran' || dhikr.id === 8 ? 'سورة ' : ''}{dhikr.source}</span>}
+        </div>
+        <div className={styles.acts}>
+          {cnt > 0 && (
+            <button type="button" className="nq-ibtn" onClick={onReset} aria-label={`إعادة عدّ ${dhikr.name}`} title="إعادة العدّ">
+              <Icon name="repeat" />
+            </button>
+          )}
+          <button type="button" className={`nq-ibtn ${copied ? styles.copied : ''}`} onClick={onCopy}
+            aria-label={copied ? 'تم النسخ' : `نسخ ${dhikr.name}`} title={copied ? 'تم النسخ' : 'نسخ النص'}>
+            <Icon name={copied ? 'check' : 'copy'} />
+          </button>
+        </div>
+      </footer>
+    </article>
+  );
 }
 
 export default function AdhkarPage() {
-  const t = useT();
-  const dir = useDir();
-
-  const CATEGORIES = [
-    { id: 'morning',  icon: '🌅', name: t('morning'),      color: '#f59e0b' },
-    { id: 'evening',  icon: '🌙', name: t('evening'),       color: '#6366f1' },
-    { id: 'sleep',    icon: '😴', name: t('sleep'),         color: '#8b5cf6' },
-    { id: 'prayer',   icon: '🕌', name: t('prayerAdhkar'),  color: '#10b981' },
-    { id: 'quran',    icon: '📖', name: t('quranDua'),      color: '#c9a84c' },
-    { id: 'daily',    icon: '🌿', name: t('daily'),         color: '#52b788' },
-    { id: 'special',  icon: '⭐', name: t('special'),       color: '#f97316' },
-    { id: 'all',      icon: '📚', name: t('allCategories'), color: '#94a3b8' },
-  ];
   const [activeCategory, setActiveCategory] = useState('morning');
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState(null);
@@ -221,152 +269,83 @@ export default function AdhkarPage() {
   }
 
   const activeCat = CATEGORIES.find(c => c.id === activeCategory);
+  const isDone = d => {
+    const max = typeof d.count === 'number' ? d.count : (d.target || null);
+    return !!(max && (counters[d.id] || 0) >= max);
+  };
+  const doneCount = filtered.filter(isDone).length;
+  const searching = !!search.trim();
 
   return (
     <div className={styles.page}>
-      {/* Header */}
-      <div className={styles.topBar}>
-        <Link to="/dashboard" className={styles.backBtn}>{t('back')}</Link>
-        <h1 className={styles.pageTitle}>{t('adhkarTitle')}</h1>
-        <LangSwitcher compact={true} />
-      </div>
+      <PageHero
+        eyebrow="حصن المسلم"
+        title="الأذكار والأدعية"
+        ayah="أَلَا بِذِكْرِ ٱللَّهِ تَطْمَئِنُّ ٱلْقُلُوبُ"
+        ayahRef="سورة الرعد · ٢٨"
+        sub="أذكار الصباح والمساء والنوم والصلاة، وأدعية من القرآن والسنّة، مع عدّاد يحفظ تقدّمك لليوم."
+      />
 
-      {/* Search */}
-      <div className={styles.searchWrap}>
-        <span className={styles.searchIcon}>🔍</span>
-        <input
-          className={styles.searchInput}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="ابحث في الأدعية والأذكار..."
-          dir="rtl"
-        />
-        {search && (
-          <button className={styles.clearBtn} onClick={() => setSearch('')}>✕</button>
-        )}
-      </div>
-
-      {/* Category tabs */}
-      <div className={styles.categories}>
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat.id}
-            className={`${styles.catBtn} ${activeCategory === cat.id ? styles.catBtnActive : ''}`}
-            style={{ '--cat-color': cat.color }}
-            onClick={() => setActiveCategory(cat.id)}
-          >
-            <span>{cat.icon}</span>
-            <span>{cat.name}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Header for category */}
-      {!search && activeCat && (
-        <div className={styles.catHeader} style={{ '--cat-color': activeCat.color }}>
-          <span className={styles.catHeaderIcon}>{activeCat.icon}</span>
-          <div>
-            <div className={styles.catHeaderName}>{activeCat.name}</div>
-            <div className={styles.catHeaderCount}>
-              {String(filtered.length).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d])} ذكر / دعاء
-            </div>
+      <div className={`nq-wrap ${styles.wrap}`}>
+        <div className={styles.tools}>
+          <label className={`nq-input ${styles.search}`}>
+            <Icon name="search" />
+            <span className="nq-sr">ابحث في الأذكار</span>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث في الأذكار والأدعية…" dir="rtl" type="search" />
+            {search && (
+              <button type="button" className={styles.clear} onClick={() => setSearch('')} aria-label="مسح البحث"><Icon name="x" /></button>
+            )}
+          </label>
+          <div className={styles.tabs} role="group" aria-label="أقسام الأذكار">
+            {CATEGORIES.map(cat => {
+              const n = cat.id === 'all' ? ADHKAR.length : ADHKAR.filter(d => d.cat === cat.id).length;
+              const on = activeCategory === cat.id && !searching;
+              return (
+                <button key={cat.id} type="button" className={`${styles.tab} ${on ? styles.tabOn : ''}`}
+                  aria-pressed={on} onClick={() => { setActiveCategory(cat.id); setSearch(''); }}>
+                  <Icon name={cat.icon} />
+                  <span>{cat.name}</span>
+                  <small className="nq-num">{toAr(n)}</small>
+                </button>
+              );
+            })}
           </div>
         </div>
-      )}
 
-      {/* Adhkar list */}
-      <div className={styles.adhkarList}>
-        {filtered.length === 0 && (
-          <div className={styles.empty}>
-            <div className={styles.emptyIcon}>🔍</div>
-            <p>{t('noResults')}</p>
+        <div className={styles.catHead} aria-live="polite">
+          <Badge8 icon={searching ? 'search' : activeCat?.icon} size={58} />
+          <div className={styles.catText}>
+            <h2 className={styles.catName}>{searching ? 'نتائج البحث' : activeCat?.name}</h2>
+            <span className={styles.catCount}>{toAr(filtered.length)} {filtered.length === 1 ? 'ذكر' : 'من الأذكار والأدعية'}</span>
+          </div>
+          {filtered.length > 0 && (
+            <div className={styles.catProg}>
+              <span>أتممت <b className="nq-num">{toAr(doneCount)}</b> من <b className="nq-num">{toAr(filtered.length)}</b> اليوم</span>
+              <span className={styles.bar} aria-hidden="true"><i style={{ width: `${(doneCount / filtered.length) * 100}%` }} /></span>
+            </div>
+          )}
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className={`nq-card ${styles.empty}`}>
+            <Badge8 icon="search" size={64} />
+            <p>لا توجد نتائج مطابقة. جرّب كلمة أخرى.</p>
+            <button type="button" className="nq-btn ghost sm" onClick={() => setSearch('')}>مسح البحث</button>
+          </div>
+        ) : (
+          <div className={styles.list}>
+            {filtered.map(dhikr => (
+              <DhikrCard key={dhikr.id} dhikr={dhikr} cnt={counters[dhikr.id] || 0}
+                expanded={expanded === dhikr.id}
+                onToggle={() => setExpanded(expanded === dhikr.id ? null : dhikr.id)}
+                onInc={() => increment(dhikr.id)} onReset={() => reset(dhikr.id)}
+                onCopy={() => copyDhikr(dhikr.id, dhikr.ar)} copied={copied === dhikr.id}
+                showCat={searching || activeCategory === 'all'} />
+            ))}
           </div>
         )}
 
-        {filtered.map((dhikr, idx) => {
-          const isOpen = expanded === dhikr.id;
-          const cnt = counters[dhikr.id] || 0;
-          const maxCount = typeof dhikr.count === 'number' ? dhikr.count : (dhikr.target || null);
-          const done = maxCount && cnt >= maxCount;
-          const catInfo = CATEGORIES.find(c => c.id === dhikr.cat);
-
-          return (
-            <div
-              key={dhikr.id}
-              className={`${styles.card} ${done ? styles.cardDone : ''}`}
-              style={{ '--card-accent': catInfo?.color || 'var(--gold)', animationDelay: `${idx * 30}ms` }}
-            >
-              {/* Card header */}
-              <div className={styles.cardHeader} onClick={() => setExpanded(isOpen ? null : dhikr.id)}>
-                <div className={styles.cardLeft}>
-                  <div className={styles.cardName}>{dhikr.name}</div>
-                  <div className={styles.cardMeta}>
-                    {dhikr.source && <span className={styles.source}>{dhikr.source}</span>}
-                    <CounterBadge count={dhikr.count} />
-                    {done && <span className={styles.doneBadge}>{t('completed')}</span>}
-                  </div>
-                </div>
-                <span className={`${styles.chevron} ${isOpen ? styles.chevronOpen : ''}`}>‹</span>
-              </div>
-
-              {/* Dhikr text — always visible short preview */}
-              <div
-                className={`${styles.dhikrText} ${isOpen ? styles.dhikrTextFull : styles.dhikrTextPreview}`}
-                onClick={() => setExpanded(isOpen ? null : dhikr.id)}
-              >
-                {dhikr.ar}
-              </div>
-
-              {/* Actions - shown when expanded */}
-              {isOpen && (
-                <div className={styles.cardActions}>
-                  <button
-                    className={`${styles.countBtn} ${done ? styles.countBtnDone : ''}`}
-                    onClick={() => !done && increment(dhikr.id)}
-                  >
-                    <span className={styles.countNum}>
-                      {String(cnt).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d])}
-                    </span>
-                    {maxCount && (
-                      <span className={styles.countOf}>
-                        / {String(maxCount).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d])}
-                      </span>
-                    )}
-                    <span className={styles.countLabel}>{done ? '✅' : '+ عدّاد'}</span>
-                  </button>
-
-                  {cnt > 0 && (
-                    <button className={styles.resetBtn} onClick={() => reset(dhikr.id)}>
-                      ↺ إعادة
-                    </button>
-                  )}
-
-                  <button
-                    className={styles.copyBtn}
-                    onClick={() => copyDhikr(dhikr.id, dhikr.ar)}
-                  >
-                    {copied === dhikr.id ? '✅ تم النسخ' : '📋 نسخ'}
-                  </button>
-                </div>
-              )}
-
-              {/* Progress bar for counted dhikr */}
-              {maxCount && cnt > 0 && (
-                <div className={styles.progressBar}>
-                  <div
-                    className={`${styles.progressFill} ${done ? styles.progressDone : ''}`}
-                    style={{ width: `${Math.min(100, (cnt / maxCount) * 100)}%` }}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Footer tip */}
-      <div className={styles.tip}>
-        💡 اضغط على أي ذكر للتوسيع وتفعيل العدّاد ونسخه
+        <p className={styles.tip}><Icon name="timer" />تُحفظ العدّادات على جهازك لليوم الحالي وتبدأ من جديد بعد منتصف الليل.</p>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ namespace NQ\Controllers;
 
 use NQ\Core\ApiError;
 use NQ\Core\Db;
+use NQ\Core\Mailer;
 use NQ\Core\Reply;
 use NQ\Core\Request;
 use NQ\Core\V;
@@ -85,6 +86,42 @@ final class SupportController
             'SELECT m.*, u.name AS sender_name FROM support_messages m LEFT JOIN users u ON u.id = m.sender_id WHERE m.id = ?',
             [$id]
         ));
+    }
+
+    /** Minimum seconds between two email notices for the same ticket. */
+    public const NOTIFY_INTERVAL = 600;
+
+    /**
+     * Email the ticket owner that the team wrote to them (at most once per ticket per 10 minutes).
+     * Never throws: a mail problem must not fail the admin's reply.
+     */
+    public static function notifyUser(int $ticketId, string $body, bool $newThread): void
+    {
+        try {
+            $t = Db::one(
+                'SELECT t.id, t.subject, u.email, u.name FROM support_tickets t JOIN users u ON u.id = t.user_id WHERE t.id = ?',
+                [$ticketId]
+            );
+            if ($t === null) {
+                return;
+            }
+            try {
+                // atomic claim, so two quick replies cannot both send
+                $claimed = Db::exec(
+                    'UPDATE support_tickets SET last_notified_at = ? WHERE id = ? AND (last_notified_at IS NULL OR last_notified_at <= ?)',
+                    [Db::now(), $ticketId, Db::now(-self::NOTIFY_INTERVAL)]
+                ) === 1;
+            } catch (\PDOException $e) {
+                // column not migrated yet: send without throttling rather than not at all
+                error_log('[nq] ticket notify throttle unavailable: ' . $e->getMessage());
+                $claimed = true;
+            }
+            if ($claimed) {
+                Mailer::sendTeamMessage((string) $t['email'], (string) $t['name'], (string) $t['subject'], $body, $newThread);
+            }
+        } catch (\Throwable $e) {
+            error_log('[nq] ticket notify failed: ' . $e->getMessage());
+        }
     }
 
     private static function ownTicket(Request $r, int $uid): array

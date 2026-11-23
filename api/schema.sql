@@ -190,6 +190,7 @@ CREATE TABLE IF NOT EXISTS support_tickets (
   status     ENUM('open','pending','closed') NOT NULL DEFAULT 'open',
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
+  last_notified_at DATETIME NULL,
   PRIMARY KEY (id),
   KEY ix_support_tickets_user (user_id, updated_at),
   KEY ix_support_tickets_status (status, updated_at),
@@ -284,3 +285,13 @@ CREATE TABLE IF NOT EXISTS presence (
   KEY ix_presence_last_seen (last_seen),
   CONSTRAINT fk_presence_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Upgrades for databases created by an older version of this file ─────────
+-- Portable "ADD COLUMN IF NOT EXISTS" (works on MySQL 8 and MariaDB). The API also applies these
+-- automatically at runtime (app/Core/Migrations.php), so importing this file again is optional.
+
+-- support_tickets.last_notified_at: limits "new message from the team" emails to one per ticket per 10 minutes
+SET @nq_sql = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE support_tickets ADD COLUMN last_notified_at DATETIME NULL AFTER updated_at', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'support_tickets' AND COLUMN_NAME = 'last_notified_at');
+PREPARE nq_stmt FROM @nq_sql;
+EXECUTE nq_stmt;
+DEALLOCATE PREPARE nq_stmt;

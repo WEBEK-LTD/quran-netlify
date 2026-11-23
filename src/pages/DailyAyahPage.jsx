@@ -164,7 +164,7 @@ export default function DailyAyahPage() {
       <PageHero
         eyebrow="تأمّلٌ كل يوم"
         title="آية اليوم"
-        sub="آيةٌ مختارة تتجدّد كل يوم، تقرؤها وتتدبّر معناها، ثم تحملها معك."
+        sub="آيةٌ مختارة تتجدّد كل يوم، تقرؤها وتتدبّر معناها."
       >
         <span className={`nq-pill on ${styles.datePill}`}><Icon name="calendar" />{dateStr}</span>
         {hijri && <span className={`nq-pill ${styles.datePill}`}><Icon name="moon" />{hijri}</span>}

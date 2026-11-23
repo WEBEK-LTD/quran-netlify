@@ -35,7 +35,7 @@
   content: ""; position: absolute; inset: 9px; border: 1px solid var(--line2);
   border-radius: 15px; pointer-events: none;
 }
-.cardIn { position: relative; padding: 44px 40px 36px; display: grid; gap: 18px; }
+.cardIn { position: relative; padding: 44px 40px 48px; display: grid; gap: 18px; }
 @keyframes authIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
 /* brand + heading */
@@ -136,7 +136,7 @@
 
 @media (max-width: 520px) {
   .stage { padding: 28px 12px 64px; place-items: start center; }
-  .cardIn { padding: 36px 22px 26px; gap: 16px; }
+  .cardIn { padding: 36px 22px 44px; gap: 16px; }
   .card::before { inset: 7px; }
   .stageFull { place-items: center; }
 }

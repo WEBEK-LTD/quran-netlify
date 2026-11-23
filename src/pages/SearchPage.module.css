@@ -1,161 +1,111 @@
-.page {
-  max-width: 740px; margin: 0 auto;
-  padding: 24px 20px 100px; direction: rtl; min-height: 100vh;
-}
-.topBar {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
-}
-.topBar h1 { flex: 1; text-align: center; font-size: 20px; color: var(--text); }
-.backBtn {
-  font-size: 13px; color: var(--text3); padding: 6px 12px;
-  border-radius: 8px; border: 1px solid var(--border); background: var(--surface);
-  text-decoration: none; white-space: nowrap; transition: all 0.15s;
-}
-.backBtn:hover { color: var(--text); }
+.page { position:relative; }
+/* NotFoundPage.module.css leaks a global `p { max-width:300px }` */
+.page p { max-width:none; }
 
-/* Search form */
-.searchForm {
-  display: flex; gap: 8px; margin-bottom: 16px;
-}
-.searchBox {
-  flex: 1; position: relative; display: flex; align-items: center;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; transition: border-color 0.18s;
-}
-.searchBox:focus-within { border-color: var(--gold); }
-.searchIcon { padding: 0 10px; font-size: 15px; flex-shrink: 0; }
-.searchBox input {
-  flex: 1; background: none; border: none; outline: none;
-  padding: 12px 4px; font-family: var(--font-ui); font-size: 14px;
-  color: var(--text);
-}
-.searchBox input::placeholder { color: var(--text3); }
-.clearBtn {
-  padding: 6px 12px; background: none; border: none;
-  color: var(--text3); cursor: pointer; font-size: 12px;
-  flex-shrink: 0; transition: color 0.15s;
-}
-.clearBtn:hover { color: var(--text); }
-.searchBtn {
-  padding: 12px 22px; border-radius: 12px; border: none;
-  background: linear-gradient(135deg, var(--green), var(--green2));
-  color: white; font-family: var(--font-ui); font-size: 14px; font-weight: 700;
-  cursor: pointer; white-space: nowrap; transition: all 0.15s; min-width: 72px;
-}
-.searchBtn:disabled { opacity: 0.5; cursor: not-allowed; }
-.searchBtn:not(:disabled):hover { opacity: 0.88; }
+.body { display:grid; grid-template-columns:minmax(0,1fr); gap:28px; padding-bottom:80px; max-width:1040px; }
+.body > * { min-width:0; }
 
-/* Building index */
-.buildingBox {
-  padding: 20px; border-radius: 14px;
-  background: var(--surface); border: 1px solid var(--border);
-  text-align: center; margin-bottom: 16px;
-}
-.buildingBar {
-  height: 6px; border-radius: 3px; background: var(--border);
-  overflow: hidden; margin-bottom: 10px;
-}
-.buildingFill {
-  height: 100%; border-radius: 3px;
-  background: linear-gradient(90deg, var(--green2), var(--gold));
-  transition: width 0.3s ease;
-}
-.buildingBox p { font-size: 14px; color: var(--text2); font-weight: 600; margin-bottom: 4px; }
-.buildingBox small { font-size: 11px; color: var(--text3); }
+/* ── search card (overlaps the hero) ── */
+.searchCard { position:relative; z-index:2; margin-top:-44px; padding:18px; display:grid; grid-template-columns:minmax(0,1fr); gap:12px; box-shadow:var(--shadow); }
+.searchRow { display:flex; gap:10px; }
+.searchBox { flex:1; min-width:0; display:flex; align-items:center; gap:10px; height:64px; padding:0 18px; border-radius:18px; border:var(--bw) solid var(--line2); background:var(--raise); transition:border-color .2s, box-shadow .2s; }
+.searchBox:focus-within { border-color:var(--gold); box-shadow:0 0 0 4px var(--hl); }
+.searchIcon { color:var(--gold); width:26px; height:26px; }
+.searchBox input { flex:1; min-width:0; height:100%; border:0; background:transparent; font-size:1.2rem; font-family:var(--f-ui); color:var(--text); }
+.searchBox input:focus { outline:none; }
+.searchBox input::placeholder { color:var(--faint); }
+.searchBox input::-webkit-search-cancel-button { display:none; }
+.clearBtn { border:0; background:none; color:var(--muted); width:44px; height:44px; display:grid; place-items:center; border-radius:12px; padding:0; }
+.clearBtn:hover { color:var(--gold); background:var(--hl); }
+.searchBtn { min-height:64px; border-radius:18px; padding:0 28px; font-size:1.05rem; min-width:124px; }
+.hintRow { display:flex; flex-wrap:wrap; gap:6px 18px; align-items:center; padding-inline:4px; }
+.hint { display:inline-flex; align-items:center; gap:6px; font-size:.84rem; color:var(--muted); }
+.hint :global(.nq-ico) { width:1em; height:1em; color:var(--ok); }
+.filterToggle { margin-inline-start:auto; display:inline-flex; align-items:center; gap:6px; border:var(--bw) solid var(--line); background:transparent; color:var(--muted); border-radius:12px; padding:0 12px; min-height:40px; font-size:.88rem; }
+.filterToggle:hover { color:var(--gold); border-color:var(--line2); }
+.filterToggle :global(.nq-ico) { width:1.1em; height:1.1em; }
+.filterOn { color:var(--gold); border-color:var(--line2); background:var(--hl); }
+.chevUp { transform:rotate(180deg); }
+.filters { display:flex; flex-wrap:wrap; gap:14px 22px; align-items:flex-end; padding:14px 4px 4px; border-top:1px solid var(--line); }
+.fGroup { display:grid; gap:6px; }
+.fLabel { font-size:.8rem; color:var(--muted); font-weight:600; }
+.select { min-height:46px; border-radius:14px; border:var(--bw) solid var(--line); background:var(--raise); color:var(--text); padding:0 12px; min-width:190px; font-size:.95rem; }
+.select:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px var(--hl); }
 
-/* Surah hits */
-.surahHits { margin-bottom: 14px; }
-.quickLabel { font-size: 11px; color: var(--text3); margin-bottom: 8px; font-weight: 600; }
-.surahHitList { display: flex; flex-direction: column; gap: 6px; }
-.surahHitBtn {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px; border-radius: 10px;
-  border: 1px solid var(--border); background: var(--surface);
-  cursor: pointer; text-align: right; transition: all 0.15s; width: 100%;
-}
-.surahHitBtn:hover { border-color: var(--gold); background: var(--gold-dim); }
-.surahHitNum {
-  width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
-  background: var(--gold-dim); color: var(--gold);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700;
-}
-.surahHitName { font-family: var(--font-quran); font-size: 16px; color: var(--text); flex: 1; }
-.surahHitSub  { font-size: 11px; color: var(--text3); }
+/* ── building ── */
+.building { display:flex; align-items:center; gap:16px; padding:18px 20px; }
+.buildText { flex:1; display:grid; gap:4px; min-width:0; }
+.buildText b { font-family:var(--f-title); font-size:1.25rem; }
+.buildText small { color:var(--muted); font-size:.86rem; }
+.bar { height:8px; border-radius:8px; background:var(--raise); border:var(--bw) solid var(--line); overflow:hidden; margin-top:6px; }
+.bar i { display:block; height:100%; background:linear-gradient(90deg,var(--gold),var(--gold2)); border-radius:8px; transition:width .3s; }
+.pct { font-family:var(--f-brand); font-size:2rem; color:var(--gold); line-height:1; }
 
-/* Quick searches */
-.quickSection { margin-bottom: 20px; }
-.quickBtns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-.quickBtn {
-  padding: 7px 16px; border-radius: 20px;
-  border: 1px solid var(--border); background: var(--surface);
-  color: var(--text2); font-family: var(--font-quran); font-size: 14px;
-  cursor: pointer; transition: all 0.15s;
-}
-.quickBtn:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
-.buildIndexBtn {
-  display: block; width: 100%; padding: 10px; border-radius: 10px;
-  border: 1px dashed var(--border); background: none;
-  color: var(--text3); font-family: var(--font-ui); font-size: 13px;
-  cursor: pointer; transition: all 0.15s; text-align: center;
-}
-.buildIndexBtn:hover { border-color: var(--green2); color: var(--green3); }
+/* ── quick jump ── */
+.hits { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; }
+.hit { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:18px; color:inherit; }
+.hitRef { background:linear-gradient(var(--hl),var(--hl)) padding-box, linear-gradient(150deg,var(--gold),var(--line2)) border-box; }
+.hit > span { flex:1; min-width:0; display:grid; }
+.hitName { font-family:var(--f-title); font-size:1.25rem; font-weight:700; line-height:1.3; }
+.hitSub { font-size:.8rem; color:var(--muted); }
+.hitGo, .go { color:var(--gold); transform:scaleX(-1); width:20px; height:20px; }
+:global([dir="ltr"]) .hitGo, :global([dir="ltr"]) .go { transform:none; }
 
-/* Results header */
-.resultsHeader {
-  font-size: 13px; color: var(--text3); margin-bottom: 14px; padding: 0 2px;
-}
-.resultsHeader strong { color: var(--gold); }
+/* ── start ── */
+.start { display:grid; justify-items:center; gap:16px; text-align:center; padding-top:12px; }
+.start :global(.nq-divider) { width:100%; }
+.h2 { font-family:var(--f-title); font-size:1.7rem; font-weight:700; line-height:1.3; }
+.quick { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; max-width:720px; }
+.quickBtn { font-family:var(--f-quran); font-size:1.35rem; min-height:50px; padding:0 22px; border-radius:999px; border:var(--bw) solid var(--line2); background:var(--surface); color:var(--text); transition:border-color .2s, color .2s, transform .2s; }
+.quickBtn:hover { border-color:var(--gold); color:var(--gold); transform:translateY(-1px); }
+.prep { display:flex; align-items:center; gap:16px; padding:18px 20px; text-align:start; width:100%; max-width:780px; margin-top:16px; }
+.prep > div { flex:1; display:grid; gap:2px; }
+.prep b { font-family:var(--f-title); font-size:1.2rem; }
+.prep small { color:var(--muted); font-size:.88rem; line-height:1.7; }
 
-/* Surah group */
-.surahGroup { margin-bottom: 16px; }
-.surahGroupHeader {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px; border-radius: 10px 10px 0 0;
-  background: var(--surface); border: 1px solid var(--border);
-  border-bottom: none;
-}
-.surahBadge {
-  width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
-  background: var(--gold-dim); color: var(--gold);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 800; border: 1px solid rgba(201,168,76,0.2);
-}
-.surahGroupName { font-family: var(--font-quran); font-size: 17px; color: var(--text); flex: 1; }
-.surahGroupMeta { font-size: 11px; color: var(--text3); }
+/* ── results ── */
+.resHead { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:-10px; }
+.resCount { color:var(--muted); font-size:1rem; }
+.resCount b { font-family:var(--f-ui); color:var(--gold); font-size:1.5rem; font-weight:700; margin-inline-end:4px; }
+.resIn { color:var(--faint); }
+.groups { display:grid; gap:16px; }
+.group { padding:6px 0 6px; overflow:hidden; }
+.groupHead { display:flex; align-items:center; gap:12px; padding:10px 18px 12px; border-bottom:1px solid var(--line); }
+.groupName { font-family:var(--f-title); font-size:1.35rem; font-weight:700; line-height:1.3; }
+.groupMeta { margin-inline-start:auto; font-size:.8rem; color:var(--muted); }
+.ayahs { list-style:none; margin:0; padding:0; }
+.ayahs li + li { border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent); }
+.ayahRow { display:flex; align-items:center; gap:14px; width:100%; text-align:start; border:0; background:none; color:inherit; padding:12px 18px; min-height:60px; transition:background .15s; }
+.ayahRow:hover { background:var(--hl); }
+.ayahNum { position:relative; display:grid; place-items:center; width:40px; height:40px; flex:none; color:var(--gold); }
+.ayahNum svg { position:absolute; inset:0; width:100%; height:100%; }
+.ayahNum b { position:relative; font-size:.72rem; font-weight:700; color:var(--text); }
+.arabicText { flex:1; min-width:0; font-family:var(--f-quran); font-size:1.4rem; line-height:2.1; color:var(--text); }
+.highlight { background:var(--hl); color:var(--gold); border-radius:6px; padding:0 2px; box-shadow:inset 0 -2px 0 var(--gold); }
+:global(:root[data-scheme="light"]) .highlight { background:rgba(176,138,55,.2); color:var(--gold-deep); }
+:global(:root[data-mode="contrast"]) .highlight { background:var(--gold); color:#000; box-shadow:none; }
+.go { opacity:.5; transition:opacity .15s; }
+.ayahRow:hover .go { opacity:1; }
+.more { display:flex; justify-content:center; }
 
-.ayahsList {
-  border: 1px solid var(--border); border-radius: 0 0 10px 10px; overflow: hidden;
-}
-.ayahResult {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 14px; border-bottom: 1px solid var(--border);
-  cursor: pointer; transition: background 0.13s;
-}
-.ayahResult:last-child { border-bottom: none; }
-.ayahResult:hover { background: var(--surface2); }
-.ayahNum {
-  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
-  background: var(--surface2); color: var(--text3);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700;
-}
-.arabicText {
-  flex: 1; font-family: 'Amiri Quran', serif;
-  font-size: 16px; line-height: 2; color: var(--text); margin: 0;
-}
-.highlight {
-  background: rgba(201,168,76,0.25);
-  color: var(--gold); border-radius: 3px;
-  padding: 0 2px; font-style: normal;
-}
-.goBtn {
-  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
-  border: 1px solid var(--border); background: var(--surface);
-  color: var(--text3); cursor: pointer; transition: all 0.13s; font-size: 14px;
-}
-.goBtn:hover { border-color: var(--gold); color: var(--gold); }
+.noRes { display:grid; justify-items:center; gap:10px; text-align:center; padding:40px 20px; color:var(--muted); }
+.noRes :global(.nq-badge8 .nq-ico) { width:28px; height:28px; }
+.noRes .h2 { color:var(--text); }
 
-@media (max-width: 600px) {
-  .surahHitSub { display: none; }
+@media (max-width:760px) {
+  .searchCard { margin-top:-32px; padding:12px; }
+  .searchBox { height:56px; padding:0 12px; }
+  .searchBox input { font-size:1.05rem; }
+  .searchBtn { min-height:56px; min-width:0; padding:0 16px; }
+  .searchBtn :global(.nq-ico) { display:none; }
+  .hint:nth-child(2) { display:none; }
+  .filters { display:grid; grid-template-columns:minmax(0,1fr); }
+  .filters :global(.nq-seg) { display:flex; }
+  .filters :global(.nq-seg button) { flex:1; }
+  .select { width:100%; }
+  .groupHead { padding:10px 12px 12px; }
+  .ayahRow { padding:12px; gap:10px; }
+  .arabicText { font-size:1.25rem; }
+  .prep, .building { flex-wrap:wrap; }
+  .groupMeta { display:none; }
 }

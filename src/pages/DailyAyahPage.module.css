@@ -1,4 +1,6 @@
 .page { position:relative; }
+/* NotFoundPage.module.css leaks a global `p { max-width:300px }` */
+.page p { max-width:none; }
 .datePill { min-height:34px; font-size:.85rem; padding:4px 14px; }
 .datePill :global(.nq-ico) { width:1.1em; height:1.1em; }
 
@@ -14,12 +16,12 @@
 .frameIn { position:relative; z-index:1; display:grid; justify-items:center; gap:22px; text-align:center; padding:64px clamp(22px,6vw,84px) 52px; }
 .reason { display:inline-flex; align-items:center; gap:10px; color:var(--gold); font-weight:600; font-size:.95rem; padding:6px 18px 6px 8px; border-radius:999px; border:var(--bw) solid var(--line2); background:var(--hl); }
 .reason :global(.nq-badge8 .nq-ico) { width:16px; height:16px; }
-.ayah { font-size:clamp(1.75rem,4.2vw,2.9rem); line-height:2.15; color:var(--text); max-width:30ch; text-wrap:pretty; }
+.page .ayah { font-size:clamp(1.75rem,4.2vw,2.9rem); line-height:2.15; color:var(--text); max-width:30ch; text-wrap:pretty; }
 :global(:root[data-scheme="dark"]) .ayah { color:var(--gold2); }
 :global(:root[data-mode="contrast"]) .ayah { color:#fff; }
 .ref { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; font-family:var(--f-title); font-size:1.25rem; font-weight:700; color:var(--text); margin-top:-6px; }
 .ref span { color:var(--gold); }
-.translation { margin:0; max-width:60ch; color:var(--muted); font-size:1rem; line-height:1.8; font-family:Georgia,'Times New Roman',serif; font-style:italic; padding:16px 22px; border-radius:16px; background:var(--raise); border:var(--bw) solid var(--line); text-align:center; }
+.page .translation { margin:0; max-width:60ch; color:var(--muted); font-size:1rem; line-height:1.8; font-family:Georgia,'Times New Roman',serif; font-style:italic; padding:16px 22px; border-radius:16px; background:var(--raise); border:var(--bw) solid var(--line); text-align:center; }
 .translation small { display:block; margin-top:6px; font-style:normal; font-family:var(--f-ui); font-size:.75rem; color:var(--faint); letter-spacing:.04em; }
 .actions { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-top:4px; }
 .on { border-color:var(--gold) !important; color:var(--gold); background:var(--hl) !important; }

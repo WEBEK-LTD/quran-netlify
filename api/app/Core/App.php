@@ -86,6 +86,7 @@ final class App
             [$handler, $params] = $router->match($req->method, $path);
             $req->params = $params;
 
+            Migrations::ensure();
             Auth::resolve($req);
 
             if (!self::maintenanceExempt($req->method, $path) && Settings::get('maintenance_mode') === true && !$req->isAdmin()) {

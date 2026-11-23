@@ -1,32 +1,80 @@
+// ─── Settings: appearance, reading, account, language ───────────────────────
 import { useAuth, displayNameOf, avatarOf } from '../hooks/useAuth';
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { updateProfile, changePassword, resendVerification, errorMessage } from '../backend';
+import { updateProfile, changePassword, resendVerification, exportMyData, errorMessage } from '../backend';
 import { authErrorText } from '../authErrors';
 import { useStore, setGlobal, savePref } from '../store';
 import { READERS, TRANSLATIONS } from '../data';
-import styles from './SettingsPage.module.css';
-import { useT, useLang, useDir } from '../i18n';
+import { MODES, useAppearance, setAppearance } from '../appearance';
+import { PageHero, Icon, Badge8, toAr } from '../components/ornaments/Ornaments';
 import LangSwitcher from '../components/LangSwitcher';
+import styles from './SettingsPage.module.css';
+import { useT } from '../i18n';
 
-function Toggle({ checked, onChange }) {
+const SECTIONS = [
+  { id: 'appearance', icon: 'sun',  title: 'المظهر' },
+  { id: 'reading',    icon: 'book', title: 'القراءة' },
+  { id: 'account',    icon: 'user', title: 'الحساب' },
+  { id: 'language',   icon: 'globe', title: 'اللغة' },
+  { id: 'about',      icon: 'star', title: 'عن الموقع' },
+];
+
+function Switch({ checked, onChange, label, disabled }) {
   return (
-    <button
-      className={`${styles.toggle} ${checked ? styles.toggleOn : ''}`}
-      onClick={() => onChange(!checked)}
-      role="switch" aria-checked={checked}
-    >
-      <span className={styles.toggleThumb} />
+    <button type="button" role="switch" aria-checked={!!checked} aria-label={label} disabled={disabled}
+      className={`${styles.switch} ${checked ? styles.switchOn : ''}`} onClick={() => onChange(!checked)}>
+      <span className={styles.thumb} />
     </button>
+  );
+}
+
+function Row({ icon, title, desc, children, stack = false }) {
+  return (
+    <div className={`${styles.row} ${stack ? styles.rowStack : ''}`}>
+      <div className={styles.rowText}>
+        <span className={styles.rowTitle}>{icon && <Icon name={icon} />}{title}</span>
+        {desc && <span className={styles.rowDesc}>{desc}</span>}
+      </div>
+      <div className={styles.rowCtl}>{children}</div>
+    </div>
+  );
+}
+
+function Section({ id, icon, title, sub, children }) {
+  return (
+    <section id={id} className={`nq-card ${styles.section}`} aria-labelledby={`${id}-h`}>
+      <header className={styles.secHead}>
+        <Badge8 icon={icon} size={48} />
+        <div>
+          <h2 id={`${id}-h`} className={styles.secTitle}>{title}</h2>
+          {sub && <p className={styles.secSub}>{sub}</p>}
+        </div>
+      </header>
+      <div className={styles.secBody}>{children}</div>
+    </section>
+  );
+}
+
+// Small illustrated swatch for each viewing mode.
+function ModePreview({ id }) {
+  return (
+    <span className={styles.preview} data-m={id} aria-hidden="true">
+      <span className={styles.pvBar} />
+      <span className={styles.pvArch} />
+      <span className={styles.pvLine} />
+      <span className={`${styles.pvLine} ${styles.pvShort}`} />
+      <span className={styles.pvChip} />
+    </span>
   );
 }
 
 export default function SettingsPage() {
   const t = useT();
-  const dir = useDir();
   const { user, signOut } = useAuth();
   const navigate  = useNavigate();
   const [state]   = useStore();
+  const look = useAppearance();
   const [saved,         setSaved]        = useState(false);
   const [editingName,   setEditingName]  = useState(false);
   const [editingPw,     setEditingPw]    = useState(false);
@@ -36,17 +84,26 @@ export default function SettingsPage() {
   const [profileLoading,setProfileLoading] = useState(false);
   const [lbLoading,     setLbLoading]    = useState(false);
   const [verifyState,   setVerifyState]  = useState(''); // '' | 'sending' | 'sent'
-  const [profileMsg,    setProfileMsg]   = useState('');
+  const [profileMsg,    setProfileMsg]   = useState(null); // { text, ok }
+  const [exporting,     setExporting]    = useState(false);
+  const [notifPerm,     setNotifPerm]    = useState(() => (typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'));
   const msgTimer = useRef(null);
-  useEffect(() => () => clearTimeout(msgTimer.current), []);
+  const savedTimer = useRef(null);
+  useEffect(() => () => { clearTimeout(msgTimer.current); clearTimeout(savedTimer.current); }, []);
 
   // Google-only accounts have no password yet (API may send has_password)
   const hasPassword = user?.has_password !== false;
 
-  function flash(msg, ms = 3500) {
-    setProfileMsg(msg);
+  function flash(text, ok, ms = 3500) {
+    setProfileMsg({ text, ok });
     clearTimeout(msgTimer.current);
-    if (msg.startsWith('✅')) msgTimer.current = setTimeout(() => setProfileMsg(''), ms);
+    if (ok) msgTimer.current = setTimeout(() => setProfileMsg(null), ms);
+  }
+
+  function showSaved() {
+    setSaved(true);
+    clearTimeout(savedTimer.current);
+    savedTimer.current = setTimeout(() => setSaved(false), 1800);
   }
 
   async function handleSignOut() {
@@ -54,43 +111,43 @@ export default function SettingsPage() {
     navigate('/');
   }
 
-  async function handleUpdateName() {
+  async function handleUpdateName(e) {
+    e?.preventDefault();
     if (!newName.trim()) return;
-    setProfileLoading(true); setProfileMsg('');
+    setProfileLoading(true); setProfileMsg(null);
     try {
       await updateProfile({ name: newName.trim() });
       setEditingName(false);
-      flash('✅ تم تحديث الاسم');
-    } catch (e) {
-      flash('❌ ' + authErrorText(e));
+      flash('تم تحديث الاسم', true);
+    } catch (err) {
+      flash(authErrorText(err), false);
     }
     setProfileLoading(false);
   }
 
-  async function handleUpdatePw() {
-    if (newPw.length < 8) { flash('❌ كلمة المرور الجديدة يجب ألا تقل عن 8 أحرف'); return; }
-    if (hasPassword && !curPw) { flash('❌ اكتب كلمة المرور الحالية'); return; }
-    setProfileLoading(true); setProfileMsg('');
+  async function handleUpdatePw(e) {
+    e?.preventDefault();
+    if (newPw.length < 8) { flash('كلمة المرور الجديدة يجب ألا تقل عن 8 أحرف', false); return; }
+    if (hasPassword && !curPw) { flash('اكتب كلمة المرور الحالية', false); return; }
+    setProfileLoading(true); setProfileMsg(null);
     try {
       await changePassword(hasPassword ? curPw : null, newPw);
       setEditingPw(false); setNewPw(''); setCurPw('');
-      flash('✅ تم تغيير كلمة المرور — سُجّل خروجك من الأجهزة الأخرى');
-    } catch (e) {
-      const f = e?.fields || {};
-      flash('❌ ' + (f.current_password
-        ? 'كلمة المرور الحالية غير صحيحة'
-        : authErrorText(e)));
+      flash('تم تغيير كلمة المرور، وسُجّل خروجك من الأجهزة الأخرى', true);
+    } catch (err) {
+      const f = err?.fields || {};
+      flash(f.current_password ? 'كلمة المرور الحالية غير صحيحة' : authErrorText(err), false);
     }
     setProfileLoading(false);
   }
 
   async function toggleLeaderboard(next) {
-    setLbLoading(true); setProfileMsg('');
+    setLbLoading(true); setProfileMsg(null);
     try {
       await updateProfile({ show_on_leaderboard: !!next });
-      flash(next ? '✅ سيظهر اسمك في لوحة المتصدرين' : '✅ لن يظهر اسمك في لوحة المتصدرين');
-    } catch (e) {
-      flash('❌ ' + errorMessage(e, 'تعذّر حفظ الإعداد'));
+      flash(next ? 'سيظهر اسمك في لوحة المتصدرين' : 'لن يظهر اسمك في لوحة المتصدرين', true);
+    } catch (err) {
+      flash(errorMessage(err, 'تعذّر حفظ الإعداد'), false);
     }
     setLbLoading(false);
   }
@@ -98,270 +155,309 @@ export default function SettingsPage() {
   async function handleResendVerify() {
     setVerifyState('sending');
     try { await resendVerification(); setVerifyState('sent'); }
-    catch (e) { setVerifyState(''); flash('❌ ' + errorMessage(e, 'تعذّر إرسال رسالة التأكيد')); }
+    catch (err) { setVerifyState(''); flash(errorMessage(err, 'تعذّر إرسال رسالة التأكيد'), false); }
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const data = await exportMyData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nur-alquran-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      flash('تم تنزيل نسخة من بياناتك', true);
+    } catch (err) {
+      flash(errorMessage(err, 'تعذّر تنزيل البيانات، حاول مجدداً'), false);
+    }
+    setExporting(false);
+  }
+
+  async function enableReminder() {
+    if (!('Notification' in window)) return;
+    const perm = await Notification.requestPermission();
+    setNotifPerm(perm);
+    if (perm === 'granted') new Notification('تم تفعيل المنبّه', { body: 'ستصلك إشعارات يومية', icon: '/icons/icon-192.png' });
   }
 
   function saveSetting(key, val) {
     setGlobal({ [key]: val });
-    if (key === 'darkMode')    { document.body.classList.toggle('light', !val); savePref('nq_theme', val ? 'dark' : 'light'); }
     if (key === 'fontSize')    { document.documentElement.style.setProperty('--font-size', val + 'px'); savePref('nq_fontSize', Number(val)); }
     if (key === 'fontStyle')   savePref('nq_fontStyle', val);
     if (key === 'reader')      savePref('nq_reader', val);
     if (key === 'translation') savePref('nq_translation', val);
     if (key === 'highlightMode') savePref('nq_highlight', !!val);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1800);
+    showSaved();
   }
+
+  function look_(patch) { setAppearance(patch); showSaved(); }
+
+  const curTrans = state.translation || 'none';
+  const name = user ? displayNameOf(user) : '';
 
   return (
     <div className={styles.page}>
-      <div className={styles.topBar}>
-        <Link to="/" className={styles.backBtn}>{t('back')}</Link>
-        <h1>{t('settingsTitle')}</h1>
-        <LangSwitcher compact={true} />
-        <div style={{ width: 80 }} />
-      </div>
+      <PageHero eyebrow="تفضيلاتك" title={t('settingsTitle') || 'الإعدادات'}
+        sub="اضبط المظهر وطريقة القراءة والتلاوة وحسابك. تُحفظ اختياراتك تلقائياً على هذا الجهاز." />
 
-      {saved && <div className={styles.savedBanner}>{t('success')}</div>}
-
-      {/* Account */}
-      {user && (
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>{t('profile')}</h3>
-
-          {/* Avatar */}
-          <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20, direction:'rtl' }}>
-            <div style={{
-              width:60, height:60, borderRadius:'50%', overflow:'hidden',
-              background:'var(--gold-dim)', border:'2px solid var(--gold)',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              fontSize:24, fontWeight:700, color:'var(--gold)', flexShrink:0,
-            }}>
-              {avatarOf(user)
-                ? <img src={avatarOf(user)} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                : (displayNameOf(user, '؟')[0] || '؟').toUpperCase()}
-            </div>
-            <div>
-              <div style={{ fontWeight:700, fontSize:15, color:'var(--text)' }}>
-                {displayNameOf(user)}
-              </div>
-              <div style={{ fontSize:12, color:'var(--text3)', direction:'ltr' }}>{user.email}</div>
-            </div>
-          </div>
-
-          {/* Edit name */}
-          {editingName
-            ? <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-                <input value={newName} onChange={e=>setNewName(e.target.value)}
-                  {...{placeholder: t('edit_name_ph')}}
-                  style={{ flex:1, padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)',
-                    background:'var(--bg2)', color:'var(--text)', fontSize:14, direction:'rtl' }}/>
-                <button onClick={handleUpdateName} disabled={profileLoading}
-                  style={{ padding:'8px 14px', borderRadius:8, background:'var(--gold)',
-                    color:'#000', fontWeight:700, border:'none', cursor:'pointer', fontSize:13 }}>
-                  {profileLoading ? '...' : 'حفظ'}
-                </button>
-                <button onClick={()=>setEditingName(false)}
-                  style={{ padding:'8px 12px', borderRadius:8, background:'var(--border)',
-                    color:'var(--text)', border:'none', cursor:'pointer' }}>✕</button>
-              </div>
-            : <button className={styles.editBtn} onClick={()=>{ setEditingName(true); setNewName(user.name||''); }}>
-                ✏️ تعديل الاسم
-              </button>
-          }
-
-          {/* Change / set password */}
-          {editingPw
-              ? <div style={{ marginTop:12 }}>
-                  {hasPassword && (
-                    <input type="password" value={curPw} onChange={e=>setCurPw(e.target.value)}
-                      placeholder="كلمة المرور الحالية" autoComplete="current-password"
-                      style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)',
-                        background:'var(--bg2)', color:'var(--text)', fontSize:14, direction:'ltr',
-                        marginBottom:8, boxSizing:'border-box' }}/>
-                  )}
-                  <input type="password" value={newPw} onChange={e=>setNewPw(e.target.value)}
-                    placeholder="كلمة المرور الجديدة (8 أحرف على الأقل)" autoComplete="new-password"
-                    style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)',
-                      background:'var(--bg2)', color:'var(--text)', fontSize:14, direction:'ltr',
-                      marginBottom:8, boxSizing:'border-box' }}/>
-                  <div style={{ display:'flex', gap:8 }}>
-                    <button onClick={handleUpdatePw} disabled={profileLoading || newPw.length < 8 || (hasPassword && !curPw)}
-                      style={{ flex:1, padding:'8px', borderRadius:8, background:'var(--gold)',
-                        color:'#000', fontWeight:700, border:'none', cursor:'pointer' }}>
-                      {profileLoading ? '...' : hasPassword ? 'تغيير كلمة المرور' : 'تعيين كلمة المرور'}
-                    </button>
-                    <button onClick={()=>{ setEditingPw(false); setCurPw(''); setNewPw(''); }}
-                      style={{ padding:'8px 12px', borderRadius:8, background:'var(--border)',
-                        color:'var(--text)', border:'none', cursor:'pointer' }}>{t('cancel')}</button>
-                  </div>
-                </div>
-              : <button className={styles.editBtn} style={{ marginTop:8 }}
-                  onClick={()=>{ setEditingPw(true); setNewPw(''); setCurPw(''); }}>
-                  🔑 {hasPassword ? 'تغيير كلمة المرور' : 'تعيين كلمة مرور'}
-                </button>
-          }
-
-          {/* Leaderboard opt-in */}
-          <div className={styles.settingRow} style={{ marginTop:12 }}>
-            <div className={styles.settingInfo}>
-              <div className={styles.settingLabel}>🏆 إظهار اسمي في لوحة المتصدرين</div>
-              <div className={styles.settingDesc}>
-                {user.show_on_leaderboard
-                  ? 'يظهر اسمك ونقاطك في لوحة المتصدرين العامة'
-                  : 'اسمك مخفي — لن تظهر في لوحة المتصدرين'}
-              </div>
-            </div>
-            {lbLoading
-              ? <span style={{ color:'var(--text3)', fontSize:13 }}>...</span>
-              : <Toggle checked={!!user.show_on_leaderboard} onChange={toggleLeaderboard} />}
-          </div>
-
-          {profileMsg && (
-            <div style={{ marginTop:10, padding:'8px 12px', borderRadius:8, fontSize:13,
-              background: profileMsg.startsWith('✅') ? 'rgba(82,183,136,.12)' : 'rgba(248,113,113,.12)',
-              color: profileMsg.startsWith('✅') ? '#52b788' : '#f87171',
-              border: `1px solid ${profileMsg.startsWith('✅') ? '#52b78844' : '#f8717144'}`,
-            }}>{profileMsg}</div>
-          )}
-
-          <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid var(--border)' }}>
-            <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>البريد</span>
-              <span className={styles.infoVal} style={{ direction: 'ltr' }}>{user.email}</span>
-            </div>
-            {user.email_verified === false && (
-              <div className={styles.infoRow}>
-                <span className={styles.infoLabel} style={{ color:'#f59e0b' }}>⚠️ البريد غير مؤكَّد</span>
-                {verifyState === 'sent'
-                  ? <span className={styles.infoVal}>✅ أُرسلت رسالة التأكيد</span>
-                  : <button className={styles.editBtn} onClick={handleResendVerify} disabled={verifyState === 'sending'}>
-                      {verifyState === 'sending' ? '...' : 'إعادة إرسال رسالة التأكيد'}
-                    </button>}
-              </div>
-            )}
-          </div>
-          <button className={styles.dangerBtn} onClick={handleSignOut}>{t('logout')}</button>
-          {/* Web Push */}
-          <div className={styles.settingRow} style={{marginTop:8}}>
-            <div className={styles.settingInfo}>
-              <div className={styles.settingLabel}>🔔 منبّه الورد اليومي</div>
-              <div className={styles.settingDesc}>إشعار يذكّرك بوردك كل يوم</div>
-            </div>
-            <button className={styles.pushBtn} onClick={async () => {
-              if (!('Notification' in window)) return;
-              const perm = await Notification.requestPermission();
-              if (perm === 'granted') new Notification('✅ تم تفعيل المنبّه', { body:'ستصلك إشعارات يومية', icon:'/icons/icon-192.png' });
-            }}>
-              {typeof Notification !== 'undefined' && Notification.permission === 'granted' ? '✅ مفعّل' : 'تفعيل'}
-            </button>
-          </div>
-
-          <Link to="/delete-data" style={{ display:'block', marginTop:8, textAlign:'center',
-            fontSize:12, color:'var(--text3)' }}>🗑️ حذف الحساب والبيانات / تنزيل نسخة منها</Link>
-        </div>
-      )}
-
-      {/* Display */}
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>🎨 العرض</h3>
-
-        <div className={styles.settingRow}>
-          <div>
-            <div className={styles.settingLabel}>{t('darkMode')}</div>
-            <div className={styles.settingDesc}>خلفية داكنة مريحة للعين</div>
-          </div>
-          <Toggle checked={state.darkMode} onChange={v => saveSetting('darkMode', v)} />
-        </div>
-
-        <div className={styles.settingRow}>
-          <div>
-            <div className={styles.settingLabel}>{t('font_style')}</div>
-            <div className={styles.settingDesc}>اختر خط عرض القرآن الكريم</div>
-          </div>
-          <div className={styles.segmented}>
-            <button className={`${styles.seg} ${state.fontStyle === 'uthmani' ? styles.segActive : ''}`}
-              onClick={() => saveSetting('fontStyle', 'uthmani')}>{t('uthmani')}</button>
-            <button className={`${styles.seg} ${state.fontStyle !== 'uthmani' ? styles.segActive : ''}`}
-              onClick={() => saveSetting('fontStyle', 'simple')}>{t('simple')}</button>
-          </div>
-        </div>
-
-        <div className={styles.settingRow}>
-          <div>
-            <div className={styles.settingLabel}>حجم الخط: {state.fontSize}px</div>
-            <div className={styles.settingDesc}>اضبط حجم نص القرآن الكريم</div>
-          </div>
-          <input type="range" min="16" max="48" step="2"
-            value={state.fontSize}
-            onChange={e => saveSetting('fontSize', parseInt(e.target.value))}
-            className={styles.slider} />
-        </div>
-
-        <div className={styles.settingRow}>
-          <div>
-            <div className={styles.settingLabel}>وضع التظليل</div>
-            <div className={styles.settingDesc}>تظليل الآية عند الضغط عليها</div>
-          </div>
-          <Toggle checked={!!state.highlightMode} onChange={v => saveSetting('highlightMode', v)} />
-        </div>
-      </div>
-
-      {/* Translation */}
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>🌍 الترجمة</h3>
-        <p className={styles.transHint}>تظهر الترجمة تحت كل آية أثناء القراءة</p>
-        <div className={styles.translationGrid}>
-          {TRANSLATIONS.map(tk => (
-            <button key={tk.id}
-              className={`${styles.transBtn} ${(state.translation || 'none') === tk.id ? styles.transBtnActive : ''}`}
-              onClick={() => saveSetting('translation', tk.id)}>
-              <span className={styles.transFlag}>{tk.flag}</span>
-              <span className={styles.transLang}>{tk.lang}</span>
-              <span className={styles.transName}>{tk.name}</span>
-              {(state.translation || 'none') === tk.id && <span className={styles.transTick}>✓</span>}
-            </button>
+      <div className={`nq-wrap ${styles.layout}`}>
+        <nav className={styles.toc} aria-label="أقسام الإعدادات">
+          {SECTIONS.map(s => (
+            <a key={s.id} href={`#${s.id}`} className={styles.tocLink}><Icon name={s.icon} />{s.title}</a>
           ))}
+        </nav>
+
+        <div className={styles.main}>
+          {/* ── appearance ── */}
+          <Section id="appearance" icon="sun" title="المظهر" sub="اختر وضع العرض الذي يريح عينيك، وكل الصفحات تتبعه.">
+            <div className={styles.modes} role="group" aria-label="وضع العرض">
+              {MODES.map(m => (
+                <button key={m.id} type="button" aria-pressed={look.mode === m.id}
+                  className={styles.mode} onClick={() => look_({ mode: m.id })}>
+                  <ModePreview id={m.id} />
+                  <span className={styles.modeName}>
+                    {look.mode === m.id && <Icon name="check" />}{m.label}
+                  </span>
+                  <span className={styles.modeHint}>{m.hint}</span>
+                </button>
+              ))}
+            </div>
+
+            <Row icon="aa" title="حجم النص في الموقع" desc="يكبّر أو يصغّر كل نصوص الموقع والأزرار." stack>
+              <div className={styles.sizeCtl}>
+                <span className={styles.aSmall} aria-hidden="true">أ</span>
+                <input type="range" min="90" max="140" step="5" value={look.size} className={styles.range}
+                  aria-label="حجم النص" aria-valuetext={`${look.size}٪`}
+                  onChange={e => look_({ size: Number(e.target.value) })} />
+                <span className={styles.aBig} aria-hidden="true">أ</span>
+                <output className={`nq-num ${styles.val}`}>{toAr(look.size)}٪</output>
+                {look.size !== 100 && (
+                  <button type="button" className="nq-btn ghost sm" onClick={() => look_({ size: 100 })}>الافتراضي</button>
+                )}
+              </div>
+            </Row>
+
+            <Row icon="chart" title="ألوان مناسبة لعمى الألوان"
+              desc="تستبدل ألوان الحالات (تمّ، قيد التنفيذ، تنبيه) بألوان يميّزها الجميع.">
+              <span className={styles.dots} aria-hidden="true"><i data-c="ok" /><i data-c="warn" /><i data-c="info" /><i data-c="danger" /></span>
+              <Switch checked={look.cb} label="ألوان مناسبة لعمى الألوان" onChange={v => look_({ cb: v })} />
+            </Row>
+
+            <Row icon="pause" title="تقليل الحركة" desc="يوقف المؤثرات المتحركة والانتقالات في الصفحات.">
+              <Switch checked={look.reduce} label="تقليل الحركة" onChange={v => look_({ reduce: v })} />
+            </Row>
+          </Section>
+
+          {/* ── reading ── */}
+          <Section id="reading" icon="book" title="القراءة والتلاوة" sub="كيف يظهر لك المصحف، والترجمة، والقارئ الذي تستمع إليه.">
+            <div className={styles.ayahPreview}>
+              <p className={`nq-q ${styles.ayahText}`} data-style={state.fontStyle === 'uthmani' ? 'uthmani' : 'simple'}
+                style={{ fontSize: `${state.fontSize}px` }} lang="ar">
+                {state.fontStyle === 'uthmani'
+                  ? 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ'
+                  : 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ'}
+              </p>
+              <span className={styles.pvCap}>معاينة حجم الخط ونوعه</span>
+            </div>
+
+            <Row icon="pen" title={t('font_style') || 'نوع الخط'} desc="الرسم العثماني كما في المصحف، أو الإملاء الحديث.">
+              <div className="nq-seg" role="group" aria-label="نوع خط المصحف">
+                <button type="button" aria-pressed={state.fontStyle === 'uthmani'} onClick={() => saveSetting('fontStyle', 'uthmani')}>{t('uthmani') || 'عثماني'}</button>
+                <button type="button" aria-pressed={state.fontStyle !== 'uthmani'} onClick={() => saveSetting('fontStyle', 'simple')}>{t('simple') || 'مبسّط'}</button>
+              </div>
+            </Row>
+
+            <Row icon="aa" title="حجم خط المصحف" desc="حجم نص القرآن الكريم في صفحة القراءة." stack>
+              <div className={styles.sizeCtl}>
+                <span className={styles.aSmall} aria-hidden="true">أ</span>
+                <input type="range" min="16" max="48" step="2" value={state.fontSize} className={styles.range}
+                  aria-label="حجم خط المصحف" aria-valuetext={`${state.fontSize} بكسل`}
+                  onChange={e => saveSetting('fontSize', parseInt(e.target.value, 10))} />
+                <span className={styles.aBig} aria-hidden="true">أ</span>
+                <output className={`nq-num ${styles.val}`}>{toAr(state.fontSize)}</output>
+              </div>
+            </Row>
+
+            <Row icon="bookmark" title="تظليل الآية" desc="تظليل الآية عند الضغط عليها أثناء القراءة.">
+              <Switch checked={!!state.highlightMode} label="تظليل الآية" onChange={v => saveSetting('highlightMode', v)} />
+            </Row>
+
+            <Row icon="head" title="القارئ" desc="يُستخدم عند الاستماع إلى التلاوة.">
+              <label className={styles.selectWrap}>
+                <span className="nq-sr">القارئ</span>
+                <select className={styles.select} value={state.reader} onChange={e => saveSetting('reader', e.target.value)}>
+                  {READERS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+                <Icon name="chev" />
+              </label>
+            </Row>
+
+            <Row icon="bell" title="منبّه الورد اليومي" desc="إشعار يذكّرك بوردك كل يوم على هذا الجهاز.">
+              {notifPerm === 'granted'
+                ? <span className={`nq-pill on ${styles.okPill}`}><Icon name="check" />مفعّل</span>
+                : notifPerm === 'unsupported'
+                  ? <span className="nq-pill">غير مدعوم في هذا المتصفح</span>
+                  : <button type="button" className="nq-btn ghost sm" onClick={enableReminder}><Icon name="bell" />تفعيل</button>}
+            </Row>
+
+            <div className={styles.block}>
+              <div className={styles.rowText}>
+                <span className={styles.rowTitle}><Icon name="globe" />الترجمة الافتراضية</span>
+                <span className={styles.rowDesc}>تظهر الترجمة تحت كل آية أثناء القراءة.</span>
+              </div>
+              <div className={styles.trans} role="group" aria-label="الترجمة">
+                {TRANSLATIONS.map(tk => (
+                  <button key={tk.id} type="button" aria-pressed={curTrans === tk.id}
+                    className={styles.transBtn} onClick={() => saveSetting('translation', tk.id)}>
+                    <span className={styles.transCode} dir="ltr">{tk.id === 'none' ? <Icon name="x" /> : tk.lang}</span>
+                    <span className={styles.transName} dir="auto">{tk.name}</span>
+                    {curTrans === tk.id && <Icon name="check" className={styles.transTick} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Section>
+
+          {/* ── account ── */}
+          <Section id="account" icon="user" title="الحساب" sub={user ? 'بياناتك الشخصية وكلمة المرور وخصوصيتك.' : 'سجّل دخولك لمزامنة قراءتك وحفظك وختماتك على كل أجهزتك.'}>
+            {!user ? (
+              <div className={styles.guest}>
+                <p>أنت تستخدم الموقع بدون حساب، وبياناتك محفوظة على هذا الجهاز فقط.</p>
+                <div className={styles.btns}>
+                  <Link to="/login" className="nq-btn gold"><Icon name="user" />تسجيل الدخول</Link>
+                  <Link to="/signup" className="nq-btn ghost"><Icon name="plus" />إنشاء حساب</Link>
+                </div>
+              </div>
+            ) : (<>
+              <div className={styles.profile}>
+                <span className={styles.avatar}>
+                  {avatarOf(user)
+                    ? <img src={avatarOf(user)} alt="" />
+                    : (displayNameOf(user, '؟')[0] || '؟').toUpperCase()}
+                </span>
+                <div className={styles.who}>
+                  <b>{name}</b>
+                  <span dir="ltr">{user.email}</span>
+                </div>
+                {user.email_verified === false
+                  ? <span className={`nq-pill ${styles.warnPill}`}><Icon name="bell" />البريد غير مؤكَّد</span>
+                  : <span className={`nq-pill ${styles.okPill}`}><Icon name="check" />البريد مؤكَّد</span>}
+              </div>
+
+              {user.email_verified === false && (
+                <div className={styles.verify}>
+                  <span>أكّد بريدك لتتمكن من استعادة حسابك إن نسيت كلمة المرور.</span>
+                  {verifyState === 'sent'
+                    ? <span className={`nq-pill ${styles.okPill}`}><Icon name="check" />أُرسلت رسالة التأكيد</span>
+                    : <button type="button" className="nq-btn ghost sm" onClick={handleResendVerify} disabled={verifyState === 'sending'}>
+                        {verifyState === 'sending' ? 'جارٍ الإرسال…' : 'إعادة إرسال رسالة التأكيد'}
+                      </button>}
+                </div>
+              )}
+
+              {/* name */}
+              <Row icon="pen" title="الاسم" desc={editingName ? null : name} stack={editingName}>
+                {editingName ? (
+                  <form className={styles.inline} onSubmit={handleUpdateName}>
+                    <label className={`nq-input ${styles.grow}`}>
+                      <span className="nq-sr">الاسم الجديد</span>
+                      <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('edit_name_ph') || 'اسمك'} autoFocus />
+                    </label>
+                    <button type="submit" className="nq-btn gold sm" disabled={profileLoading || !newName.trim()}>{profileLoading ? '…' : 'حفظ'}</button>
+                    <button type="button" className="nq-btn ghost sm" onClick={() => setEditingName(false)}>{t('cancel') || 'إلغاء'}</button>
+                  </form>
+                ) : (
+                  <button type="button" className="nq-btn ghost sm" onClick={() => { setEditingName(true); setNewName(user.name || ''); }}>تعديل</button>
+                )}
+              </Row>
+
+              {/* password */}
+              <Row icon="lock" title="كلمة المرور"
+                desc={editingPw ? null : hasPassword ? 'غيّرها متى شئت؛ سيُسجَّل خروجك من الأجهزة الأخرى.' : 'دخلت بحساب Google. يمكنك تعيين كلمة مرور للدخول بالبريد أيضاً.'}
+                stack={editingPw}>
+                {editingPw ? (
+                  <form className={styles.pwForm} onSubmit={handleUpdatePw}>
+                    {hasPassword && (
+                      <label className={styles.lbl}>
+                        <span>كلمة المرور الحالية</span>
+                        <span className="nq-input"><input type="password" dir="ltr" value={curPw} onChange={e => setCurPw(e.target.value)} autoComplete="current-password" /></span>
+                      </label>
+                    )}
+                    <label className={styles.lbl}>
+                      <span>كلمة المرور الجديدة <small>(٨ أحرف على الأقل)</small></span>
+                      <span className="nq-input"><input type="password" dir="ltr" value={newPw} onChange={e => setNewPw(e.target.value)} autoComplete="new-password" /></span>
+                    </label>
+                    <div className={styles.btns}>
+                      <button type="submit" className="nq-btn gold sm" disabled={profileLoading || newPw.length < 8 || (hasPassword && !curPw)}>
+                        {profileLoading ? '…' : hasPassword ? 'تغيير كلمة المرور' : 'تعيين كلمة المرور'}
+                      </button>
+                      <button type="button" className="nq-btn ghost sm" onClick={() => { setEditingPw(false); setCurPw(''); setNewPw(''); }}>{t('cancel') || 'إلغاء'}</button>
+                    </div>
+                  </form>
+                ) : (
+                  <button type="button" className="nq-btn ghost sm" onClick={() => { setEditingPw(true); setNewPw(''); setCurPw(''); }}>
+                    {hasPassword ? 'تغيير' : 'تعيين كلمة مرور'}
+                  </button>
+                )}
+              </Row>
+
+              <Row icon="trophy" title="إظهار اسمي في لوحة المتصدرين"
+                desc={user.show_on_leaderboard ? 'يظهر اسمك ونقاطك في لوحة المتصدرين العامة.' : 'اسمك مخفي، ولن تظهر في لوحة المتصدرين.'}>
+                <Switch checked={!!user.show_on_leaderboard} disabled={lbLoading} label="إظهار اسمي في لوحة المتصدرين" onChange={toggleLeaderboard} />
+              </Row>
+
+              <Row icon="download" title="نسخة من بياناتك" desc="نزّل كل بياناتك المحفوظة في حسابك في ملف واحد.">
+                <button type="button" className="nq-btn ghost sm" onClick={handleExport} disabled={exporting}>
+                  <Icon name="download" />{exporting ? 'جارٍ التحضير…' : 'تنزيل'}
+                </button>
+              </Row>
+
+              {profileMsg && (
+                <p className={styles.msg} data-ok={profileMsg.ok ? '1' : '0'} role={profileMsg.ok ? 'status' : 'alert'}>
+                  <Icon name={profileMsg.ok ? 'check' : 'x'} />{profileMsg.text}
+                </p>
+              )}
+
+              <div className={styles.accFoot}>
+                <button type="button" className="nq-btn ghost" onClick={handleSignOut}><Icon name="logout" />{t('logout') || 'تسجيل الخروج'}</button>
+                <Link to="/delete-data" className={styles.dangerLink}><Icon name="x" />حذف الحساب والبيانات</Link>
+              </div>
+            </>)}
+          </Section>
+
+          {/* ── language ── */}
+          <Section id="language" icon="globe" title="اللغة" sub="لغة واجهة الموقع. نص القرآن الكريم يبقى بالعربية دائماً.">
+            <Row icon="globe" title="لغة الواجهة" desc="تتغيّر القوائم والعناوين فوراً.">
+              <div className={styles.lang}><LangSwitcher /></div>
+            </Row>
+          </Section>
+
+          {/* ── about ── */}
+          <Section id="about" icon="star" title="عن نور القرآن" sub="مجاني لوجه الله، بلا إعلانات.">
+            <dl className={styles.about}>
+              <div><dt>نص القرآن والترجمات</dt><dd dir="ltr">alquran.cloud</dd></div>
+              <div><dt>التلاوات</dt><dd dir="ltr">everyayah.com</dd></div>
+              <div><dt>الإصدار</dt><dd className="nq-num">٢٫٠</dd></div>
+              <div><dt>تم الإنشاء بواسطة</dt><dd dir="ltr">ABDELRAHMAN HAMDY</dd></div>
+            </dl>
+            <div className={styles.aboutLinks}>
+              <Link to="/help" className="nq-btn ghost sm"><Icon name="doc" />شرح الاستخدام</Link>
+              <Link to="/support" className="nq-btn ghost sm"><Icon name="chat" />الدعم</Link>
+              <Link to="/privacy" className="nq-btn ghost sm"><Icon name="shield" />الخصوصية</Link>
+              <Link to="/terms" className="nq-btn ghost sm"><Icon name="scroll" />الشروط</Link>
+            </div>
+          </Section>
         </div>
       </div>
 
-      {/* Audio */}
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>🎧 الصوت</h3>
-        <div className={styles.settingRow}>
-          <div>
-            <div className={styles.settingLabel}>القارئ</div>
-            <div className={styles.settingDesc}>سيُستخدم عند الاستماع</div>
-          </div>
-          <select className={styles.select} value={state.reader}
-            onChange={e => saveSetting('reader', e.target.value)}>
-            {READERS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-          </select>
-        </div>
+      <div className={`${styles.saved} ${saved ? styles.savedOn : ''}`} role="status" aria-live="polite">
+        {saved && <><Icon name="check" />تم الحفظ</>}
       </div>
-
-      {/* About */}
-      <div className={styles.section}>
-        <h3 className={styles.sectionTitle}>ℹ️ حول التطبيق</h3>
-        <div className={styles.aboutCard}>
-          <div className={styles.aboutLogo}>نور القرآن ✦</div>
-          <p>بيانات القرآن من <strong>alquran.cloud</strong></p>
-          <p>التلاوات من <strong>everyayah.com</strong></p>
-          <p>الترجمات من <strong>alquran.cloud</strong></p>
-          <p className={styles.version}>الإصدار 2.0</p>
-          <p className={styles.credit}>
-            تم الإنشاء بواسطة<br />
-            <strong>ABDELRAHMAN HAMDY</strong>
-          </p>
-        </div>
-      </div>
-
-      {!user && (
-        <div className={styles.loginPrompt}>
-          <p>💡 سجّل دخولك لمزامنة بياناتك على جميع أجهزتك</p>
-          <Link to="/login" className={styles.loginLink}>تسجيل الدخول</Link>
-        </div>
-      )}
     </div>
   );
 }

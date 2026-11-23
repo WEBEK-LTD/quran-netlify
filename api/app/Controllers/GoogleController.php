@@ -9,6 +9,7 @@ use NQ\Core\Crypto;
 use NQ\Core\Db;
 use NQ\Core\Http;
 use NQ\Core\Integrations;
+use NQ\Core\Mailer;
 use NQ\Core\Redirect;
 use NQ\Core\Request;
 use NQ\Core\Settings;
@@ -157,6 +158,7 @@ final class GoogleController
                     [$email, $name, $pic, $sub, Db::now(), Db::now(), Db::now()]
                 );
                 $user = ['id' => $id];
+                Mailer::sendWelcome($email, $name); // Google addresses are already verified
             }
         }
         $uid = (int) $user['id'];

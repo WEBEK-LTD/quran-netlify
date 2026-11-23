@@ -1,294 +1,167 @@
-.page {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 24px 20px 80px;
-  direction: rtl;
-}
+/* ─── Prayer times ─────────────────────────────────────────────────────────── */
+.page { position:relative; padding-bottom:72px; }
+/* NotFoundPage.module.css leaks a global `p { max-width:300px }` — undo it (zero-specificity so classes below win) */
+.page :where(p) { max-width:none; }
+/* the eyebrow (city · method) is long: start the hero text below the arch's peak */
+.page :global(.nq-phero) { padding-top:92px; }
+@media (max-width:520px) { .page :global(.nq-phero) { padding-top:100px; } }
+.wrap { padding-top:40px; }
+.sec { padding-top:64px; }
+.secHead { display:grid; gap:8px; justify-items:center; text-align:center; margin-bottom:28px; }
+.secHeadStart { display:grid; gap:6px; }
+.flip { transform:scaleX(-1); }
 
-/* Top bar */
-.topBar { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
-.backBtn {
-  font-size:13px; color:var(--text3); padding:6px 12px; border-radius:8px;
-  border:1px solid var(--border); background:var(--surface); text-decoration:none;
-  transition:all .15s;
-}
-.backBtn:hover { color:var(--text); border-color:var(--text2); }
-.pageTitle { flex:1; text-align:center; font-size:20px; font-weight:700; color:var(--text); }
+/* ── states ── */
+.error { display:flex; gap:10px; align-items:center; padding:14px 18px; border-radius:16px; border:var(--bw) solid color-mix(in srgb,var(--danger) 55%,transparent); background:color-mix(in srgb,var(--danger) 12%,var(--surface)); color:var(--text); margin-bottom:20px; }
+.error :global(.nq-ico) { color:var(--danger); }
+.state { position:relative; overflow:hidden; display:grid; justify-items:center; text-align:center; gap:14px; padding:48px 24px; }
+.state > :not(svg) { position:relative; }
+.state :global(.nq-badge8) { filter:drop-shadow(0 8px 18px var(--glow)); }
+.state :global(.nq-badge8 .nq-ico) { width:30px; height:30px; }
+.stateTitle { font-family:var(--f-title); font-size:clamp(1.5rem,3vw,2rem); line-height:1.3; }
+.stateSub { color:var(--muted); max-width:52ch; }
+.stateActs { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:4px; }
+.spinner { width:16px; height:16px; border-radius:50%; border:2px solid currentColor; border-top-color:transparent; display:inline-block; animation:ptSpin .8s linear infinite; flex:none; }
+.spinnerLg { width:40px; height:40px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--gold); animation:ptSpin .8s linear infinite; }
+@keyframes ptSpin { to { transform:rotate(360deg); } }
 
-/* Clock card */
-.clockCard {
-  background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 28px 24px 20px;
-  text-align: center;
-  margin-bottom: 16px;
-  position: relative;
-  overflow: hidden;
-}
-.clockCard::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,.08) 0%, transparent 70%);
-  pointer-events: none;
-}
-.clockTime {
-  font-size: clamp(44px, 10vw, 64px);
-  font-weight: 800;
-  color: var(--gold);
-  letter-spacing: -2px;
-  line-height: 1;
-  font-family: 'Segoe UI', sans-serif;
-  direction: ltr;
-}
-.ampm { font-size: .4em; font-weight: 500; color: var(--gold2); vertical-align: super; }
-.clockDate { font-size: 15px; color: var(--text2); margin-top: 8px; }
-.hijriDate { font-size: 13px; color: var(--text3); margin-top: 4px; }
-.cityBadge {
-  display: inline-block;
-  margin-top: 10px; padding: 4px 14px;
-  background: var(--gold-dim); border: 1px solid rgba(201,168,76,.3);
-  border-radius: 20px; font-size: 13px; color: var(--gold);
-}
+/* ── next prayer + qibla ── */
+.pgrid { display:grid; grid-template-columns:1.35fr 1fr; gap:18px; }
+.nextp { padding:28px; display:grid; gap:8px; position:relative; overflow:hidden; align-content:start; }
+.nextp > :not(svg) { position:relative; }
+.nextRow { display:flex; justify-content:space-between; align-items:end; gap:16px; flex-wrap:wrap; }
+.big { font-family:var(--f-title); font-size:clamp(2.2rem,4vw,2.8rem); font-weight:700; line-height:1.15; }
+.nextAt { color:var(--muted); font-size:.95rem; }
+.cdBox { text-align:end; }
+.cdBox small { color:var(--muted); font-size:.85rem; }
+.cd { font-family:var(--f-brand); font-size:clamp(2.4rem,5.4vw,3.4rem); font-weight:600; color:var(--gold); line-height:1.1; letter-spacing:.02em; direction:ltr; }
+.arc { width:100%; height:auto; margin-top:6px; overflow:visible; }
+.arc text { font-family:var(--f-ui); }
+.arcLbl { font-size:15px; font-weight:600; fill:var(--text); }
+.arcTm { font-size:13px; fill:var(--muted); }
+.nextFoot { display:flex; gap:8px; flex-wrap:wrap; }
+.nextFoot :global(.nq-pill .nq-ico) { width:15px; height:15px; }
 
-/* Next prayer banner */
-.nextBanner {
-  display: flex; align-items: center; gap: 16px;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--surface)), var(--surface2));
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: 16px;
-  margin-bottom: 16px;
-  position: relative; overflow: hidden;
-}
-.nextBanner::before {
-  content: ''; position: absolute;
-  right: -20px; top: -20px;
-  width: 100px; height: 100px;
-  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%);
-  pointer-events: none;
-}
-.nextIcon { font-size: 36px; flex-shrink: 0; }
-.nextInfo { flex: 1; }
-.nextLabel { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
-.nextName { font-size: 22px; font-weight: 700; color: var(--text); margin-top: 2px; }
-.nextTime { text-align: left; flex-shrink: 0; }
-.nextTimeVal { font-size: 22px; font-weight: 700; color: var(--accent); direction: ltr; }
-.nextLeft { font-size: 12px; color: var(--text3); text-align: center; margin-top: 3px; }
+.qibla { padding:24px; display:grid; gap:10px; justify-items:center; align-content:center; text-align:center; color:inherit; }
+.rose { width:min(280px,100%); height:auto; }
+.qDeg { font-size:1.6rem; font-family:var(--f-title); line-height:1.3; display:block; }
+.qSub { color:var(--muted); font-size:.9rem; }
+.qGo { display:inline-flex; align-items:center; gap:4px; color:var(--gold); font-weight:600; font-size:.9rem; min-height:32px; }
+.qGo :global(.nq-ico) { width:18px; height:18px; }
 
-/* Location card */
-.locationCard {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 16px; padding: 18px 20px; margin-bottom: 20px;
+/* ── five prayers as mihrab windows ── */
+.fiveHead { display:flex; justify-content:space-between; align-items:end; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
+.fiveHead :global(.nq-seg button) { min-width:72px; min-height:40px; }
+.fiveHead :global(.nq-seg button[disabled]) { opacity:.5; cursor:progress; }
+.windows { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; }
+.win {
+  position:relative; padding:76px 12px 22px; text-align:center; display:grid; gap:6px; justify-items:center; align-content:end; min-height:270px;
+  background:linear-gradient(180deg,var(--raise),var(--surface) 70%);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20150%27%20preserveAspectRatio%3D%27none%27%3E%3Cpath%20d%3D%27M0%20150V54C0%2031%2027%2012%2050%200%2073%2012%20100%2031%20100%2054V150Z%27/%3E%3C/svg%3E") center/100% 100% no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20150%27%20preserveAspectRatio%3D%27none%27%3E%3Cpath%20d%3D%27M0%20150V54C0%2031%2027%2012%2050%200%2073%2012%20100%2031%20100%2054V150Z%27/%3E%3C/svg%3E") center/100% 100% no-repeat;
 }
-.gpsBtn {
-  width: 100%; padding: 12px; border-radius: 10px;
-  background: var(--gold-dim); border: 1px solid rgba(201,168,76,.4);
-  color: var(--gold); font-size: 14px; font-weight: 600;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  transition: all .2s; cursor: pointer;
-}
-.gpsBtn:hover:not(:disabled) { background: rgba(201,168,76,.2); }
-.gpsBtn:disabled { opacity: .5; cursor: default; }
-.spin { display: inline-block; animation: spin .8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.orLine {
-  display: flex; align-items: center; gap: 10px;
-  margin: 12px 0; color: var(--text3); font-size: 12px;
-}
-.orLine::before, .orLine::after {
-  content: ''; flex: 1; height: 1px; background: var(--border);
-}
-.cityRow { display: flex; gap: 8px; margin-bottom: 12px; }
-.cityInput {
-  flex: 1; padding: 9px 14px; border-radius: 10px;
-  border: 1px solid var(--border); background: var(--bg2);
-  color: var(--text); font-size: 14px;
-}
-.cityInput:focus { outline: none; border-color: var(--gold); }
-.cityBtn {
-  padding: 9px 18px; border-radius: 10px;
-  background: var(--gold); color: #000; font-weight: 700;
-  border: none; cursor: pointer; font-size: 14px;
-  transition: opacity .2s;
-}
-.cityBtn:disabled { opacity: .5; cursor: default; }
-.methodRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.methodLabel { font-size: 13px; color: var(--text3); flex-shrink: 0; }
-.methodSelect {
-  flex: 1; padding: 7px 10px; border-radius: 8px;
-  border: 1px solid var(--border); background: var(--bg2);
-  color: var(--text); font-size: 13px; cursor: pointer;
-}
+.wl { position:absolute; inset:0; width:100%; height:100%; color:var(--line2); pointer-events:none; }
+.wl path { vector-effect:non-scaling-stroke; }
+.win > :not(.wl) { position:relative; }
+.wBadge { width:48px !important; height:48px !important; }
+.wName { font-family:var(--f-title); font-size:1.45rem; font-weight:700; line-height:1.2; }
+.wTime { font-family:var(--f-brand); font-size:1.9rem; line-height:1.15; white-space:nowrap; }
+.wTime small { font-family:var(--f-ui); font-size:.78rem; color:var(--muted); margin-inline-start:4px; }
+.wState { color:var(--muted); }
+.win.now { background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 26%,var(--raise)),var(--surface) 78%); }
+.win.now .wl { color:var(--gold); }
+.win.now .wTime { color:var(--gold); }
+.win.now .wBadge { filter:drop-shadow(0 6px 16px var(--glow)); }
+.win.past .wName, .win.past .wTime { color:var(--muted); }
+.win.past .wBadge { opacity:.6; }
+.adh { display:flex; gap:8px; align-items:center; font-size:.8rem; color:var(--muted); margin-top:6px; min-height:44px; }
+.tog { width:52px; height:30px; border-radius:999px; background:var(--raise); border:var(--bw) solid var(--line); position:relative; padding:0; flex:none; }
+.tog::before { content:""; position:absolute; inset:-8px -2px; }
+.tog::after { content:""; position:absolute; top:3px; inset-inline-start:3px; width:22px; height:22px; border-radius:50%; background:var(--muted); transition:inset-inline-start .2s, background .2s; }
+.tog[aria-checked="true"] { background:var(--hl); border-color:var(--gold); }
+.tog[aria-checked="true"]::after { inset-inline-start:25px; background:var(--gold); }
+:global(:root[data-mode="contrast"]) .win { background:#000; outline:2px solid #fff; outline-offset:-2px; -webkit-mask:none; mask:none; border-radius:999px 999px 12px 12px / 120px 120px 12px 12px; }
+:global(:root[data-mode="contrast"]) .win.now { outline-color:var(--gold); outline-width:3px; }
+:global(:root[data-mode="contrast"]) .wl { display:none; }
 
-/* Error */
-.errorMsg {
-  padding: 12px 16px; border-radius: 10px; font-size: 14px;
-  background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.3);
-  color: #f87171; margin-bottom: 16px; text-align: center;
-}
+/* ── settings ── */
+.settings { padding:8px 28px; display:grid; }
+.setRow { display:grid; grid-template-columns:200px minmax(0,1fr); gap:20px; align-items:start; padding:20px 0; border-bottom:var(--bw) solid var(--line); }
+.setRow:last-child { border-bottom:0; }
+.setLbl { display:flex; align-items:center; gap:10px; font-family:var(--f-title); font-size:1.2rem; font-weight:700; min-height:46px; }
+.setLbl :global(.nq-ico) { color:var(--gold); }
+.setCtl { display:grid; gap:12px; justify-items:start; min-width:0; }
+.cityRow { display:flex; gap:10px; width:100%; flex-wrap:wrap; }
+.cityInput { flex:1; min-width:220px; height:48px; }
+.cityInput input { width:100%; }
+.cityInput :global(.nq-ico) { color:var(--muted); }
+.selectWrap { position:relative; width:min(100%,460px); }
+.select { appearance:none; -webkit-appearance:none; width:100%; height:48px; border-radius:14px; border:var(--bw) solid var(--line); background:var(--surface); color:var(--text); padding:0 14px; padding-inline-end:42px; font-size:.98rem; }
+.select:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 3px var(--hl); }
+.selectWrap :global(.nq-ico) { position:absolute; inset-inline-end:14px; top:50%; transform:translateY(-50%); pointer-events:none; color:var(--gold); }
+.select option { background:var(--surface); color:var(--text); }
+.hint { color:var(--muted); font-size:.9rem; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.hint :global(.nq-ico) { color:var(--ok); width:18px; height:18px; }
+.linkBtn { border:0; background:none; padding:6px 0; color:var(--gold); font-weight:600; text-decoration:underline; text-underline-offset:4px; min-height:36px; }
+.pills { display:flex; gap:8px; flex-wrap:wrap; }
+.pillBtn { min-height:44px; padding:6px 16px; font-size:.92rem; color:var(--text); }
+.pillBtn :global(.nq-ico) { width:16px; height:16px; }
+.notice { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 14px; border-radius:14px; background:var(--hl); border:var(--bw) solid var(--line2); font-size:.9rem; }
+.notice > span { flex:1; min-width:200px; }
+.notice :global(.nq-ico) { color:var(--gold); }
+.noticeWarn { background:color-mix(in srgb,var(--warn) 12%,var(--surface)); border-color:color-mix(in srgb,var(--warn) 50%,transparent); }
 
-/* Prayers grid */
-.prayersGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 24px;
-}
-@media (max-width: 480px) {
-  .prayersGrid { grid-template-columns: repeat(2, 1fr); }
-}
-.prayerCard {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; padding: 16px 12px;
-  text-align: center; position: relative; overflow: hidden;
-  transition: transform .2s, border-color .2s;
-}
-.prayerCard:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
-.prayerCardNext {
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent) !important;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, var(--surface)), var(--surface));
-}
-.prayerGlow {
-  position: absolute; inset: 0;
-  opacity: .06; pointer-events: none;
-}
-.prayerIcon { font-size: 28px; margin-bottom: 6px; }
-.prayerName { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
-.prayerTime { font-size: 16px; font-weight: 600; color: var(--accent); direction: ltr; }
-.prayerBadge {
-  display: inline-block; margin-top: 6px;
-  padding: 2px 8px; border-radius: 12px; font-size: 11px;
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  color: var(--accent); font-weight: 600;
-}
+/* ── week ── */
+.week { padding:8px; overflow:hidden; }
+.weekScroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.weekTable { width:100%; border-collapse:collapse; min-width:640px; }
+.weekTable th, .weekTable td { padding:14px 12px; text-align:center; border-bottom:var(--bw) solid var(--line); }
+.weekTable thead th { font-family:var(--f-title); font-size:1.08rem; color:var(--gold); font-weight:700; }
+.weekTable tbody tr:last-child th, .weekTable tbody tr:last-child td { border-bottom:0; }
+.weekTable tbody th { text-align:start; font-weight:400; }
+.weekTable td { font-size:1.05rem; font-weight:500; }
+.wDay { display:block; font-weight:600; }
+.wDate { display:block; color:var(--muted); font-size:.8rem; }
+.today { background:var(--hl); }
+.today td { color:var(--gold); }
+.tomorrow .wDay { color:var(--gold); }
+.weekLoad { display:flex; align-items:center; gap:8px; justify-content:center; color:var(--muted); font-size:.88rem; padding:12px; }
 
-/* Empty / loading */
-.emptyState {
-  text-align: center; padding: 48px 20px; color: var(--text3);
-}
-.emptyIcon { font-size: 56px; margin-bottom: 16px; }
-.emptyState p { font-size: 15px; line-height: 1.7; max-width: 300px; margin: 0 auto; }
-.loadingState { text-align: center; padding: 40px; color: var(--text3); }
-.loadSpinner {
-  width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 16px;
-  border: 3px solid var(--border); border-top-color: var(--gold);
-  animation: spin .8s linear infinite;
-}
+/* ── duas ── */
+.duas { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.dua { padding:36px 40px; text-align:center; display:grid; gap:12px; }
+.dua::before { content:""; position:absolute; inset:10px; border:1px solid var(--line2); border-radius:14px; pointer-events:none; }
+.duaName { font-family:var(--f-title); font-weight:700; color:var(--gold); font-size:1.25rem; }
+.duaAr { font-family:var(--f-title); font-size:1.4rem; line-height:2; }
+.duaSrc { color:var(--muted); font-size:.85rem; }
 
-/* Dhikr section */
-.section { margin-top: 8px; }
-.sectionTitle {
-  font-size: 16px; font-weight: 700; color: var(--text);
-  margin-bottom: 14px; padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
+/* ── responsive ── */
+@media (max-width:1080px) {
+  .windows { grid-template-columns:repeat(6,1fr); }
+  .win { grid-column:span 2; }
+  .win:nth-child(4), .win:nth-child(5) { grid-column:span 3; }
 }
-.dhikrList { display: flex; flex-direction: column; gap: 10px; }
-.dhikrItem {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 12px; padding: 14px 16px;
+@media (max-width:900px) {
+  .pgrid { grid-template-columns:1fr; }
+  .duas { grid-template-columns:1fr; }
+  .setRow { grid-template-columns:minmax(0,1fr); gap:10px; }
+  .setLbl { min-height:0; }
 }
-.dhikrName { font-size: 12px; color: var(--gold); font-weight: 600; margin-bottom: 6px; }
-.dhikrAr { font-size: 16px; color: var(--text); line-height: 1.8; font-family: var(--font-quran, serif); }
-
-.clockColon {
-  color: var(--gold);
-  opacity: 0.6;
-  animation: blink 1s step-end infinite;
-  margin: 0 2px;
-}
-@keyframes blink {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 0.2; }
-}
-
-/* Weekly table */
-.weekTable {
-  border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  overflow-x: auto;
-}
-.weekHeader {
-  display: grid;
-  grid-template-columns: 80px repeat(6, 1fr);
-  background: var(--surface2);
-  border-bottom: 1px solid var(--border);
-}
-.weekRow {
-  display: grid;
-  grid-template-columns: 80px repeat(6, 1fr);
-  border-bottom: 1px solid var(--border);
-  transition: background .15s;
-}
-.weekRow:last-child { border-bottom: none; }
-.weekRow:hover { background: var(--surface); }
-.weekRowToday {
-  background: rgba(201,168,76,.07) !important;
-  border-right: 3px solid var(--gold);
-}
-.weekCell {
-  padding: 10px 6px;
-  text-align: center;
-  font-size: 13px;
-  color: var(--text2);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
-.weekHeader .weekCell {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  padding: 8px 6px;
-}
-.weekDay { font-size: 13px; font-weight: 700; color: var(--text); }
-.weekDate { font-size: 11px; color: var(--text3); }
-.weekTime { font-size: 13px; font-weight: 600; color: var(--gold); direction: ltr; }
-.weekRowToday .weekTime { color: var(--gold2); }
-
-@media (max-width: 500px) {
-  .weekHeader, .weekRow { grid-template-columns: 60px repeat(6, 1fr); }
-  .weekCell { padding: 8px 3px; font-size: 11px; }
-  .weekTime { font-size: 11px; }
-  .weekDay { font-size: 11px; }
-}
-
-.methodHint {
-  margin-top: 8px; font-size: 12px; color: var(--text3);
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-}
-.methodHintBtn {
-  background: var(--gold-dim); border: 1px solid rgba(201,168,76,.3);
-  color: var(--gold); font-size: 12px; padding: 3px 10px; border-radius: 8px;
-  cursor: pointer; transition: background .2s;
-}
-.methodHintBtn:hover { background: rgba(201,168,76,.2); }
-
-/* Alarm button */
-.alarmBtn {
-  background: none; border: none; cursor: pointer;
-  font-size: 14px; padding: 2px; opacity: .5;
-  transition: all .2s; margin-top: 4px;
-}
-.alarmBtn:hover { opacity: 1; transform: scale(1.2); }
-.alarmOn { opacity: 1 !important; }
-
-/* Notification banner */
-.notifBanner {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 16px; margin-bottom: 16px;
-  background: var(--gold-dim); border: 1px solid rgba(201,168,76,.3);
-  border-radius: 12px; font-size: 13px; color: var(--gold);
-}
-.notifBanner span:nth-child(2) { flex: 1; }
-.notifBtn {
-  padding: 6px 14px; border-radius: 8px;
-  background: var(--gold); color: #000; font-weight: 700;
-  font-size: 12px; border: none; cursor: pointer;
-  white-space: nowrap; flex-shrink: 0;
+@media (max-width:620px) {
+  .wrap { padding-top:28px; }
+  .sec { padding-top:52px; }
+  .nextp { padding:22px 18px; }
+  .arcLbl { font-size:26px; }
+  .arcTm { font-size:21px; }
+  .settings { padding:4px 18px; }
+  .dua { padding:30px 22px; }
+  .windows { gap:10px; }
+  .win { padding:58px 6px 14px; min-height:232px; gap:4px; }
+  .wBadge { width:40px !important; height:40px !important; }
+  .wName { font-size:1.2rem; }
+  .wTime { font-size:1.45rem; }
+  .wTime small { display:block; margin:0; font-size:.72rem; line-height:1.4; }
+  .win :global(.nq-pill) { font-size:.7rem; padding:3px 8px; }
+  .cityInput { min-width:0; flex-basis:100%; }
+  .cityRow :global(.nq-btn) { flex:1; }
 }

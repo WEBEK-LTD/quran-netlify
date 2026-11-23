@@ -91,8 +91,12 @@ final class AuthController
     {
         $token = (string) V::str($r->body(), 'token', 128);
         $uid = Auth::consumeEmailToken($token, 'verify');
-        Db::exec('UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?) WHERE id = ?', [Db::now(), $uid]);
-        return ['user' => Auth::shape((array) Auth::findUser($uid))];
+        $first = Db::exec('UPDATE users SET email_verified_at = ? WHERE id = ? AND email_verified_at IS NULL', [Db::now(), $uid]) === 1;
+        $user = (array) Auth::findUser($uid);
+        if ($first) {
+            Mailer::sendWelcome((string) $user['email'], (string) $user['name']);
+        }
+        return ['user' => Auth::shape($user)];
     }
 
     public static function resendVerification(Request $r): \stdClass
@@ -131,6 +135,10 @@ final class AuthController
         );
         Db::exec("DELETE FROM email_tokens WHERE user_id = ? AND purpose = 'reset'", [$uid]);
         Auth::revokeAll($uid);
+        $u = Auth::findUser($uid);
+        if ($u !== null) {
+            Mailer::sendPasswordChanged((string) $u['email'], (string) $u['name'], 'reset');
+        }
         return Reply::empty();
     }
 
@@ -148,6 +156,7 @@ final class AuthController
         }
         Db::exec('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', [password_hash($new, PASSWORD_DEFAULT), Db::now(), $uid]);
         Auth::revokeAll($uid, $r->sessionId);
+        Mailer::sendPasswordChanged((string) $r->user['email'], (string) $r->user['name'], 'change');
         return Reply::empty();
     }
 
