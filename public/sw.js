@@ -118,7 +118,9 @@ const AUDIO_META    = 'nq-audio-meta-v1';
 const AUDIO_CACHES  = [AUDIO_CACHE, AUDIO_OFFLINE, AUDIO_META];
 const AUDIO_MAX_FILES = 300;
 const AUDIO_MAX_BYTES = 150 * 1024 * 1024;
-const AUDIO_OPAQUE_GUESS = 300 * 1024;   // size used for opaque files in the byte cap
+// Chrome counts each opaque response as ~7 MB of storage quota (padding), so if the
+// audio host has no CORS, opaque copies are charged that much: ~20 recent files max.
+const AUDIO_OPAQUE_GUESS = 7 * 1024 * 1024;
 const AUDIO_INDEX_URL = '/__nq-audio-index__';
 const IS_SAFARI = /safari/i.test(self.navigator.userAgent) && !/chrome|chromium|crios|fxios|android|edg/i.test(self.navigator.userAgent);
 
