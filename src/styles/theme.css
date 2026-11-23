@@ -19,8 +19,8 @@
   --shadow:0 30px 80px -30px rgba(0,0,0,.7); --shadow-sm:0 10px 30px -18px rgba(0,0,0,.6);
   --ok:#3AA57D; --warn:#D6B267; --info:#6F93E0; --danger:#E0705F; --none:#13251D; --ink:#04120C; --bw:1px;
   --page:#0E1C16;
-  --f-brand:'Reem Kufi','IBM Plex Sans Arabic',Tahoma,sans-serif;
-  --f-title:'Amiri','Traditional Arabic',serif;
+  --f-brand:'NQ Kufi','Reem Kufi','IBM Plex Sans Arabic',Tahoma,sans-serif;
+  --f-title:'NQ Kufi','Reem Kufi','IBM Plex Sans Arabic',Tahoma,sans-serif;
   --f-ui:'IBM Plex Sans Arabic',system-ui,Tahoma,sans-serif;
   --f-quran:'Amiri Quran','Amiri','Traditional Arabic',serif;
   --header-h:72px;

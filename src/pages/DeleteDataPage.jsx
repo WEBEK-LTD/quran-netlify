@@ -1,5 +1,5 @@
 // ─── Delete account & data (and download a copy first) ──────────────────────
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth, signOutAuth } from '../hooks/useAuth';
 import { deleteAccount, exportMyData, errorMessage } from '../backend';
@@ -98,6 +98,13 @@ export default function DeleteDataPage() {
   }
 
   const STEPS = ['ما سيُحذف', 'التأكيد', 'تم'];
+  const stepsRef = useRef(null);
+  const firstRender = useRef(true);
+  // bring the step indicator back into view when the step changes
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    stepsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, [step]);
 
   return (
     <div className={styles.page}>
@@ -105,7 +112,7 @@ export default function DeleteDataPage() {
         sub="احذف حسابك وكل بياناتك نهائياً، وننصحك بتنزيل نسخة منها أولاً." />
 
       <div className={`nq-wrap ${styles.narrow}`}>
-        <ol className={styles.steps} aria-label="خطوات الحذف">
+        <ol ref={stepsRef} className={styles.steps} aria-label="خطوات الحذف">
           {STEPS.map((s, i) => (
             <li key={s} data-state={step > i + 1 ? 'done' : step === i + 1 ? 'now' : 'next'} aria-current={step === i + 1 ? 'step' : undefined}>
               <span className={`nq-num ${styles.stepN}`}>{step > i + 1 ? <Icon name="check" /> : toAr(i + 1)}</span>{s}

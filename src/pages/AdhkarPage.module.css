@@ -1,5 +1,5 @@
 /* ─── Adhkar ───────────────────────────────────────────────────────────────── */
-.page { position:relative; padding-bottom:72px; }
+.page { position:relative; padding-bottom:72px; min-width:0; }
 /* NotFoundPage.module.css leaks a global `p { max-width:300px }` — undo it (zero-specificity so classes below win) */
 .page :where(p) { max-width:none; }
 .wrap { padding-top:40px; max-width:1040px; }

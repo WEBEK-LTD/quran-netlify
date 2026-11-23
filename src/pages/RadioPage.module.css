@@ -1,5 +1,5 @@
 /* ─── Radio ────────────────────────────────────────────────────────────────── */
-.page { position:relative; padding-bottom:72px; }
+.page { position:relative; padding-bottom:72px; min-width:0; }
 /* NotFoundPage.module.css leaks a global `p { max-width:300px }` — undo it (zero-specificity so classes below win) */
 .page :where(p) { max-width:none; }
 .wrap { padding-top:40px; }
@@ -12,6 +12,7 @@
 .cats button[aria-pressed="true"] small { color:var(--gold); }
 .search { flex:1; min-width:240px; max-width:420px; height:52px; }
 .search :global(.nq-ico) { color:var(--muted); }
+.search input { width:100%; min-width:0; }
 .search input::-webkit-search-cancel-button { display:none; }
 .clear { border:0; background:none; width:40px; height:40px; display:grid; place-items:center; border-radius:10px; color:var(--muted); margin-inline-end:-6px; }
 
@@ -76,10 +77,13 @@
 @media (max-width:760px) {
   .wrap { padding-top:28px; }
   .tools { flex-direction:column; align-items:stretch; }
-  .search { max-width:none; }
-  .cats { display:grid; grid-template-columns:1fr 1fr; }
-  .cats button { justify-content:center; }
-  .np { bottom:calc(84px + env(safe-area-inset-bottom,0px)); flex-wrap:wrap; gap:10px 12px; }
-  .vol { order:3; width:100%; }
-  .slider { flex:1; width:auto; }
+  .search { max-width:none; min-width:0; }
+  .cats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .cats button { justify-content:center; padding:8px 10px; min-width:0; }
+  /* phones: keep clear of the tab bar and the floating assistant button; hardware keys set the volume */
+  .np { bottom:calc(150px + env(safe-area-inset-bottom,0px)); gap:10px; padding:10px 12px; }
+  .npIcon { width:40px; height:40px; }
+  .npIcon :global(.nq-badge8) { width:40px !important; height:40px !important; }
+  .slider, .volVal { display:none; }
+  .stop { width:48px; height:48px; }
 }

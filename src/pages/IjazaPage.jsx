@@ -1,9 +1,11 @@
+// ─── الإجازة والقراءات ───────────────────────────────────────────────────────
+// A mushaf that reads in several riwayat (honest about what is really Hafs),
+// the ten qira'at, and the chain of narration (isnad) of the ijaza.
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { SURAHS_META, toArabicNum } from '../data';
+import { SURAHS_META } from '../data';
+import { normalizeArabic } from '../arabic';
+import { PageHero, Icon, Badge8, Corners, Divider, AyahMark, toAr } from '../components/ornaments/Ornaments';
 import styles from './IjazaPage.module.css';
-import { useT, useLang, useDir } from '../i18n';
-import LangSwitcher from '../components/LangSwitcher';
 
 // ─── القراءات العشر المتواترة + رواياتها ──────────────────────────────────────
 const QIRAAT = [
@@ -83,14 +85,14 @@ const QIRAAT = [
 ];
 
 const IJAZA_CHAIN = [
-  { level: 1, text: 'رسول الله ﷺ', icon: '☀️' },
-  { level: 2, text: 'الصحابة الكرام', icon: '⭐' },
-  { level: 3, text: 'التابعون', icon: '✦' },
-  { level: 4, text: 'أئمة القراء السبعة والعشرة', icon: '📖' },
-  { level: 5, text: 'الرواة والطرق', icon: '🔗' },
-  { level: 6, text: 'العلماء عبر القرون', icon: '🕌' },
-  { level: 7, text: 'مشايخ اليوم', icon: '👨‍🏫' },
-  { level: 8, text: 'الطالب / الحافظ', icon: '🎓' },
+  { level: 1, text: 'رسول الله ﷺ', desc: 'تلقّى القرآن من جبريل عليه السلام عن ربّ العزّة، وكان جبريل يعارضه القرآن في رمضان كل عام، وعارضه مرتين في العام الذي تُوفّي فيه.' },
+  { level: 2, text: 'الصحابة الكرام', desc: 'أخذوه من فم النبي ﷺ، ومن أشهر القرّاء منهم: عثمان وعلي وأُبيّ بن كعب وزيد بن ثابت وابن مسعود وأبو موسى الأشعري رضي الله عنهم.' },
+  { level: 3, text: 'التابعون', desc: 'تلقّوا القرآن عن الصحابة في المدينة ومكة والكوفة والبصرة والشام، وعلّموه الناس في الأمصار.' },
+  { level: 4, text: 'أئمة القرّاء السبعة والعشرة', desc: 'نافع وابن كثير وأبو عمرو وابن عامر وعاصم وحمزة والكسائي، ثم أبو جعفر ويعقوب وخلف العاشر.' },
+  { level: 5, text: 'الرواة والطرق', desc: 'لكل إمام راويان مشهوران، كحفص وشعبة عن عاصم، ولكل راوٍ طرقٌ نُقلت عنه.' },
+  { level: 6, text: 'العلماء عبر القرون', desc: 'حفظوا الأسانيد ودوّنوها، كالإمام الشاطبي في «حرز الأماني»، وابن الجزري في «النشر في القراءات العشر».' },
+  { level: 7, text: 'مشايخ اليوم', desc: 'المقرئون المُجازون الذين تتصل أسانيدهم بمن قبلهم، طبقةً عن طبقة.' },
+  { level: 8, text: 'الطالب أو الحافظ', desc: 'يقرأ القرآن كاملاً على شيخه مجوَّداً، فإذا أتقنه أجازه، فيتصل اسمه بالسند.' },
 ];
 
 const HAFS_EDITION   = 'ar.uthmani';
@@ -137,40 +139,80 @@ function stripBismillah(text, surah) {
   return stripped || text;
 }
 
+// ─── The ten imams (informational) ────────────────────────────────────────────
+// Each imam with his two famous narrators; `riwayat` links to the QIRAAT
+// entries the mushaf above can show.
+const TEN_IMAMS = [
+  { n: 1,  imam: 'نافع المدني',        city: 'المدينة المنورة', died: 169, rawis: ['قالون', 'ورش'],            key: 'نافع' },
+  { n: 2,  imam: 'ابن كثير المكي',     city: 'مكة المكرمة',     died: 120, rawis: ['البزّي', 'قنبل'],           key: 'ابن كثير' },
+  { n: 3,  imam: 'أبو عمرو البصري',    city: 'البصرة',          died: 154, rawis: ['الدوري', 'السوسي'],         key: 'أبو عمرو' },
+  { n: 4,  imam: 'ابن عامر الشامي',    city: 'دمشق',            died: 118, rawis: ['هشام', 'ابن ذكوان'],        key: 'ابن عامر' },
+  { n: 5,  imam: 'عاصم الكوفي',        city: 'الكوفة',          died: 127, rawis: ['شعبة', 'حفص'],             key: 'عاصم' },
+  { n: 6,  imam: 'حمزة الكوفي',        city: 'الكوفة',          died: 156, rawis: ['خلف', 'خلّاد'],            key: 'حمزة' },
+  { n: 7,  imam: 'الكسائي الكوفي',     city: 'الكوفة',          died: 189, rawis: ['أبو الحارث', 'الدوري'],     key: 'الكسائي' },
+  { n: 8,  imam: 'أبو جعفر المدني',    city: 'المدينة المنورة', died: 130, rawis: ['ابن وردان', 'ابن جمّاز'],   key: 'أبو جعفر' },
+  { n: 9,  imam: 'يعقوب الحضرمي',      city: 'البصرة',          died: 205, rawis: ['رُويس', 'روح'],            key: 'يعقوب' },
+  { n: 10, imam: 'خلف العاشر',         city: 'بغداد',           died: 229, rawis: ['إسحاق', 'إدريس'],          key: 'خلف' },
+];
+
+const SECTIONS = [
+  { id: 'mushaf', label: 'مصحف الروايات', icon: 'book' },
+  { id: 'qiraat', label: 'القراءات العشر', icon: 'grid' },
+  { id: 'chain',  label: 'سند الإجازة',    icon: 'scroll' },
+  { id: 'ijaza',  label: 'عن الإجازة',     icon: 'doc' },
+];
+const LEGACY_TAB = { about: 'qiraat' };
+function tabFromHash() {
+  try {
+    const h = decodeURIComponent((window.location.hash || '').slice(1));
+    const id = LEGACY_TAB[h] || h;
+    return SECTIONS.some(s => s.id === id) ? id : 'mushaf';
+  } catch { return 'mushaf'; }
+}
+
 // ─── Surah Selector ───────────────────────────────────────────────────────────
 function SurahSelector({ selected, onChange }) {
   const [open,   setOpen]   = useState(false);
   const [search, setSearch] = useState('');
+  const boxRef = useRef(null);
+  const nq = normalizeArabic(search.trim());
   const filtered = SURAHS_META
     .map((m, i) => ({ num: i + 1, name: m[0], en: m[1], ayahs: m[2] }))
-    .filter(s => s.name.includes(search) || s.en.toLowerCase().includes(search.toLowerCase()) || String(s.num).includes(search));
+    .filter(s => !nq || normalizeArabic(s.name).includes(nq) || s.en.toLowerCase().includes(search.toLowerCase()) || String(s.num).includes(search.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))));
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = e => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
+    const onKey = e => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [open]);
 
   return (
-    <div className={styles.surahSel}>
-      <button className={styles.surahSelBtn} onClick={() => setOpen(o => !o)}>
-        <span>سورة {SURAHS_META[selected - 1][0]}</span>
-        <span className={styles.surahSelNum}>{selected}</span>
-        <span style={{ marginRight: 'auto' }}>▾</span>
+    <div className={styles.surahSel} ref={boxRef}>
+      <button type="button" className={styles.surahSelBtn} onClick={() => setOpen(o => !o)} aria-expanded={open} aria-haspopup="listbox">
+        <Badge8 size={34}>{toAr(selected)}</Badge8>
+        <span className={styles.surahSelName}>سورة {SURAHS_META[selected - 1][0]}</span>
+        <Icon name="chev" className={open ? styles.flip : ''} />
       </button>
       {open && (
         <div className={styles.surahDropdown}>
-          <input
-            className={styles.surahSearch}
-            placeholder="ابحث..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            autoFocus
-          />
-          <div className={styles.surahList}>
+          <label className={`nq-input ${styles.surahSearch}`}>
+            <Icon name="search" />
+            <input placeholder="اسم السورة أو رقمها" value={search} onChange={e => setSearch(e.target.value)} autoFocus aria-label="ابحث عن سورة" />
+          </label>
+          <div className={styles.surahList} role="listbox" aria-label="السور">
             {filtered.map(s => (
-              <button key={s.num}
+              <button key={s.num} type="button" role="option" aria-selected={s.num === selected}
                 className={`${styles.surahItem} ${s.num === selected ? styles.surahItemActive : ''}`}
                 onClick={() => { onChange(s.num); setOpen(false); setSearch(''); }}>
-                <span className={styles.surahItemNum}>{s.num}</span>
+                <span className={styles.surahItemNum}>{toAr(s.num)}</span>
                 <span>{s.name}</span>
-                <span className={styles.surahItemAyahs}>{s.ayahs} آية</span>
+                <span className={styles.surahItemAyahs}>{toAr(s.ayahs)} آية</span>
               </button>
             ))}
+            {filtered.length === 0 && <p className={styles.muted} style={{ padding: 12 }}>لا توجد سورة بهذا الاسم.</p>}
           </div>
         </div>
       )}
@@ -178,11 +220,34 @@ function SurahSelector({ selected, onChange }) {
   );
 }
 
+function Notice({ icon = 'bell', tone = 'warn', role = 'note', children }) {
+  return (
+    <div className={`${styles.notice} ${styles['n_' + tone]}`} role={role}>
+      <Icon name={icon} />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+// One run of ayahs, each clickable to play (when onPlay is given)
+function AyahRun({ list, playingAyah, onPlay }) {
+  return list.map(a => (
+    <span key={a.number}
+      className={`${styles.ayahSpan} ${playingAyah === a.number ? styles.ayahPlaying : ''} ${onPlay ? styles.ayahClick : ''}`}
+      {...(onPlay ? {
+        role: 'button', tabIndex: 0,
+        onClick: () => onPlay(a.number),
+        onKeyDown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlay(a.number); } },
+        'aria-label': `استمع للآية ${toAr(a.number)}`,
+      } : {})}>
+      {a.text} <AyahMark n={a.number} />{' '}
+    </span>
+  ));
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function IjazaPage() {
-  const t = useT();
-  const dir = useDir();
-  const [tab,        setTab]      = useState('mushaf');   // mushaf | chain | about
+  const [tab,        setTabState] = useState(tabFromHash);   // mushaf | qiraat | chain | ijaza
   const [qiraaId,    setQiraaId]  = useState('hafs');
   const [surah,      setSurah]    = useState(1);
   const [ayahs,      setAyahs]    = useState([]);
@@ -190,6 +255,21 @@ export default function IjazaPage() {
   const [fontSize,   setFontSize] = useState(26);
   const [compare,    setCompare]  = useState(false);
   const [compareId,  setCmpId]    = useState('warsh');
+  const navRef = useRef(null);
+
+  function setTab(id, scroll = true) {
+    setTabState(id);
+    try { window.history.replaceState(null, '', `#${id}`); } catch {}
+    if (scroll && navRef.current) {
+      const top = navRef.current.getBoundingClientRect().top + window.scrollY - 80;
+      if (window.scrollY > top) window.scrollTo({ top, behavior: 'smooth' });
+    }
+  }
+  useEffect(() => {
+    const onHash = () => setTabState(tabFromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
 
   const activeQ   = QIRAAT.find(q => q.id === qiraaId) || QIRAAT[0];
   const compareQ  = QIRAAT.find(q => q.id === compareId) || QIRAAT[1];
@@ -336,267 +416,302 @@ export default function IjazaPage() {
     return () => { alive = false; };
   }, [surah, compareId, compare]);
 
+  // the compared riwaya can't be the active one
+  useEffect(() => {
+    if (compareId === qiraaId) setCmpId(QIRAAT.find(q => q.id !== qiraaId).id);
+  }, [qiraaId, compareId]);
+
   const activeTextHafs  = textIsHafs(activeQ, fellBack);
   const compareTextHafs = textIsHafs(compareQ, cmpFellBack);
 
   const hasBasmala = surah !== 1 && surah !== 9;
+  const nowLabel = audioError && !isHafsQ(activeQ) ? `${HAFS_AUDIO_LABEL} — مشاري راشد العفاسي` : audioLabel(activeQ);
+  const meta = SURAHS_META[surah - 1];
+
+  function readWith(id) { setQiraaId(id); setTab('mushaf'); }
 
   return (
     <div className={styles.page}>
-      {/* Top Bar */}
-      <div className={styles.topBar}>
-        <Link to="/" className={styles.backBtn}>{t('back')}</Link>
-        <h1 className={styles.title}>{t('ijazaTitle')}</h1>
-        <LangSwitcher compact={true} />
-        <div style={{ width: 60 }} />
-      </div>
+      <PageHero
+        eyebrow="علوم القرآن"
+        title="الإجازة والقراءات"
+        sub="القراءات العشر المتواترة، وسند الإجازة المتصل برسول الله ﷺ، ومصحف تقرأ فيه بالروايات وتقارن بينها."
+      />
 
-      {/* Tabs */}
-      <div className={styles.tabs}>
-        {[['mushaf','📖 مصحف القراءات'],['chain','⛓️ سند الإجازة'],['about','📚 عن القراءات']].map(([id,label]) => (
-          <button key={id}
-            className={`${styles.tab} ${tab === id ? styles.tabActive : ''}`}
-            onClick={() => setTab(id)}>
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* audio lives outside the tabs so its listeners survive switching sections */}
+      <audio ref={audioRef} preload="none" onError={handleAudioError} />
 
-      {/* ══ TAB: مصحف القراءات ══ */}
-      {tab === 'mushaf' && (
-        <div className={styles.mushafTab}>
-          {/* Controls */}
-          <div className={styles.controls}>
-            {/* Qiraa selector */}
-            <div className={styles.qiraaRow}>
-              <span className={styles.ctrlLabel}>{t('reader')}:</span>
-              <div className={styles.qiraaBtns}>
-                {QIRAAT.map(q => (
-                  <button key={q.id}
-                    className={`${styles.qiraaBtn} ${qiraaId === q.id ? styles.qiraaBtnA : ''}`}
-                    style={{ '--c': q.color }}
-                    onClick={() => setQiraaId(q.id)}
-                    title={q.full}>
-                    {q.rawi}
-                  </button>
-                ))}
-              </div>
-            </div>
+      {/* ── section navigation ── */}
+      <nav className={styles.secNav} ref={navRef} aria-label="أقسام الصفحة">
+        <div className={`nq-wrap ${styles.secNavIn}`}>
+          {SECTIONS.map(s => (
+            <a key={s.id} href={`#${s.id}`} className={`${styles.secLink} ${tab === s.id ? styles.secOn : ''}`}
+              aria-current={tab === s.id ? 'page' : undefined}
+              onClick={e => { e.preventDefault(); setTab(s.id); }}>
+              <Icon name={s.icon} />{s.label}
+            </a>
+          ))}
+        </div>
+      </nav>
 
-            <div className={styles.controlsRow2}>
-              <SurahSelector selected={surah} onChange={setSurah} />
+      <div className={`nq-wrap ${styles.body}`}>
+        {/* ══ مصحف الروايات ══ */}
+        {tab === 'mushaf' && (
+          <section className={styles.panel} aria-labelledby="sec-mushaf">
+            <header className={styles.panelHead}>
+              <span className="nq-eyebrow">اقرأ واستمع وقارن</span>
+              <h2 id="sec-mushaf" className="nq-h-sec">مصحف الروايات</h2>
+            </header>
 
-              {/* Font size */}
-              <div className={styles.fontCtrl}>
-                <button onClick={() => setFontSize(f => Math.max(18, f - 2))}>أ−</button>
-                <span>{fontSize}</span>
-                <button onClick={() => setFontSize(f => Math.min(48, f + 2))}>أ+</button>
-              </div>
-
-              {/* Compare toggle */}
-              <button
-                className={`${styles.compareBtn} ${compare ? styles.compareBtnOn : ''}`}
-                onClick={() => setCompare(c => !c)}>
-                ⇄ مقارنة
-              </button>
-            </div>
-
-            {/* Compare qiraa selector */}
-            {compare && (
-              <div className={styles.cmpRow}>
-                <span className={styles.ctrlLabel}>{t('compare_with')}</span>
-                <div className={styles.qiraaBtns}>
-                  {QIRAAT.filter(q => q.id !== qiraaId).map(q => (
-                    <button key={q.id}
-                      className={`${styles.qiraaBtn} ${compareId === q.id ? styles.qiraaBtnA : ''}`}
-                      style={{ '--c': q.color }}
-                      onClick={() => setCmpId(q.id)}
-                      title={q.full}>
+            <div className={`nq-card ${styles.controls}`}>
+              <div className={styles.ctrlBlock}>
+                <span className={styles.ctrlLabel}>الرواية</span>
+                <div className={styles.chips} role="group" aria-label="اختر الرواية">
+                  {QIRAAT.map(q => (
+                    <button key={q.id} type="button" className={styles.chip} aria-pressed={qiraaId === q.id}
+                      onClick={() => setQiraaId(q.id)} title={q.full}>
                       {q.rawi}
                     </button>
                   ))}
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Active qiraa info */}
-          <div className={styles.qiraaInfo} style={{ '--c': activeQ.color }}>
-            <div className={styles.qiraaInfoLeft}>
-              <span className={styles.qiraaFull}>{activeQ.full}</span>
-              <span className={styles.qiraaRegion}>📍 {activeQ.region}</span>
-            </div>
-            <div className={styles.qiraaInfoRight}>
-              <span className={styles.qiraaDesc}>{activeQ.desc}</span>
-              <span className={styles.qiraaReciter}>🎙 {audioLabel(activeQ)}</span>
-            </div>
-          </div>
-
-          {/* ─── Text / audio honesty notices ─── */}
-          {activeTextHafs && (
-            <div className={styles.audioUnavailBanner} role="note">
-              📖 {HAFS_TEXT_NOTICE}
-            </div>
-          )}
-          {!isHafsQ(activeQ) && (
-            <div className={styles.audioUnavailBanner} role="note">
-              🎙 {activeQ.audioNote || <>تسجيل رواية <strong>{activeQ.rawi}</strong> غير متاح حالياً</>}
-              {!(activeQ.audioNote || '').includes('بديلة') && <> — الصوت المتاح: {HAFS_AUDIO_LABEL}</>}
-            </div>
-          )}
-          {loadErr && <div className={styles.audioUnavailBanner} role="alert">⚠️ {loadErr}</div>}
-
-          {/* ─── Audio Player Bar ─── */}
-          <div className={styles.audioBar}>
-            <audio ref={audioRef} preload="none"
-              onError={handleAudioError}
-            />
-
-            {/* Ayah indicator */}
-            <div className={styles.audioAyah}>
-              {playingAyah ? (
-                <span>🎧 الآية {toArabicNum(playingAyah)} — {audioError && !isHafsQ(activeQ) ? `${HAFS_AUDIO_LABEL} — مشاري راشد العفاسي` : audioLabel(activeQ)}</span>
-              ) : (
-                <span className={styles.audioHint}>
-                  {`اضغط على أي آية للاستماع · 🎙 ${audioLabel(activeQ)}`}
-                </span>
-              )}
-              {audioMsg && <span className={styles.audioUnavail} role="alert">⚠️ {audioMsg}</span>}
-            </div>
-
-            {/* Controls */}
-            <div className={styles.audioCtrls}>
-              <button className={styles.audioBtn} onClick={playPrev} disabled={!playingAyah || playingAyah <= 1}>⏮</button>
-              <button className={`${styles.audioBtn} ${styles.audioBtnMain}`} onClick={togglePlay}>
-                {isPlaying ? '⏸' : '▶'}
-              </button>
-              <button className={styles.audioBtn} onClick={playNext} disabled={!ayahs.length}>⏭</button>
-              <button
-                className={`${styles.audioBtn} ${autoNext ? styles.audioBtnOn : ''}`}
-                onClick={() => setAutoNext(v => !v)}
-                title="تشغيل مستمر">
-                🔁
-              </button>
-            </div>
-          </div>
-
-          {/* Mushaf display */}
-          {compare ? (
-            /* Compare mode: side by side */
-            <div className={styles.compareGrid}>
-              <div className={styles.compareCol}>
-                <div className={styles.compareHeader} style={{ borderColor: activeQ.color }}>
-                  <span style={{ color: activeQ.color }}>{activeQ.full}</span>
-                  {activeTextHafs && <span className={styles.audioUnavail}>📖 {HAFS_TEXT_NOTICE}</span>}
+              <div className={styles.ctrlRow}>
+                <SurahSelector selected={surah} onChange={setSurah} />
+                <div className={styles.fontCtrl} role="group" aria-label="حجم الخط">
+                  <button type="button" onClick={() => setFontSize(f => Math.max(18, f - 2))} aria-label="تصغير الخط">أ−</button>
+                  <span className="nq-num" aria-live="polite">{toAr(fontSize)}</span>
+                  <button type="button" onClick={() => setFontSize(f => Math.min(48, f + 2))} aria-label="تكبير الخط">أ+</button>
                 </div>
-                {hasBasmala && <div className={styles.basmala}>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>}
-                <div className={styles.mushafText} style={{ fontSize }}>
-                  {loading ? <div className={styles.loadingPulse}>جارٍ التحميل...</div>
-                    : ayahs.map(a => (
-                      <span key={a.number}
-                        className={`${styles.ayahSpan} ${playingAyah === a.number ? styles.ayahPlaying : ''}`}
-                        onClick={() => playAyah(a.number)}
-                        title={`استمع للآية ${a.number}`}>
-                        {a.text}
-                        <span className={styles.ayahNum}>﴿{toArabicNum(a.number)}﴾</span>{' '}
-                      </span>
-                    ))}
-                </div>
-              </div>
-              <div className={styles.compareCol}>
-                <div className={styles.compareHeader} style={{ borderColor: compareQ.color }}>
-                  <span style={{ color: compareQ.color }}>{compareQ.full}</span>
-                  {compareTextHafs && <span className={styles.audioUnavail}>📖 {HAFS_TEXT_NOTICE}</span>}
-                </div>
-                {hasBasmala && <div className={styles.basmala}>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>}
-                <div className={styles.mushafText} style={{ fontSize }}>
-                  {cmpAyahs.length === 0
-                    ? <div className={styles.loadingPulse}>جارٍ التحميل...</div>
-                    : cmpAyahs.map(a => (
-                      <span key={a.number} className={styles.ayahSpan}>
-                        {a.text}
-                        <span className={styles.ayahNum}>﴿{toArabicNum(a.number)}﴾</span>{' '}
-                      </span>
-                    ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* Normal mode */
-            <div className={styles.mushafWrap}>
-              {hasBasmala && <div className={styles.basmala}>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>}
-              <div className={styles.mushafText} style={{ fontSize }}>
-                {loading
-                  ? <div className={styles.loadingPulse}>جارٍ التحميل...</div>
-                  : ayahs.map(a => (
-                    <span key={a.number}
-                      className={`${styles.ayahSpan} ${playingAyah === a.number ? styles.ayahPlaying : ''}`}
-                      onClick={() => playAyah(a.number)}
-                      title={`استمع للآية ${a.number}`}>
-                      {a.text}
-                      <span className={styles.ayahNum}>﴿{toArabicNum(a.number)}﴾</span>{' '}
-                    </span>
-                  ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ══ TAB: سند الإجازة ══ */}
-      {tab === 'chain' && (
-        <div className={styles.chainTab}>
-          <p className={styles.chainIntro}>
-            الإجازة هي إذن العالم لطالبه برواية القرآن الكريم، وتمتد سلسلة الإسناد متصلة من الطالب إلى النبي ﷺ.
-            هذا هو المسار العام لسند الإجازة عبر التاريخ:
-          </p>
-
-          <div className={styles.chain}>
-            {IJAZA_CHAIN.map((node, i) => (
-              <div key={i} className={styles.chainNode}>
-                <div className={styles.chainIcon}>{node.icon}</div>
-                <div className={styles.chainLine} />
-                <div className={styles.chainText}>{node.text}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className={styles.chainInfo}>
-            <h3>أهمية الإجازة</h3>
-            <p>الإجازة ضمان لصحة النقل — فكل حرف في القرآن وصل إلينا بسند متصل محفوظ، لا يُعتمد فيه إلا على من أخذ بالتلقي المباشر من فم الشيخ إلى أذن الطالب، وهكذا حُفظ القرآن بإذن الله منذ عهد النبي ﷺ.</p>
-            <h3>شروط الإجازة</h3>
-            <p>يشترط لصحة الإجازة: أن يتلو الطالب القرآن كاملاً على الشيخ بالقراءة المجازاً بها، وأن يُصحح الشيخ أخطاءه، وأن يكون الشيخ حاملاً لإجازة متصلة بسندها.</p>
-            <h3>القراءات السبع والعشر</h3>
-            <p>القراءات السبع المتواترة هي: نافع، وابن كثير، وأبو عمرو، وابن عامر، وعاصم، وحمزة، والكسائي. وأضاف العلماء ثلاثاً ليكمل العشر: أبو جعفر، ويعقوب، وخلف العاشر.</p>
-          </div>
-        </div>
-      )}
-
-      {/* ══ TAB: عن القراءات ══ */}
-      {tab === 'about' && (
-        <div className={styles.aboutTab}>
-          <p className={styles.aboutIntro}>القراءات العشر المتواترة — كلها وصلت إلينا بسند صحيح متصل بالنبي ﷺ</p>
-          <div className={styles.qiraatGrid}>
-            {QIRAAT.map(q => (
-              <div key={q.id} className={styles.qiraaCard} style={{ '--c': q.color }}>
-                <div className={styles.qiraaCardHeader}>
-                  <div className={styles.qiraaCardImam}>الإمام {q.imam}</div>
-                  <div className={styles.qiraaCardRawi}>رواية {q.rawi}</div>
-                </div>
-                <div className={styles.qiraaCardRegion}>📍 {q.region}</div>
-                <p className={styles.qiraaCardDesc}>{q.desc}</p>
-                <span className={styles.qiraaCardReciter}>🎙 {audioLabel(q)}</span>
-                {q.audioNote && <span className={styles.audioUnavail}>{q.audioNote}</span>}
-                {textIsHafs(q, false) && <span className={styles.audioUnavail}>📖 {HAFS_TEXT_NOTICE}</span>}
-                <button className={styles.readThisBtn}
-                  onClick={() => { setQiraaId(q.id); setTab('mushaf'); }}>
-                  اقرأ بهذه الرواية ←
+                <button type="button" className={`nq-btn ghost sm ${styles.cmpBtn}`} aria-pressed={compare} onClick={() => setCompare(c => !c)}>
+                  <Icon name="list" />مقارنة روايتين
                 </button>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+
+              {compare && (
+                <div className={styles.ctrlBlock}>
+                  <span className={styles.ctrlLabel}>قارن مع</span>
+                  <div className={styles.chips} role="group" aria-label="الرواية التي تقارن بها">
+                    {QIRAAT.filter(q => q.id !== qiraaId).map(q => (
+                      <button key={q.id} type="button" className={styles.chip} aria-pressed={compareId === q.id}
+                        onClick={() => setCmpId(q.id)} title={q.full}>
+                        {q.rawi}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Active qiraa info */}
+            <div className={`nq-card ${styles.qInfo}`}>
+              <Badge8 icon="scroll" />
+              <div className={styles.qInfoMain}>
+                <h3>{activeQ.full}</h3>
+                <p>{activeQ.desc}</p>
+              </div>
+              <div className={styles.qInfoMeta}>
+                <span><Icon name="pin" />{activeQ.region}</span>
+                <span><Icon name="head" />{audioLabel(activeQ)}</span>
+              </div>
+            </div>
+
+            {/* ─── Text / audio honesty notices ─── */}
+            {(activeTextHafs || !isHafsQ(activeQ) || loadErr) && (
+              <div className={styles.notices}>
+                {activeTextHafs && <Notice icon="book" tone="warn">{HAFS_TEXT_NOTICE}</Notice>}
+                {!isHafsQ(activeQ) && (
+                  <Notice icon="head" tone="info">
+                    {activeQ.audioNote || <>تسجيل رواية <strong>{activeQ.rawi}</strong> غير متاح حالياً</>}
+                    {!(activeQ.audioNote || '').includes('بديلة') && <> — الصوت المتاح: {HAFS_AUDIO_LABEL}</>}
+                  </Notice>
+                )}
+                {loadErr && <Notice icon="x" tone="danger" role="alert">{loadErr}</Notice>}
+              </div>
+            )}
+
+            {/* ─── Audio Player Bar ─── */}
+            <div className={`nq-card ${styles.audioBar}`}>
+              <div className={styles.audioCtrls}>
+                <button type="button" className="nq-ibtn" onClick={playPrev} disabled={!playingAyah || playingAyah <= 1} aria-label="الآية السابقة"><Icon name="next" /></button>
+                <button type="button" className={styles.playBtn} onClick={togglePlay} aria-label={isPlaying ? 'إيقاف مؤقت' : 'تشغيل'}>
+                  <Icon name={isPlaying ? 'pause' : 'play'} fill />
+                </button>
+                <button type="button" className="nq-ibtn" onClick={playNext} disabled={!ayahs.length} aria-label="الآية التالية"><Icon name="prev" /></button>
+                <button type="button" className={`nq-ibtn ${styles.repeat}`} aria-pressed={autoNext} onClick={() => setAutoNext(v => !v)}
+                  aria-label="تشغيل مستمر" title="تشغيل مستمر">
+                  <Icon name="repeat" />
+                </button>
+              </div>
+              <div className={styles.audioInfo} aria-live="polite">
+                {playingAyah ? (
+                  <><b>الآية {toAr(playingAyah)}</b><span>{nowLabel}</span></>
+                ) : (
+                  <><b>اضغط على أي آية للاستماع</b><span>{audioLabel(activeQ)}</span></>
+                )}
+                {audioMsg && <span className={styles.audioErr} role="alert">{audioMsg}</span>}
+              </div>
+            </div>
+
+            {/* Mushaf display */}
+            {compare ? (
+              <div className={styles.compareGrid}>
+                {[[activeQ, activeTextHafs, ayahs, loading, true], [compareQ, compareTextHafs, cmpAyahs, cmpAyahs.length === 0, false]].map(([q, isHafsText, list, busy, playable]) => (
+                  <article key={q.id} className={`nq-card ${styles.mushaf}`} aria-label={q.full}>
+                    <header className={styles.colHead}>
+                      <b>{q.full}</b>
+                      {isHafsText && <span className={styles.colNote}><Icon name="book" />{HAFS_TEXT_NOTICE}</span>}
+                    </header>
+                    {hasBasmala && <div className={styles.basmala}>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>}
+                    <div className={styles.mushafText} style={{ fontSize }} lang="ar">
+                      {busy ? <Waiting /> : <AyahRun list={list} playingAyah={playable ? playingAyah : null} onPlay={playable ? playAyah : null} />}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <article className={`nq-card ${styles.mushaf} ${styles.mushafSingle}`} aria-label={`سورة ${meta[0]} — ${activeQ.full}`}>
+                <Corners />
+                <header className={styles.surahBand}>
+                  <span>{meta[3]}</span>
+                  <b>سورة {meta[0]}</b>
+                  <span>{toAr(meta[2])} آية</span>
+                </header>
+                {hasBasmala && <div className={styles.basmala}>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>}
+                <div className={styles.mushafText} style={{ fontSize }} lang="ar">
+                  {loading ? <Waiting /> : <AyahRun list={ayahs} playingAyah={playingAyah} onPlay={playAyah} />}
+                </div>
+              </article>
+            )}
+          </section>
+        )}
+
+        {/* ══ القراءات العشر ══ */}
+        {tab === 'qiraat' && (
+          <section className={styles.panel} aria-labelledby="sec-qiraat">
+            <header className={styles.panelHead}>
+              <span className="nq-eyebrow">عشرة أئمة، لكل إمام راويان</span>
+              <h2 id="sec-qiraat" className="nq-h-sec">القراءات العشر المتواترة</h2>
+              <p className="nq-lead">كلها وصلت إلينا بسند صحيح متصل بالنبي ﷺ. السبع الأولى جمعها الإمام الشاطبي في «حرز الأماني»، وأتمّ ابن الجزري العشر في «الدرّة المضيّة».</p>
+            </header>
+
+            <ol className={styles.imams}>
+              {TEN_IMAMS.map(im => {
+                const avail = QIRAAT.filter(q => q.imam === im.key);
+                return (
+                  <li key={im.n} className={`nq-card ${styles.imam}`}>
+                    <div className={styles.imamTop}>
+                      <Badge8 size={52}>{toAr(im.n)}</Badge8>
+                      <div>
+                        <h3>{im.imam}</h3>
+                        <span className={styles.imamMeta}><Icon name="pin" />{im.city} · تُوفّي سنة {toAr(im.died)}هـ</span>
+                      </div>
+                      <span className={`nq-pill ${im.n <= 7 ? 'on' : ''} ${styles.tag}`}>{im.n <= 7 ? 'من السبع' : 'المتمّمة للعشر'}</span>
+                    </div>
+                    <div className={styles.rawis}>
+                      <span className={styles.rawiLabel}>راوياه</span>
+                      {im.rawis.map(r => <span key={r} className={styles.rawi}>{r}</span>)}
+                    </div>
+                    {avail.length > 0 && (
+                      <div className={styles.imamActs}>
+                        {avail.map(q => (
+                          <button key={q.id} type="button" className="nq-btn ghost sm" onClick={() => readWith(q.id)}>
+                            <Icon name="book" />{q.full.startsWith('رواية') ? `اقرأ برواية ${q.rawi}` : `اقرأ ${q.full}`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+
+            <div className={styles.subHead}>
+              <Divider />
+              <h2 className={styles.h2}>الروايات في مصحف الروايات</h2>
+              <p className={styles.muted}>ما يتوفّر لكل رواية من نص وتلاوة، بلا مبالغة.</p>
+            </div>
+            <div className={styles.riwayat}>
+              {QIRAAT.map(q => (
+                <div key={q.id} className={`nq-card ${styles.riwaya}`}>
+                  <div className={styles.riwayaHead}>
+                    <h3>{q.full}</h3>
+                    <span className={styles.imamMeta}><Icon name="pin" />{q.region}</span>
+                  </div>
+                  <p className={styles.riwayaDesc}>{q.desc}</p>
+                  <span className={styles.riwayaLine}><Icon name="head" />{audioLabel(q)}</span>
+                  {q.audioNote && <span className={`${styles.riwayaLine} ${styles.warnLine}`}><Icon name="bell" />{q.audioNote}</span>}
+                  {textIsHafs(q, false) && <span className={`${styles.riwayaLine} ${styles.warnLine}`}><Icon name="book" />{HAFS_TEXT_NOTICE}</span>}
+                  <button type="button" className={`nq-btn ghost sm ${styles.readBtn}`} onClick={() => readWith(q.id)}>
+                    اقرأ بهذه الرواية <Icon name="back" className={styles.go} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ══ سند الإجازة ══ */}
+        {tab === 'chain' && (
+          <section className={styles.panel} aria-labelledby="sec-chain">
+            <header className={styles.panelHead}>
+              <span className="nq-eyebrow">من فم الشيخ إلى أذن الطالب</span>
+              <h2 id="sec-chain" className="nq-h-sec">سند الإجازة</h2>
+              <p className="nq-lead">الإجازة إذن العالم لطالبه برواية القرآن الكريم، وتمتدّ سلسلة الإسناد متصلة من الطالب إلى النبي ﷺ. هذا هو المسار العام للسند عبر التاريخ:</p>
+            </header>
+
+            <ol className={styles.chain}>
+              {IJAZA_CHAIN.map((node, i) => (
+                <li key={node.level} className={`${styles.chainNode} ${i === 0 ? styles.chainTop : ''} ${i === IJAZA_CHAIN.length - 1 ? styles.chainEnd : ''}`}>
+                  <span className={styles.chainMark}>
+                    {i === 0 ? <Badge8 icon="star" size={60} /> : <Badge8 size={52}>{toAr(node.level)}</Badge8>}
+                  </span>
+                  <div className={`nq-card ${styles.chainCard}`}>
+                    <h3>{node.text}</h3>
+                    <p>{node.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {/* ══ عن الإجازة ══ */}
+        {tab === 'ijaza' && (
+          <section className={styles.panel} aria-labelledby="sec-ijaza">
+            <header className={styles.panelHead}>
+              <span className="nq-eyebrow">حفظ النقل</span>
+              <h2 id="sec-ijaza" className="nq-h-sec">عن الإجازة</h2>
+            </header>
+            <article className={`nq-card ${styles.article}`}>
+              <Corners />
+              <div className={styles.articleIn}>
+                <h3><Badge8 icon="shield" size={44} />أهمية الإجازة</h3>
+                <p>الإجازة ضمانٌ لصحة النقل؛ فكل حرف في القرآن وصل إلينا بسندٍ متصل محفوظ، لا يُعتمد فيه إلا على من أخذ بالتلقّي المباشر من فم الشيخ إلى أذن الطالب، وهكذا حُفظ القرآن بإذن الله منذ عهد النبي ﷺ.</p>
+                <Divider />
+                <h3><Badge8 icon="check" size={44} />شروط الإجازة</h3>
+                <p>يُشترط لصحة الإجازة أن يتلو الطالب القرآن كاملاً على الشيخ بالقراءة المُجاز بها، وأن يصحّح الشيخ أخطاءه، وأن يكون الشيخ حاملاً لإجازةٍ متصلةٍ بسندها.</p>
+                <Divider />
+                <h3><Badge8 icon="grid" size={44} />القراءات السبع والعشر</h3>
+                <p>القراءات السبع المتواترة هي قراءات: نافع، وابن كثير، وأبي عمرو، وابن عامر، وعاصم، وحمزة، والكسائي. وأضاف العلماء ثلاثاً لتكتمل العشر: أبو جعفر، ويعقوب، وخلف العاشر.</p>
+              </div>
+            </article>
+            <Notice icon="shieldUser" tone="info">هذه الصفحة للتعريف والقراءة فقط، ولا تمنح إجازة. الإجازة تُنال بالقراءة على شيخٍ مُجازٍ متصل السند.</Notice>
+            <div className={styles.articleActs}>
+              <button type="button" className="nq-btn gold" onClick={() => setTab('mushaf')}><Icon name="book" />افتح مصحف الروايات</button>
+              <button type="button" className="nq-btn ghost" onClick={() => setTab('chain')}><Icon name="scroll" />سند الإجازة</button>
+            </div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Waiting() {
+  return (
+    <div className={styles.waiting} aria-busy="true" aria-label="جارٍ تحميل السورة">
+      <span /><span /><span /><span />
     </div>
   );
 }
