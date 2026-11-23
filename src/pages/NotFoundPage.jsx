@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { Icon, Pattern, Frieze, toAr } from '../components/ornaments/Ornaments';
 import { openPalette } from '../components/shell/Shell';
 import styles from './NotFoundPage.module.css';
+import { useTr } from '../l10n';
 
 export default function NotFoundPage() {
+  const tr = useTr();
   return (
     <section className={styles.stage} aria-labelledby="nf-title">
       <Pattern />
@@ -36,12 +38,12 @@ export default function NotFoundPage() {
       </div>
 
       <div className={styles.text}>
-        <h1 id="nf-title" className={styles.title}>لم نجد هذه الصفحة</h1>
-        <p className={styles.sub}>ربما تغيّر الرابط أو حُذفت الصفحة. عُد إلى الرئيسية، أو ابحث عمّا تريد.</p>
+        <h1 id="nf-title" className={styles.title}>{tr('لم نجد هذه الصفحة')}</h1>
+        <p className={styles.sub}>{tr('ربما تغيّر الرابط أو حُذفت الصفحة. عُد إلى الرئيسية، أو ابحث عمّا تريد.')}</p>
         <div className={styles.acts}>
-          <Link to="/" className="nq-btn gold"><Icon name="home" />الرئيسية</Link>
-          <button type="button" className="nq-btn ghost" onClick={openPalette}><Icon name="search" />ابحث في الموقع</button>
-          <Link to="/reader" className="nq-btn ghost"><Icon name="book" />المصحف</Link>
+          <Link to="/" className="nq-btn gold"><Icon name="home" />{tr('الرئيسية')}</Link>
+          <button type="button" className="nq-btn ghost" onClick={openPalette}><Icon name="search" />{tr('ابحث في الموقع')}</button>
+          <Link to="/reader" className="nq-btn ghost"><Icon name="book" />{tr('المصحف')}</Link>
         </div>
       </div>
       <Frieze className={styles.frieze} />

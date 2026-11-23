@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useT } from '../i18n';
+import { useTr, trNow } from '../l10n';
 import { afterLoginPath } from '../store';
 import { refreshAuth } from '../hooks/useAuth';
 import { verifyEmail } from '../backend';
@@ -9,6 +10,7 @@ import { googleErrorText, authErrorText } from '../authErrors';
 import { AuthStage, AuthBrand, Spinner } from './auth/AuthShell';
 import { Icon } from '../components/ornaments/Ornaments';
 import styles from './AuthPage.module.css';
+import { rich } from './legal/LegalDoc';
 
 // Only same-site relative paths are accepted as ?next= (no open redirects)
 function safeNext(next) {
@@ -20,6 +22,7 @@ function safeNext(next) {
 
 export default function AuthCallbackPage() {
   const t = useT();
+  const tr = useTr();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState(0); // 0=waiting 1=success 2=error 3=verified
@@ -51,7 +54,7 @@ export default function AuthCallbackPage() {
         })
         .catch(err => {
           setErrMsg(err && (err.code === 'validation' || err.code === 'not_found')
-            ? 'رابط التأكيد غير صالح أو انتهت صلاحيته — اطلب رابطاً جديداً من الإعدادات'
+            ? trNow('رابط التأكيد غير صالح أو انتهت صلاحيته — اطلب رابطاً جديداً من الإعدادات')
             : authErrorText(err));
           setStep(2);
           later(() => navigate('/login', { replace: true }), 4000);
@@ -62,7 +65,7 @@ export default function AuthCallbackPage() {
           setStep(1);
           later(() => navigate(next || afterLoginPath(), { replace: true }), 400);
         } else {
-          setErrMsg('تعذّر إكمال تسجيل الدخول — تأكد من تفعيل ملفات تعريف الارتباط (Cookies) وحاول مجدداً');
+          setErrMsg(trNow('تعذّر إكمال تسجيل الدخول — تأكد من تفعيل ملفات تعريف الارتباط (Cookies) وحاول مجدداً'));
           setStep(2);
           later(() => navigate('/login', { replace: true }), 3000);
         }
@@ -72,7 +75,7 @@ export default function AuthCallbackPage() {
       setStep(2);
       later(() => navigate('/login', { replace: true }), 3500);
     } else {
-      setErrMsg('رابط غير صالح');
+      setErrMsg(trNow('رابط غير صالح'));
       setStep(2);
       later(() => navigate('/login', { replace: true }), 2000);
     }
@@ -80,16 +83,16 @@ export default function AuthCallbackPage() {
   }, []);
 
   const STEPS = [
-    { icon: null,    tone: '',       title: 'لحظات من فضلك',            msg: t('processing') || 'جارٍ التحقق…' },
-    { icon: 'check', tone: 'ok',     title: 'أهلاً بك',                  msg: 'تم تسجيل الدخول بنجاح، جارٍ تحويلك…' },
-    { icon: 'x',     tone: 'danger', title: 'تعذّر إكمال العملية',       msg: (errMsg || 'حدث خطأ') + '. جارٍ تحويلك إلى صفحة الدخول…' },
-    { icon: 'check', tone: 'ok',     title: 'تم تأكيد بريدك',            msg: 'تم تأكيد بريدك الإلكتروني بنجاح، جارٍ تحويلك…' },
+    { icon: null,    tone: '',       title: tr('لحظات من فضلك'),            msg: t('processing') || tr('جارٍ التحقق…') },
+    { icon: 'check', tone: 'ok',     title: tr('أهلاً بك'),                  msg: tr('تم تسجيل الدخول بنجاح، جارٍ تحويلك…') },
+    { icon: 'x',     tone: 'danger', title: tr('تعذّر إكمال العملية'),       msg: tr('{error}. جارٍ تحويلك إلى صفحة الدخول…', { error: errMsg || tr('حدث خطأ') }) },
+    { icon: 'check', tone: 'ok',     title: tr('تم تأكيد بريدك'),            msg: tr('تم تأكيد بريدك الإلكتروني بنجاح، جارٍ تحويلك…') },
   ];
   const current = STEPS[step];
 
   return (
     <main id="main">
-      <AuthStage full label="إكمال تسجيل الدخول">
+      <AuthStage full label={tr('إكمال تسجيل الدخول')}>
         <div className={styles.head} aria-live="polite">
           <AuthBrand small />
           <span className={`${styles.stateIcon} ${step === 0 ? styles.ring : ''}`} data-tone={current.tone} style={{ marginTop: 14 }}>
@@ -101,7 +104,7 @@ export default function AuthCallbackPage() {
         {step === 0 && <div className={styles.progress} aria-hidden="true"><span /></div>}
         {step === 0 && <SlowWarning />}
         {step === 2 && (
-          <Link to="/login" replace className={`nq-btn ghost ${styles.submit}`}>العودة إلى تسجيل الدخول</Link>
+          <Link to="/login" replace className={`nq-btn ghost ${styles.submit}`}>{tr('العودة إلى تسجيل الدخول')}</Link>
         )}
       </AuthStage>
     </main>
@@ -109,6 +112,7 @@ export default function AuthCallbackPage() {
 }
 
 function SlowWarning() {
+  const tr = useTr();
   const [show, setShow] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setShow(true), 6000);
@@ -117,8 +121,8 @@ function SlowWarning() {
   if (!show) return null;
   return (
     <p className={styles.slow}>
-      يستغرق الأمر وقتاً أطول من المعتاد.
-      <br />إن لم يكتمل، <a href="/login" className={styles.link} style={{ padding: 0 }}>عُد إلى تسجيل الدخول</a>.
+      {tr('يستغرق الأمر وقتاً أطول من المعتاد.')}
+      <br />{rich(tr('إن لم يكتمل، {link}.'), { link: <a href="/login" className={styles.link} style={{ padding: 0 }}>{tr('عُد إلى تسجيل الدخول')}</a> })}
     </p>
   );
 }

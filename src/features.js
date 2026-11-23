@@ -3,6 +3,8 @@
 // the search palette and the home page — so nothing is ever hidden or lost.
 // `flag` ties an item to an admin feature switch (settings.features).
 // Wording rule: plain names only — no "AI"/"smart" labels or sparkle icons.
+import { translate } from './l10n';
+import { getLang } from './i18n';
 
 export const FEATURE_GROUPS = [
   { id: 'quran', title: 'القرآن الكريم', items: [
@@ -43,12 +45,15 @@ export const FEATURE_GROUPS = [
   ]},
 ];
 
-// Titles/descriptions in the other site languages (Arabic is the source).
-const I18N = {"en": {"reader": ["Read Quran", "114 Surahs in Ottoman script"], "radio": ["Islamic Radio", "Quran, programs & nasheeds"], "prayer": ["Prayer Times", "Accurate times for your city"], "qibla": ["Qibla", "Compass to the Holy Kaaba"], "adhkar": ["Dhikr & Dua", "Morning, evening & sleep adhkar"], "hifz": ["Hifz Tracker", "Track memorization with daily wird"], "khatma": ["Khatma", "Personal & group completions"], "dashboard": ["Dashboard", "Daily stats & reading streaks"], "search": ["Search", "Search all Quran verses"], "notes": ["Notes", "Annotate any verse"], "leaderboard": ["Leaderboard", "Top readers & memorizers"], "ijaza": ["Ijaza & Qira'at", "Ten readings & chain of narration"], "tasbih": ["Tasbih Counter", "Digital rosary with sessions"], "daily": ["Verse of the Day", "A featured verse daily with tafsir"], "report": ["Monthly Report", "Your reading stats & heatmap"], "group": ["Group Khatma", "Complete Quran with loved ones"]}, "tr": {"reader": ["Kuran Okuma", "Osmanlı hatlı 114 Sure"], "radio": ["İslami Radyo", "Kuran, programlar ve ilahiler"], "prayer": ["Namaz Vakitleri", "Konumuna göre doğru vakitler"], "qibla": ["Kıble", "Kabe'ye pusula"], "adhkar": ["Dua & Zikir", "Sabah akşam ve uyku zikirleri"], "hifz": ["Hıfz Takip", "Günlük wird ile ezberleme takibi"], "khatma": ["Hatim", "Kişisel ve grup hatmi"], "dashboard": ["Kontrol Paneli", "Günlük istatistikler"], "search": ["Arama", "Kuran'da ayet ara"], "notes": ["Notlar", "Ayetlere not ekle"], "leaderboard": ["Sıralama", "En iyi okuyucular"], "ijaza": ["İcazet", "Kıraat ilimleri ve senet"], "group": ["Grup Hatmi", "Sevdiklerinizle birlikte hatim"]}, "fr": {"reader": ["Lire le Coran", "114 Sourates en écriture ottomane"], "radio": ["Radio Islamique", "Coran, émissions et anashid"], "prayer": ["Heures de Prière", "Horaires précis pour ta ville"], "qibla": ["Qibla", "Boussole vers la Kaaba"], "adhkar": ["Dhikr & Douaa", "Invocations matin, soir et sommeil"], "hifz": ["Suivi Hifz", "Suivi mémorisation avec wird"], "khatma": ["Khatma", "Khatma personnelle et en groupe"], "dashboard": ["Tableau de bord", "Statistiques et séries de lecture"], "search": ["Recherche", "Chercher dans tous les versets"], "notes": ["Notes", "Annoter des versets"], "leaderboard": ["Classement", "Meilleurs lecteurs et mémorisants"], "ijaza": ["Ijaza", "Sciences de récitation et chaînes"], "group": ["Khatma de groupe", "Terminer le Coran ensemble"]}, "ur": {"reader": ["قرآن پڑھیں", "عثمانی خط میں ۱۱۴ سورتیں"], "radio": ["اسلامی ریڈیو", "قرآن، دینی پروگرام اور نشید"], "prayer": ["نماز کے اوقات", "آپ کے شہر کے اوقات"], "qibla": ["قبلہ", "کعبہ کی سمت"], "adhkar": ["دعا و ذکر", "صبح شام اور سونے کے اذکار"], "hifz": ["حفظ ٹریکر", "یومیہ ورد کے ساتھ حفظ ٹریکنگ"], "khatma": ["ختم", "ذاتی اور گروہی ختم"], "dashboard": ["ڈیش بورڈ", "روزانہ اعداد و شمار"], "search": ["تلاش", "قرآن میں آیت تلاش کریں"], "notes": ["نوٹس", "آیات پر نوٹ لکھیں"], "leaderboard": ["لیڈربورڈ", "بہترین قارئین اور حافظ"], "ijaza": ["اجازہ و قراءات", "قراءات کا علم اور سند"], "group": ["گروپ ختم", "اپنوں کے ساتھ ختم القرآن"]}, "id": {"reader": ["Baca Al-Quran", "114 Surah tulisan Utsmani"], "radio": ["Radio Islam", "Quran, program agama & nasyid"], "prayer": ["Waktu Shalat", "Jadwal tepat untuk kotamu"], "qibla": ["Kiblat", "Kompas ke Ka'bah"], "adhkar": ["Dzikir & Doa", "Dzikir pagi, sore dan tidur"], "hifz": ["Lacak Hafalan", "Pantau hafalan dengan wird harian"], "khatma": ["Khatam", "Khatam pribadi & kelompok"], "dashboard": ["Dashboard", "Statistik dan rekam jejak membaca"], "search": ["Cari", "Cari ayat dalam Al-Quran"], "notes": ["Catatan", "Beri catatan pada ayat"], "leaderboard": ["Papan Peringkat", "Pembaca dan penghafal terbaik"], "ijaza": ["Ijazah & Qira'at", "Ilmu qira'at dan sanad"], "group": ["Khatam Kelompok", "Khatamkan Al-Quran bersama"]}};
+// Titles/descriptions in the other site languages come from src/locales/core.js
+// (keyed by the Arabic source strings above).
+export function featureText(item, lang = getLang()) {
+  return { title: translate(lang, item.title), desc: translate(lang, item.desc) };
+}
 
-export function featureText(item, lang = 'ar') {
-  const t = lang !== 'ar' && I18N[lang] && I18N[lang][item.key];
-  return t ? { title: t[0], desc: t[1] } : { title: item.title, desc: item.desc };
+// Group heading in the visitor's language.
+export function groupTitle(group, lang = getLang()) {
+  return translate(lang, group.title);
 }
 
 // Groups filtered for the current visitor (admin feature switches, guest/user).

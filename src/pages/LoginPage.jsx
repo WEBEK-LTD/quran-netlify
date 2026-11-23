@@ -8,9 +8,12 @@ import { Icon } from '../components/ornaments/Ornaments';
 import { AuthStage, AuthHead, TextField, PasswordField, Alert, GoogleButton, OrLine, Spinner, clean } from './auth/AuthShell';
 import styles from './AuthPage.module.css';
 import { useT } from '../i18n';
+import { useTr } from '../l10n';
+import { rich } from './legal/LegalDoc';
 
 export default function LoginPage() {
   const t = useT();
+  const tr = useTr();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [email, setEmail]       = useState('');
@@ -19,7 +22,7 @@ export default function LoginPage() {
   const [error, setError]       = useState(() => {
     const e = searchParams.get('error');
     if (!e) return '';
-    return e === 'auth_failed' ? 'تعذّر إكمال تسجيل الدخول، حاول مرة أخرى' : googleErrorText(e);
+    return e === 'auth_failed' ? tr('تعذّر إكمال تسجيل الدخول، حاول مرة أخرى') : googleErrorText(e);
   });
   const [loading, setLoading]   = useState(false);
   // ?view=forgot opens the reset form directly (link in the "password changed" email)
@@ -58,21 +61,21 @@ export default function LoginPage() {
 
   // ─── Forgot sent confirmation ──────────────────────────────────────────────
   if (view === 'forgot_sent') return (
-    <AuthStage label="استعادة كلمة المرور">
-      <AuthHead icon={{ name: 'check', tone: 'ok' }} title={clean(t('resetSent')) || 'تم إرسال رابط الاستعادة'} />
+    <AuthStage label={tr('استعادة كلمة المرور')}>
+      <AuthHead icon={{ name: 'check', tone: 'ok' }} title={clean(t('resetSent')) || tr('تم إرسال رابط الاستعادة')} />
       <p className={styles.sub} style={{ justifySelf: 'center', textAlign: 'center' }}>
-        إن كان هناك حساب مسجّل بالبريد <strong className={styles.ltr}>{email}</strong> فستصلك رسالة فيها رابط
-        لتعيين كلمة مرور جديدة. تحقّق من صندوق الوارد ومن مجلد الرسائل غير المرغوب فيها.
+        {rich(tr('إن كان هناك حساب مسجّل بالبريد {email} فستصلك رسالة فيها رابط لتعيين كلمة مرور جديدة. تحقّق من صندوق الوارد ومن مجلد الرسائل غير المرغوب فيها.'),
+          { email: <strong className={styles.ltr}>{email}</strong> })}
       </p>
       <button type="button" className={`nq-btn gold ${styles.submit}`} onClick={backToLogin}>
-        العودة إلى تسجيل الدخول
+        {tr('العودة إلى تسجيل الدخول')}
       </button>
     </AuthStage>
   );
 
   // ─── Forgot password form ──────────────────────────────────────────────────
   if (view === 'forgot') return (
-    <AuthStage label="استعادة كلمة المرور">
+    <AuthStage label={tr('استعادة كلمة المرور')}>
       <AuthHead title={t('resetTitle')} sub={t('resetSubtitle')} />
       <form onSubmit={handleForgot} className={styles.form}>
         <TextField label={t('email')} icon="user" type="email" value={email} required dir="ltr"
@@ -81,27 +84,27 @@ export default function LoginPage() {
         <Alert>{error}</Alert>
         <button type="submit" className={`nq-btn gold ${styles.submit}`} disabled={loading}>
           {loading ? <Spinner /> : <Icon name="bell" />}
-          {loading ? 'جارٍ الإرسال…' : 'إرسال رابط الاستعادة'}
+          {loading ? tr('جارٍ الإرسال…') : tr('إرسال رابط الاستعادة')}
         </button>
       </form>
       <div className={styles.foot}>
-        <button type="button" className={styles.textBtn} onClick={backToLogin}>العودة إلى تسجيل الدخول</button>
+        <button type="button" className={styles.textBtn} onClick={backToLogin}>{tr('العودة إلى تسجيل الدخول')}</button>
       </div>
     </AuthStage>
   );
 
   // ─── Main login form ───────────────────────────────────────────────────────
   return (
-    <AuthStage label="تسجيل الدخول">
-      <AuthHead title={t('loginTitle')} sub="سجّل دخولك لتُحفظ قراءتك وحفظك وختماتك، وتتزامن على كل أجهزتك." />
+    <AuthStage label={tr('تسجيل الدخول')}>
+      <AuthHead title={t('loginTitle')} sub={tr('سجّل دخولك لتُحفظ قراءتك وحفظك وختماتك، وتتزامن على كل أجهزتك.')} />
 
       {settings.maintenance_mode && (
-        <Alert tone="warn">الموقع في صيانة مؤقتة، والدخول متاح للمشرفين فقط في الوقت الحالي.</Alert>
+        <Alert tone="warn">{tr('الموقع في صيانة مؤقتة، والدخول متاح للمشرفين فقط في الوقت الحالي.')}</Alert>
       )}
 
       {settings.google_login && (<>
-        <GoogleButton onClick={handleGoogle} disabled={loading}>المتابعة بحساب Google</GoogleButton>
-        <OrLine>أو بالبريد الإلكتروني</OrLine>
+        <GoogleButton onClick={handleGoogle} disabled={loading}>{tr('المتابعة بحساب Google')}</GoogleButton>
+        <OrLine>{tr('أو بالبريد الإلكتروني')}</OrLine>
       </>)}
 
       <form onSubmit={handleEmail} className={styles.form}>
@@ -112,22 +115,22 @@ export default function LoginPage() {
           onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
         <div className={styles.row}>
           <button type="button" className={styles.textBtn} onClick={() => { setView('forgot'); setError(''); }}>
-            نسيت كلمة المرور؟
+            {tr('نسيت كلمة المرور؟')}
           </button>
         </div>
         <Alert>{error}</Alert>
         <button type="submit" className={`nq-btn gold ${styles.submit}`} disabled={loading}>
           {loading ? <Spinner /> : <Icon name="user" />}
-          {loading ? 'جارٍ الدخول…' : 'دخول'}
+          {loading ? tr('جارٍ الدخول…') : tr('دخول')}
         </button>
       </form>
 
       <div className={styles.foot}>
         <p className={styles.switch}>
           {t('noAccount')}{' '}
-          <Link to="/signup" className={styles.link}>أنشئ حساباً مجانياً</Link>
+          <Link to="/signup" className={styles.link}>{tr('أنشئ حساباً مجانياً')}</Link>
         </p>
-        <Link to="/" className={styles.quiet}>المتابعة بدون حساب</Link>
+        <Link to="/" className={styles.quiet}>{tr('المتابعة بدون حساب')}</Link>
       </div>
     </AuthStage>
   );

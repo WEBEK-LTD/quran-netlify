@@ -3,11 +3,12 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import '../../styles/shell.css';
 import { Icon, Pattern, Frieze, Badge8, toAr } from '../ornaments/Ornaments';
-import { visibleGroups, featureText, openAssistant } from '../../features';
+import { visibleGroups, featureText, groupTitle, openAssistant } from '../../features';
 import { useAuth, displayNameOf, avatarOf } from '../../hooks/useAuth';
 import { usePublicSettings } from '../../hooks/usePublicSettings';
 import { useAppearance, toggleScheme, setAppearance, MODES } from '../../appearance';
 import { useLang } from '../../i18n';
+import { useTr, num, surahName, revelationLabel } from '../../l10n';
 import { SURAHS_META } from '../../data';
 import { normalizeArabic } from '../../arabic';
 import LangSwitcher from '../LangSwitcher';
@@ -38,8 +39,9 @@ function useGo() {
 }
 
 function Brand({ onClick }) {
+  const tr = useTr();
   return (
-    <Link to="/" className="nq-brand" aria-label="نور القرآن — الرئيسية" onClick={onClick}>
+    <Link to="/" className="nq-brand" aria-label={tr('نور القرآن — الرئيسية')} onClick={onClick}>
       <img className="mark" src="/brand/logo-mark.svg" alt="" width="34" height="40" />
       <img className="word word-dark" src="/brand/wordmark-on-dark.svg" alt="" width="119" height="34" />
       <img className="word word-light" src="/brand/wordmark-on-light.svg" alt="" width="119" height="34" />
@@ -73,6 +75,7 @@ export function SiteHeader() {
   const groups = useFeatures();
   const lang = useLang();
   const go = useGo();
+  const tr = useTr();
   const { scheme } = useAppearance();
   const megaOpen = overlay === 'mega';
 
@@ -81,31 +84,31 @@ export function SiteHeader() {
 
   return (
     <header className="nq-top">
-      <a href="#main" className="nq-skip">تخطَّ إلى المحتوى</a>
+      <a href="#main" className="nq-skip">{tr('تخطَّ إلى المحتوى')}</a>
       <div className="nq-wrap nq-top-in">
         <Brand />
-        <nav className="nq-nav" aria-label="التنقل الرئيسي">
+        <nav className="nq-nav" aria-label={tr('التنقل الرئيسي')}>
           {NAV.map(n => {
             const on = n.exact ? pathname === n.path : (pathname.startsWith(n.path) || (n.also || []).some(a => pathname.startsWith(a)));
-            return <Link key={n.path} to={n.path} className={`nq-navlink${n.opt ? ' opt' : ''}`} aria-current={on ? 'page' : undefined}>{n.label}</Link>;
+            return <Link key={n.path} to={n.path} className={`nq-navlink${n.opt ? ' opt' : ''}`} aria-current={on ? 'page' : undefined}>{tr(n.label)}</Link>;
           })}
           <button type="button" className="nq-navlink" aria-expanded={megaOpen} aria-controls="nq-mega"
             onClick={() => setOverlay(megaOpen ? null : 'mega')}>
-            كل المميزات <Icon name="chev" className="chev" />
+            {tr('كل المميزات')} <Icon name="chev" className="chev" />
           </button>
         </nav>
         <span className="spacer" />
         <div className="nq-top-acts">
-          <button type="button" className="nq-ibtn" onClick={openPalette} aria-label="البحث في القرآن والمميزات (/)" title="بحث ( / )">
+          <button type="button" className="nq-ibtn" onClick={openPalette} aria-label={tr('البحث في القرآن والمميزات (/)')} title={tr('بحث ( / )')}>
             <Icon name="search" />
           </button>
           <button type="button" className="nq-ibtn hide-sm" onClick={toggleScheme}
-            aria-label={scheme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'} title={scheme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}>
+            aria-label={scheme === 'dark' ? tr('الوضع النهاري') : tr('الوضع الليلي')} title={scheme === 'dark' ? tr('الوضع النهاري') : tr('الوضع الليلي')}>
             <Icon name={scheme === 'dark' ? 'sun' : 'moon'} />
           </button>
           <span className="hide-sm"><LangSwitcher compact={true} /></span>
           <Account />
-          <button type="button" className="nq-ibtn nq-menu-btn" onClick={openDrawer} aria-label="القائمة" aria-expanded={overlay === 'drawer'}>
+          <button type="button" className="nq-ibtn nq-menu-btn" onClick={openDrawer} aria-label={tr('القائمة')} aria-expanded={overlay === 'drawer'}>
             <Icon name="menu" />
           </button>
         </div>
@@ -118,7 +121,7 @@ export function SiteHeader() {
             <div className="nq-wrap nq-mega-in">
               {groups.map(g => (
                 <div className="nq-mgroup" key={g.id}>
-                  <h4>{g.title}</h4>
+                  <h4>{groupTitle(g, lang)}</h4>
                   {g.items.map(it => <FeatureItem key={it.key} item={it} lang={lang} onGo={go} />)}
                 </div>
               ))}
@@ -134,15 +137,16 @@ function Account() {
   const { user, signOut } = useAuth();
   const overlay = useOverlay();
   const navigate = useNavigate();
+  const tr = useTr();
   const open = overlay === 'account';
   if (!user) {
-    return <Link to="/login" className="nq-btn gold sm hide-sm">تسجيل الدخول</Link>;
+    return <Link to="/login" className="nq-btn gold sm hide-sm">{tr('تسجيل الدخول')}</Link>;
   }
-  const name = displayNameOf(user, 'حسابي');
+  const name = displayNameOf(user, tr('حسابي'));
   const avatar = avatarOf(user);
   return (
     <div className="nq-acct">
-      <button type="button" className="nq-avatar" aria-label={`حسابي: ${name}`} aria-expanded={open}
+      <button type="button" className="nq-avatar" aria-label={tr('حسابي: {name}', { name })} aria-expanded={open}
         onClick={() => setOverlay(open ? null : 'account')}>
         {avatar ? <img src={avatar} alt="" referrerPolicy="no-referrer" /> : (name.trim()[0] || '؟')}
       </button>
@@ -151,13 +155,13 @@ function Account() {
           <div style={{ position: 'fixed', inset: 0, zIndex: 69 }} onClick={closeOverlays} aria-hidden="true" />
           <div className="nq-pop" role="menu">
             <div className="who"><b>{name}</b><small>{user.email}</small></div>
-            <Link to="/dashboard" role="menuitem"><Icon name="home" />لوحتي</Link>
-            <Link to="/favorites" role="menuitem"><Icon name="bookmark" />المفضلة</Link>
-            <Link to="/settings" role="menuitem"><Icon name="gear" />الإعدادات والمظهر</Link>
-            {user.is_admin && <Link to="/admin" role="menuitem"><Icon name="shieldUser" />لوحة الإدارة</Link>}
+            <Link to="/dashboard" role="menuitem"><Icon name="home" />{tr('لوحتي')}</Link>
+            <Link to="/favorites" role="menuitem"><Icon name="bookmark" />{tr('المفضلة')}</Link>
+            <Link to="/settings" role="menuitem"><Icon name="gear" />{tr('الإعدادات والمظهر')}</Link>
+            {user.is_admin && <Link to="/admin" role="menuitem"><Icon name="shieldUser" />{tr('لوحة الإدارة')}</Link>}
             <button type="button" role="menuitem" className="danger"
               onClick={async () => { closeOverlays(); await signOut(); navigate('/'); }}>
-              <Icon name="logout" />تسجيل الخروج
+              <Icon name="logout" />{tr('تسجيل الخروج')}
             </button>
           </div>
         </>
@@ -173,6 +177,7 @@ export function Drawer() {
   const lang = useLang();
   const go = useGo();
   const { user } = useAuth();
+  const tr = useTr();
   const { mode } = useAppearance();
   const closeRef = useRef(null);
   useEffect(() => { if (overlay === 'drawer') setTimeout(() => closeRef.current?.focus(), 30); }, [overlay]);
@@ -180,28 +185,28 @@ export function Drawer() {
   return (
     <div className="nq-overlay">
       <div className="nq-scrim" onClick={closeOverlays} />
-      <aside className="nq-sheet" role="dialog" aria-modal="true" aria-label="القائمة">
+      <aside className="nq-sheet" role="dialog" aria-modal="true" aria-label={tr('القائمة')}>
         <div className="nq-sheet-head">
           <Brand onClick={closeOverlays} />
-          <button ref={closeRef} type="button" className="nq-ibtn" onClick={closeOverlays} aria-label="إغلاق"><Icon name="x" /></button>
+          <button ref={closeRef} type="button" className="nq-ibtn" onClick={closeOverlays} aria-label={tr('إغلاق')}><Icon name="x" /></button>
         </div>
-        {!user && <Link to="/login" className="nq-btn gold" onClick={closeOverlays}>تسجيل الدخول</Link>}
+        {!user && <Link to="/login" className="nq-btn gold" onClick={closeOverlays}>{tr('تسجيل الدخول')}</Link>}
         <button type="button" className="nq-input" style={{ cursor: 'pointer' }} onClick={openPalette}>
-          <Icon name="search" style={{ color: 'var(--gold)' }} /><span style={{ color: 'var(--muted)' }}>ابحث عن سورة أو ميزة…</span>
+          <Icon name="search" style={{ color: 'var(--gold)' }} /><span style={{ color: 'var(--muted)' }}>{tr('ابحث عن سورة أو ميزة…')}</span>
         </button>
         <div className="nq-mgroup">
-          <h4>المظهر</h4>
-          <div className="modes" role="group" aria-label="وضع العرض">
+          <h4>{tr('المظهر')}</h4>
+          <div className="modes" role="group" aria-label={tr('وضع العرض')}>
             {MODES.map(m => (
               <button key={m.id} type="button" className={`nq-pill${mode === m.id ? ' on' : ''}`} aria-pressed={mode === m.id}
-                onClick={() => setAppearance({ mode: m.id })} style={{ minHeight: 36 }}>{m.label}</button>
+                onClick={() => setAppearance({ mode: m.id })} style={{ minHeight: 36 }}>{tr(m.label)}</button>
             ))}
           </div>
           <div style={{ marginTop: 10 }}><LangSwitcher /></div>
         </div>
         {groups.map(g => (
           <div className="nq-mgroup" key={g.id}>
-            <h4>{g.title}</h4>
+            <h4>{groupTitle(g, lang)}</h4>
             {g.items.map(it => <FeatureItem key={it.key} item={it} lang={lang} onGo={go} />)}
           </div>
         ))}
@@ -217,6 +222,7 @@ export function CommandPalette() {
   const lang = useLang();
   const go = useGo();
   const navigate = useNavigate();
+  const tr = useTr();
   const [q, setQ] = useState('');
   const [idx, setIdx] = useState(0);
   const inputRef = useRef(null);
@@ -281,18 +287,18 @@ export function CommandPalette() {
   return (
     <div className="nq-overlay nq-palette">
       <div className="nq-scrim" onClick={closeOverlays} />
-      <div className="box" role="dialog" aria-modal="true" aria-label="البحث">
+      <div className="box" role="dialog" aria-modal="true" aria-label={tr('البحث')}>
         <label className="in">
           <Icon name="search" style={{ color: 'var(--gold)' }} />
           <input ref={inputRef} value={q} onChange={e => { setQ(e.target.value); setIdx(0); }} onKeyDown={onKeyDown}
-            placeholder="ابحث عن سورة أو ميزة: الكهف، القبلة، أذكار، ٢:٢٥٥" autoComplete="off" role="combobox"
+            placeholder={tr('ابحث عن سورة أو ميزة: الكهف، القبلة، أذكار، ٢:٢٥٥')} autoComplete="off" role="combobox"
             aria-expanded="true" aria-controls="nq-pal-res" aria-activedescendant={results[idx] ? `nq-pal-${idx}` : undefined} />
           <span className="nq-kbd">Esc</span>
         </label>
         <div className="res" id="nq-pal-res" role="listbox" ref={resRef}>
-          {results.length === 0 && <p className="empty">لا نتائج. جرّب كلمة أخرى — وللبحث داخل الآيات افتح «البحث في القرآن».</p>}
+          {results.length === 0 && <p className="empty">{tr('لا نتائج. جرّب كلمة أخرى — وللبحث داخل الآيات افتح «البحث في القرآن».')}</p>}
           {results.map((r, i) => {
-            const head = r.kind !== lastKind ? (r.kind === 'feat' ? 'المميزات' : r.kind === 'surah' ? 'السور' : 'انتقل إلى آية') : null;
+            const head = r.kind !== lastKind ? (r.kind === 'feat' ? tr('المميزات') : r.kind === 'surah' ? tr('السور') : tr('انتقل إلى آية')) : null;
             lastKind = r.kind;
             const common = { 'data-i': i, id: `nq-pal-${i}`, role: 'option', 'aria-selected': i === idx, className: 'nq-mitem', type: 'button', onClick: () => run(r), onMouseEnter: () => setIdx(i) };
             let body;
@@ -301,10 +307,9 @@ export function CommandPalette() {
               body = <button {...common}><Icon name={r.it.icon} /><span><b>{t.title}</b><small>{t.desc}</small></span></button>;
             } else if (r.kind === 'surah') {
               const m = SURAHS_META[r.n - 1];
-              body = <button {...common}><Badge8 size={34}>{toAr(r.n)}</Badge8><span><b>سورة {m[0]}</b><small>{m[3]} · {toAr(m[2])} آية</small></span></button>;
+              body = <button {...common}><Badge8 size={34}>{toAr(r.n)}</Badge8><span><b>{tr('سورة {name}', { name: surahName(r.n) })}</b><small>{revelationLabel(m[3])} · {tr('{n} آية', { n: num(m[2]) })}</small></span></button>;
             } else {
-              const m = SURAHS_META[r.s - 1];
-              body = <button {...common}><Icon name="book" /><span><b>سورة {m[0]} · الآية {toAr(r.a)}</b><small>افتح المصحف عند هذه الآية</small></span></button>;
+              body = <button {...common}><Icon name="book" /><span><b>{tr('سورة {name} · الآية {n}', { name: surahName(r.s), n: num(r.a) })}</b><small>{tr('افتح المصحف عند هذه الآية')}</small></span></button>;
             }
             return <div key={i}>{head && <div className="sec-t">{head}</div>}{body}</div>;
           })}
@@ -323,26 +328,28 @@ const TABS = [
 ];
 export function TabBar() {
   const { pathname } = useLocation();
+  const tr = useTr();
   useEffect(() => {
     document.body.classList.add('nq-has-tabbar');
     return () => document.body.classList.remove('nq-has-tabbar');
   }, []);
   return (
-    <nav className="nq-tabbar" aria-label="التنقل السفلي">
+    <nav className="nq-tabbar" aria-label={tr('التنقل السفلي')}>
       {TABS.map(t => {
         const on = t.exact ? pathname === t.path : pathname.startsWith(t.path);
-        return <Link key={t.path} to={t.path} aria-current={on ? 'page' : undefined}><Icon name={t.icon} />{t.label}</Link>;
+        return <Link key={t.path} to={t.path} aria-current={on ? 'page' : undefined}><Icon name={t.icon} />{tr(t.label)}</Link>;
       })}
-      <button type="button" onClick={openDrawer}><Icon name="menu" />المزيد</button>
+      <button type="button" onClick={openDrawer}><Icon name="menu" />{tr('المزيد')}</button>
     </nav>
   );
 }
 
 // ── footer ──────────────────────────────────────────────────────────────────
 function hijriYear() {
-  try { return new Intl.DateTimeFormat('ar-EG-u-ca-islamic-umalqura', { year: 'numeric' }).format(new Date()).replace(/[^٠-٩]/g, ''); } catch { return ''; }
+  try { return num(new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { year: 'numeric' }).format(new Date()).replace(/[^0-9]/g, '')); } catch { return ''; }
 }
 export function SiteFooter() {
+  const tr = useTr();
   return (
     <footer className="nq-footer">
       <Frieze />
@@ -350,23 +357,23 @@ export function SiteFooter() {
       <div className="nq-wrap nq-footer-in">
         <div style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
           <Brand />
-          <p style={{ color: 'var(--muted)', fontSize: '.92rem', maxWidth: '40ch' }}>مجاني لوجه الله، بلا إعلانات. نسأل الله القبول.</p>
+          <p style={{ color: 'var(--muted)', fontSize: '.92rem', maxWidth: '40ch' }}>{tr('مجاني لوجه الله، بلا إعلانات. نسأل الله القبول.')}</p>
           <div><LangSwitcher /></div>
         </div>
-        <div><h4>القرآن</h4><ul>
-          <li><Link to="/reader">المصحف</Link></li><li><Link to="/search">البحث</Link></li>
-          <li><Link to="/daily-ayah">آية اليوم</Link></li><li><Link to="/radio">إذاعة القرآن</Link></li>
+        <div><h4>{tr('القرآن')}</h4><ul>
+          <li><Link to="/reader">{tr('المصحف')}</Link></li><li><Link to="/search">{tr('البحث')}</Link></li>
+          <li><Link to="/daily-ayah">{tr('آية اليوم')}</Link></li><li><Link to="/radio">{tr('إذاعة القرآن')}</Link></li>
         </ul></div>
-        <div><h4>العبادات</h4><ul>
-          <li><Link to="/prayer-times">مواقيت الصلاة</Link></li><li><Link to="/qibla">القبلة</Link></li>
-          <li><Link to="/adhkar">الأذكار</Link></li><li><Link to="/tasbih">السبحة</Link></li>
+        <div><h4>{tr('العبادات')}</h4><ul>
+          <li><Link to="/prayer-times">{tr('مواقيت الصلاة')}</Link></li><li><Link to="/qibla">{tr('القبلة')}</Link></li>
+          <li><Link to="/adhkar">{tr('الأذكار')}</Link></li><li><Link to="/tasbih">{tr('السبحة')}</Link></li>
         </ul></div>
-        <div><h4>عن الموقع</h4><ul>
-          <li><Link to="/help">شرح الاستخدام</Link></li><li><Link to="/support">الدعم</Link></li>
-          <li><Link to="/privacy">الخصوصية</Link></li><li><Link to="/terms">الشروط</Link></li>
+        <div><h4>{tr('عن الموقع')}</h4><ul>
+          <li><Link to="/help">{tr('شرح الاستخدام')}</Link></li><li><Link to="/support">{tr('الدعم')}</Link></li>
+          <li><Link to="/privacy">{tr('الخصوصية')}</Link></li><li><Link to="/terms">{tr('الشروط')}</Link></li>
         </ul></div>
       </div>
-      <div className="copy">© {hijriYear()} هـ · نور القرآن</div>
+      <div className="copy">{tr('© {year} هـ · نور القرآن', { year: hijriYear() })}</div>
     </footer>
   );
 }

@@ -63,7 +63,6 @@
   gap: 12px;
   padding: 32px 20px;
   text-align: center;
-  direction: rtl;
   background: var(--bg);
   color: var(--text);
 }
@@ -90,7 +89,6 @@
   gap: 10px;
   padding: 10px 14px;
   border-radius: 12px;
-  direction: rtl;
   background: var(--bg2, #1b1b1b);
   border: 1px solid var(--gold);
   box-shadow: 0 6px 24px rgba(0, 0, 0, .3);

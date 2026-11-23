@@ -1,8 +1,8 @@
 import { useEffect, useState, lazy, Suspense, Component } from 'react';
 import { useLang, LANGS } from './i18n';
+import { useTr, trNow, surahName } from './l10n';
 import { Routes, Route, useLocation, Link } from 'react-router-dom';
 import { useStore, setGlobal } from './store';
-import { SURAHS_META } from './data';
 import { SiteHeader, SiteFooter, SiteChrome } from './components/shell/Shell';
 import { OrnamentDefs, Badge8, Icon } from './components/ornaments/Ornaments';
 import Sidebar         from './components/Sidebar';
@@ -90,37 +90,40 @@ function FullLayout({ children, footer = true }) {
 
 // Shown in place of a page whose feature the admin switched off.
 function FeatureOff() {
+  const tr = useTr();
   return (
     <div className={styles.notice}>
       <div className={styles.noticeIcon}><Badge8 icon="lock" size={72} /></div>
-      <h2>هذه الميزة متوقفة حالياً</h2>
-      <p>أوقفت الإدارة هذه الصفحة مؤقتاً. يمكنك متابعة القراءة وبقية الميزات كالمعتاد.</p>
-      <Link to="/" className={styles.noticeBtn}>العودة للرئيسية</Link>
+      <h2>{tr('هذه الميزة متوقفة حالياً')}</h2>
+      <p>{tr('أوقفت الإدارة هذه الصفحة مؤقتاً. يمكنك متابعة القراءة وبقية الميزات كالمعتاد.')}</p>
+      <Link to="/" className={styles.noticeBtn}>{tr('العودة للرئيسية')}</Link>
     </div>
   );
 }
 
 function MaintenancePage({ settings }) {
+  const tr = useTr();
   return (
     <div className={styles.notice} style={{ minHeight: '100vh' }}>
       <div className={styles.noticeIcon}><Badge8 icon="gear" size={72} /></div>
-      <h2>{settings.app_name || 'نور القرآن'} في صيانة مؤقتة</h2>
-      <p>نعمل على تحسين التطبيق، وسنعود قريباً بإذن الله. شكراً لصبرك.</p>
-      {settings.announcement && <p className={styles.noticeSub}>{settings.announcement}</p>}
-      <Link to="/login" className={styles.noticeLink}>دخول المشرفين</Link>
+      <h2>{tr('{name} في صيانة مؤقتة', { name: settings.app_name || tr('نور القرآن') })}</h2>
+      <p>{tr('نعمل على تحسين التطبيق، وسنعود قريباً بإذن الله. شكراً لصبرك.')}</p>
+      {settings.announcement && <p className={styles.noticeSub} dir="auto">{settings.announcement}</p>}
+      <Link to="/login" className={styles.noticeLink}>{tr('دخول المشرفين')}</Link>
     </div>
   );
 }
 
 const ANN_KEY = 'nq_dismissed_announcement';
 function AnnouncementBanner({ text }) {
+  const tr = useTr();
   const [dismissed, setDismissed] = useState(() => { try { return localStorage.getItem(ANN_KEY) || ''; } catch { return ''; } });
   if (!text || dismissed === text) return null;
   return (
     <div className={styles.announcement} role="status">
       <span className={styles.announcementIcon}><Icon name="bell" /></span>
-      <span className={styles.announcementText}>{text}</span>
-      <button className={styles.announcementClose} title="إغلاق" onClick={() => {
+      <span className={styles.announcementText} dir="auto">{text}</span>
+      <button className={styles.announcementClose} title={tr('إغلاق')} aria-label={tr('إغلاق')} onClick={() => {
         setDismissed(text);
         try { localStorage.setItem(ANN_KEY, text); } catch {}
       }}>×</button>
@@ -164,7 +167,7 @@ export default function App() {
     if (location.pathname === '/reader') {
       const lastRead = JSON.parse(localStorage.getItem('nq_lastRead') || '{"surah":1,"ayah":1}');
       setTimeout(() => {
-        setGlobal({ toast: `أهلاً بعودتك · آخر قراءة: سورة ${SURAHS_META[lastRead.surah - 1][0]}` });
+        setGlobal({ toast: trNow('أهلاً بعودتك · آخر قراءة: سورة {name}', { name: surahName(lastRead.surah) }) });
       }, 900);
     }
   }, []);

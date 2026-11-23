@@ -10,6 +10,7 @@ import { SURAHS_META, JUZ_DATA } from '../data';
 import { visibleGroups } from '../features';
 import { useHifz, localDateStr } from '../hifzStore';
 import { PageHero, Icon, Badge8, Corners, Pattern, Divider, toAr } from '../components/ornaments/Ornaments';
+import { useTr, num, surahName, intlLocale } from '../l10n';
 import styles from './DashboardPage.module.css';
 
 function readJSON(key, fallback) {
@@ -41,6 +42,27 @@ const TOTAL_AYAHS = 6236;
 const AR_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 const AR_DAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 const WEEKS = 53;
+
+// Month / weekday names: the original Arabic lists for ar, Intl for the rest.
+function monthLabel(m, lang) {
+  if (lang === 'ar') return AR_MONTHS[m];
+  try { return new Intl.DateTimeFormat(intlLocale(lang), { month: 'short' }).format(new Date(2024, m, 15)); } catch { return AR_MONTHS[m]; }
+}
+function dayLabel(dow, lang, style = 'long') {
+  if (lang === 'ar' && style === 'long') return AR_DAYS[dow];
+  try { return new Intl.DateTimeFormat(intlLocale(lang), { weekday: style }).format(new Date(2024, 0, 7 + dow)); } catch { return AR_DAYS[dow]; }
+}
+// Row labels of the heat map (Saturday → Friday; every other row labelled)
+function dowLabels(lang) {
+  if (lang === 'ar') return ['س', '', 'إ', '', 'خ', '', ''];
+  return [6, 1, 3].flatMap(d => [dayLabel(d, lang, 'narrow'), '']).concat(['']).slice(0, 7);
+}
+// "1|2" plural forms in a translation: singular for 1, plural otherwise
+function pick(s, n) {
+  if (!s.includes('|')) return s;
+  const [one, many] = s.split('|');
+  return Number(n) === 1 ? one : many;
+}
 
 // Weeks (Saturday → Friday) ending with the current week; each day { date, count, future }
 function buildHeat(byDate) {
@@ -80,6 +102,9 @@ const BC_STYLE = { info: 'info', warning: 'warn', success: 'ok', error: 'danger'
 const BC_ICON = { info: 'bell', warning: 'bell', success: 'check', error: 'x' };
 
 export default function DashboardPage() {
+  const tr = useTr();
+  const trn = (key, n, vars) => pick(tr(key, { n: toAr(n), ...vars }), n);
+  const pct = v => (tr.lang === 'ar' ? `${toAr(v)}٪` : `${num(v)}%`);
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const settings = usePublicSettings();
@@ -160,21 +185,21 @@ export default function DashboardPage() {
 
   const lastS = progress?.surah || localLastRead.surah || 1;
   const lastA = progress?.ayah || localLastRead.ayah || 1;
-  const lastSurah = SURAHS_META[lastS - 1]?.[0] || '—';
+  const lastSurah = surahName(lastS, tr.lang) || '—';
   const position = useMemo(() => {
     let n = 0; for (let i = 0; i < lastS - 1; i++) n += SURAHS_META[i][2];
     return Math.min(100, Math.round(((n + lastA) / TOTAL_AYAHS) * 1000) / 10);
   }, [lastS, lastA]);
   const juz = juzOf(lastS, lastA);
 
-  const displayName  = displayNameOf(user, 'الزائر');
+  const displayName  = displayNameOf(user, tr('الزائر'));
   const avatarUrl    = avatarOf(user);
   const avatarLetter = displayName[0]?.toUpperCase() || '؟';
 
   const items = useMemo(() => Object.fromEntries(visibleGroups(settings, user).flatMap(g => g.items).map(i => [i.key, i])), [settings, user]);
   const quickSub = {
-    hifz: `${toAr(completedSurahs)} سورة`, khatma: `${toAr(khatmat.length)} ختمة`,
-    favorites: `${toAr(displayBookmarks.length)} آية`, notes: `${toAr(displayNotes.length)} ملاحظة`,
+    hifz: trn('{n} سورة', completedSurahs), khatma: trn('{n} ختمة', khatmat.length),
+    favorites: trn('{n} آية', displayBookmarks.length), notes: trn('{n} ملاحظة', displayNotes.length),
   };
 
   function dismissBroadcast(id) {
@@ -188,9 +213,9 @@ export default function DashboardPage() {
   return (
     <div className={styles.page}>
       <PageHero
-        eyebrow="لوحتي"
-        title={user ? `أهلاً، ${displayName}` : 'أهلاً بك في نور القرآن'}
-        sub={user ? 'تابع وردك من حيث توقفت، وانظر ما قطعته في رحلتك مع القرآن.' : 'ملخّص قراءتك وحفظك على هذا الجهاز.'}
+        eyebrow={tr('لوحتي')}
+        title={user ? tr('أهلاً، {name}', { name: displayName }) : tr('أهلاً بك في نور القرآن')}
+        sub={user ? tr('تابع وردك من حيث توقفت، وانظر ما قطعته في رحلتك مع القرآن.') : tr('ملخّص قراءتك وحفظك على هذا الجهاز.')}
       >
         {user ? (
           <>
@@ -199,13 +224,13 @@ export default function DashboardPage() {
               <span className={styles.email}>{user.email}</span>
             </span>
             <button type="button" className="nq-btn ghost sm" onClick={async () => { await signOut(); navigate('/'); }}>
-              <Icon name="logout" />تسجيل الخروج
+              <Icon name="logout" />{tr('تسجيل الخروج')}
             </button>
           </>
         ) : !authLoading && (
           <>
-            <Link to="/login" className="nq-btn gold sm"><Icon name="user" />تسجيل الدخول</Link>
-            <Link to="/signup" className="nq-btn ghost sm">إنشاء حساب</Link>
+            <Link to="/login" className="nq-btn gold sm"><Icon name="user" />{tr('تسجيل الدخول')}</Link>
+            <Link to="/signup" className="nq-btn ghost sm">{tr('إنشاء حساب')}</Link>
           </>
         )}
       </PageHero>
@@ -221,96 +246,96 @@ export default function DashboardPage() {
                   <b>{bc.title}</b>
                   {bc.body && <span>{bc.body}</span>}
                 </div>
-                <button type="button" className={styles.bcX} onClick={() => dismissBroadcast(bc.id)} aria-label="إغلاق التنبيه"><Icon name="x" /></button>
+                <button type="button" className={styles.bcX} onClick={() => dismissBroadcast(bc.id)} aria-label={tr('إغلاق التنبيه')}><Icon name="x" /></button>
               </div>
             ))}
             {syncErr && (
               <p className={`${styles.bc} ${styles.bc_warn}`} role="alert">
                 <Icon name="bell" className={styles.bcIcon} />
-                <span className={styles.bcText}>تعذّر تحميل بعض بيانات حسابك، فنعرض البيانات المحفوظة على هذا الجهاز.</span>
+                <span className={styles.bcText}>{tr('تعذّر تحميل بعض بيانات حسابك، فنعرض البيانات المحفوظة على هذا الجهاز.')}</span>
               </p>
             )}
           </div>
         )}
 
         {/* ── continue + hifz ── */}
-        <section className={styles.top} aria-label="متابعة">
+        <section className={styles.top} aria-label={tr('متابعة')}>
           <Link to={`/reader?surah=${lastS}&ayah=${lastA}`} className={`nq-card ${styles.cont}`}>
             <Pattern />
             <Corners />
             <div className={styles.contIn}>
-              <span className="nq-eyebrow">تابع القراءة</span>
+              <span className="nq-eyebrow">{tr('تابع القراءة')}</span>
               <div className={styles.contMain}>
                 <Badge8 size={78}>{toAr(lastS)}</Badge8>
                 <div>
-                  <h2 className={styles.contSurah}>سورة {lastSurah}</h2>
-                  <p className={styles.contMeta}>الآية {toAr(lastA)} · الجزء {toAr(juz)}</p>
+                  <h2 className={styles.contSurah}>{tr('سورة {name}', { name: lastSurah })}</h2>
+                  <p className={styles.contMeta}>{tr('الآية {n}', { n: toAr(lastA) })} · {tr('الجزء {n}', { n: toAr(juz) })}</p>
                 </div>
               </div>
-              <div className={styles.track} role="img" aria-label={`موضعك في المصحف: ${toAr(position)}٪`}>
+              <div className={styles.track} role="img" aria-label={tr('موضعك في المصحف: {p}', { p: pct(position) })}>
                 <div className={styles.trackBar}><i style={{ width: `${position}%` }} /></div>
-                <span className="nq-num">{toAr(position)}٪ من المصحف</span>
+                <span className="nq-num">{tr('{p} من المصحف', { p: pct(position) })}</span>
               </div>
-              <span className={`nq-btn gold ${styles.contBtn}`}><Icon name="book" />{lastS === 1 && lastA === 1 ? 'ابدأ القراءة' : 'تابع من حيث توقفت'}</span>
+              <span className={`nq-btn gold ${styles.contBtn}`}><Icon name="book" />{lastS === 1 && lastA === 1 ? tr('ابدأ القراءة') : tr('تابع من حيث توقفت')}</span>
             </div>
           </Link>
 
           <Link to="/hifz" className={`nq-card ${styles.hifz}`}>
-            <span className="nq-eyebrow">الحفظ</span>
-            <div className={styles.ring} style={{ '--p': Math.min(100, progressPct || 0) }} role="img" aria-label={`نسبة الحفظ ${toAr(progressPct || 0)}٪`}>
-              <b className="nq-num">{toAr(progressPct || 0)}٪</b>
+            <span className="nq-eyebrow">{tr('الحفظ')}</span>
+            <div className={styles.ring} style={{ '--p': Math.min(100, progressPct || 0) }} role="img" aria-label={tr('نسبة الحفظ {p}', { p: pct(progressPct || 0) })}>
+              <b className="nq-num">{pct(progressPct || 0)}</b>
             </div>
-            <p className={styles.hifzTxt}><b className="nq-num">{toAr(completedSurahs)}</b> سورة محفوظة</p>
-            <span className={styles.more}>خطة الحفظ والمراجعة <Icon name="back" className={styles.go} /></span>
+            <p className={styles.hifzTxt}><b className="nq-num">{toAr(completedSurahs)}</b> {pick(tr('سورة محفوظة'), completedSurahs)}</p>
+            <span className={styles.more}>{tr('خطة الحفظ والمراجعة')} <Icon name="back" className={styles.go} /></span>
           </Link>
         </section>
 
         {/* ── KPIs ── */}
-        <section aria-label="إحصاءاتك" className={styles.kpis}>
-          <Kpi icon="timer" value={toAr(streak)} unit={streak === 1 ? 'يوم' : 'يوماً'} label="أيام متتالية" sub={streak ? 'حافظ على وردك اليوم' : 'ابدأ سلسلتك اليوم'} busy={busy} />
+        <section aria-label={tr('إحصاءاتك')} className={styles.kpis}>
+          <Kpi icon="timer" value={toAr(streak)} unit={streak === 1 ? tr('يوم') : pick(tr('يوماً'), streak)} label={tr('أيام متتالية')} sub={streak ? tr('حافظ على وردك اليوم') : tr('ابدأ سلسلتك اليوم')} busy={busy} />
           {user
-            ? <Kpi icon="book" value={toAr(ayahsRead.toLocaleString('en').replace(/,/g, '٬'))} unit="آية" label="قرأتها هذا العام" sub={`في ${toAr(readingDays)} يوماً`} busy={busy} />
-            : <Kpi icon="calendar" value={toAr(readingDays)} unit="يوماً" label="أيام القراءة" sub="على هذا الجهاز" busy={busy} />}
-          <Kpi icon="grid" value={`${toAr(progressPct || 0)}٪`} label="نسبة الحفظ" sub={`${toAr(completedSurahs)} سورة من ١١٤`} busy={busy} />
-          <Kpi icon="check" value={toAr(khatmat.length)} unit={khatmat.length === 1 ? 'ختمة' : 'ختمات'} label="ختماتي" sub={<Link to="/khatma" className={styles.kLink}>سجلّ الختمات</Link>} busy={busy} />
+            ? <Kpi icon="book" value={tr.lang === 'ar' ? toAr(ayahsRead.toLocaleString('en').replace(/,/g, '٬')) : num(ayahsRead.toLocaleString(intlLocale(tr.lang)))} unit={pick(tr('آية'), ayahsRead)} label={tr('قرأتها هذا العام')} sub={trn('في {n} يوماً', readingDays)} busy={busy} />
+            : <Kpi icon="calendar" value={toAr(readingDays)} unit={pick(tr('يوماً'), readingDays)} label={tr('أيام القراءة')} sub={tr('على هذا الجهاز')} busy={busy} />}
+          <Kpi icon="grid" value={pct(progressPct || 0)} label={tr('نسبة الحفظ')} sub={tr('{n} سورة من {total}', { n: toAr(completedSurahs), total: toAr(114) })} busy={busy} />
+          <Kpi icon="check" value={toAr(khatmat.length)} unit={khatmat.length === 1 ? tr('ختمة') : tr('ختمات')} label={tr('ختماتي')} sub={<Link to="/khatma" className={styles.kLink}>{tr('سجلّ الختمات')}</Link>} busy={busy} />
         </section>
 
         {/* ── activity heat map ── */}
         <section className={`nq-card ${styles.heatCard}`} aria-labelledby="heat-h">
           <header className={styles.heatHead}>
             <div>
-              <span className="nq-eyebrow">نشاط القراءة</span>
-              <h2 id="heat-h" className={styles.h2}>عامٌ من القراءة</h2>
+              <span className="nq-eyebrow">{tr('نشاط القراءة')}</span>
+              <h2 id="heat-h" className={styles.h2}>{tr('عامٌ من القراءة')}</h2>
             </div>
             <div className={styles.heatStats}>
-              <span><b className="nq-num">{toAr(weekTotal)}</b>{user ? ' آية هذا الأسبوع' : ' يوم قراءة هذا الأسبوع'}</span>
-              <span><b className="nq-num">{toAr(activeThisMonth)}</b> يوماً هذا الشهر</span>
+              <span><b className="nq-num">{toAr(weekTotal)}</b> {pick(user ? tr('آية هذا الأسبوع') : tr('يوم قراءة هذا الأسبوع'), weekTotal)}</span>
+              <span><b className="nq-num">{toAr(activeThisMonth)}</b> {pick(tr('يوماً هذا الشهر'), activeThisMonth)}</span>
             </div>
           </header>
           <div className={styles.heatWrap}>
             <div className={styles.dows} aria-hidden="true">
-              {['س', '', 'إ', '', 'خ', '', ''].map((d, i) => <span key={i}>{d}</span>)}
+              {dowLabels(tr.lang).map((d, i) => <span key={i}>{d}</span>)}
             </div>
             <div className={styles.heat} role="img"
-              aria-label={`خريطة نشاط القراءة: ${toAr(readingDays)} يوم قراءة خلال العام الماضي`}>
+              aria-label={trn('خريطة نشاط القراءة: {n} يوم قراءة خلال العام الماضي', readingDays)}>
               {heat.map((w, wi) => (
                 <div key={wi} className={styles.wk}>
-                  <span className={styles.mLabel}>{w.month != null && wi < WEEKS - 2 ? AR_MONTHS[w.month] : ''}</span>
+                  <span className={styles.mLabel}>{w.month != null && wi < WEEKS - 2 ? monthLabel(w.month, tr.lang) : ''}</span>
                   {w.days.map(d => (
                     <i key={d.date} className={`${styles.cell} ${d.future ? styles.future : styles['l' + levelOf(d.count, heatMax)]}`}
-                      title={d.future ? undefined : `${AR_DAYS[d.dow]} ${toAr(d.date.split('-').reverse().join('/'))}: ${d.count ? (user ? `${toAr(d.count)} آية` : 'قرأت') : 'لا قراءة'}`} />
+                      title={d.future ? undefined : `${dayLabel(d.dow, tr.lang)} ${toAr(d.date.split('-').reverse().join('/'))}: ${d.count ? (user ? trn('{n} آية', d.count) : tr('قرأت')) : tr('لا قراءة')}`} />
                   ))}
                 </div>
               ))}
             </div>
           </div>
           <div className={styles.legend} aria-hidden="true">
-            <span>أقل</span>
+            <span>{tr('أقل')}</span>
             {[0, 1, 2, 3, 4].map(l => <i key={l} className={`${styles.cell} ${styles['l' + l]}`} />)}
-            <span>أكثر</span>
+            <span>{tr('أكثر')}</span>
           </div>
           {!user && !busy && (
-            <p className={styles.heatNote}>تُسجَّل أيام القراءة على هذا الجهاز. سجّل الدخول ليُحسب عدد الآيات ويُحفظ نشاطك على كل أجهزتك.</p>
+            <p className={styles.heatNote}>{tr('تُسجَّل أيام القراءة على هذا الجهاز. سجّل الدخول ليُحسب عدد الآيات ويُحفظ نشاطك على كل أجهزتك.')}</p>
           )}
         </section>
 
@@ -319,12 +344,12 @@ export default function DashboardPage() {
           <section className={`nq-card ${styles.guest}`} aria-labelledby="guest-h">
             <Pattern />
             <div className={styles.guestText}>
-              <span className="nq-eyebrow">حسابك في نور القرآن</span>
-              <h2 id="guest-h" className="nq-h-sec">احفظ رحلتك مع القرآن</h2>
-              <p className="nq-lead">حسابٌ مجاني يحفظ تقدّمك ويجمعه على كل أجهزتك.</p>
+              <span className="nq-eyebrow">{tr('حسابك في نور القرآن')}</span>
+              <h2 id="guest-h" className="nq-h-sec">{tr('احفظ رحلتك مع القرآن')}</h2>
+              <p className="nq-lead">{tr('حسابٌ مجاني يحفظ تقدّمك ويجمعه على كل أجهزتك.')}</p>
               <div className={styles.guestActs}>
-                <Link to="/signup" className="nq-btn gold"><Icon name="user" />أنشئ حساباً مجانياً</Link>
-                <Link to="/login" className="nq-btn ghost">لديّ حساب</Link>
+                <Link to="/signup" className="nq-btn gold"><Icon name="user" />{tr('أنشئ حساباً مجانياً')}</Link>
+                <Link to="/login" className="nq-btn ghost">{tr('لديّ حساب')}</Link>
               </div>
             </div>
             <ul className={styles.benefits}>
@@ -334,7 +359,7 @@ export default function DashboardPage() {
                 ['bookmark', 'مفضلتك وملاحظاتك محفوظة', 'لا تضيع إذا غيّرت جهازك أو مسحت بيانات المتصفح.'],
                 ['users', 'الختمة الجماعية والمتصدرون', 'شارك أهلك ختمة واحدة، وتنافس في الخير.'],
               ].map(([ic, t, d]) => (
-                <li key={t}><Badge8 icon={ic} size={46} /><div><b>{t}</b><span>{d}</span></div></li>
+                <li key={t}><Badge8 icon={ic} size={46} /><div><b>{tr(t)}</b><span>{tr(d)}</span></div></li>
               ))}
             </ul>
           </section>
@@ -344,14 +369,14 @@ export default function DashboardPage() {
         <section aria-labelledby="quick-h" className={styles.sec}>
           <div className={styles.secHead}>
             <Divider />
-            <h2 id="quick-h" className="nq-h-sec">إلى أين اليوم؟</h2>
+            <h2 id="quick-h" className="nq-h-sec">{tr('إلى أين اليوم؟')}</h2>
           </div>
           <div className={styles.quick}>
             {QUICK.filter(([k]) => items[k]).map(([k, label]) => (
               <Link key={k} to={items[k].path} className={`nq-card ${styles.q}`}>
                 <Badge8 icon={items[k].icon} size={46} />
                 <span className={styles.qText}>
-                  <b>{label}</b>
+                  <b>{tr(label)}</b>
                   <small>{quickSub[k] || items[k].desc}</small>
                 </span>
               </Link>
@@ -361,22 +386,21 @@ export default function DashboardPage() {
 
         {/* ── recent ── */}
         {(displayBookmarks.length > 0 || displayNotes.length > 0) && (
-          <section className={styles.recent} aria-label="آخر ما حفظته">
+          <section className={styles.recent} aria-label={tr('آخر ما حفظته')}>
             {displayBookmarks.length > 0 && (
               <div className={`nq-card ${styles.recentCard}`}>
                 <header className={styles.recentHead}>
-                  <h2 className={styles.h3}><Icon name="bookmark" />آخر المحفوظات</h2>
-                  <Link to="/favorites" className={styles.all}>الكل ({toAr(displayBookmarks.length)})</Link>
+                  <h2 className={styles.h3}><Icon name="bookmark" />{tr('آخر المحفوظات')}</h2>
+                  <Link to="/favorites" className={styles.all}>{tr('الكل ({n})', { n: toAr(displayBookmarks.length) })}</Link>
                 </header>
                 <ul className={styles.rList}>
                   {displayBookmarks.slice(-5).reverse().map(b => {
-                    const meta = SURAHS_META[b.surah - 1];
                     return (
                       <li key={`${b.surah}:${b.ayah}`}>
                         <Link to={`/reader?surah=${b.surah}&ayah=${b.ayah}`} className={styles.rItem}>
                           <Badge8 size={38}>{toAr(b.surah)}</Badge8>
-                          <span className={styles.rName}>سورة {meta?.[0]}</span>
-                          <span className={styles.rRef}>الآية {toAr(b.ayah)}</span>
+                          <span className={styles.rName}>{tr('سورة {name}', { name: surahName(b.surah, tr.lang) })}</span>
+                          <span className={styles.rRef}>{tr('الآية {n}', { n: toAr(b.ayah) })}</span>
                         </Link>
                       </li>
                     );
@@ -387,15 +411,15 @@ export default function DashboardPage() {
             {displayNotes.length > 0 && (
               <div className={`nq-card ${styles.recentCard}`}>
                 <header className={styles.recentHead}>
-                  <h2 className={styles.h3}><Icon name="pen" />آخر الملاحظات</h2>
-                  <Link to="/notes" className={styles.all}>الكل ({toAr(displayNotes.length)})</Link>
+                  <h2 className={styles.h3}><Icon name="pen" />{tr('آخر الملاحظات')}</h2>
+                  <Link to="/notes" className={styles.all}>{tr('الكل ({n})', { n: toAr(displayNotes.length) })}</Link>
                 </header>
                 <ul className={styles.rList}>
                   {displayNotes.slice(0, 3).map(n => (
                     <li key={`${n.surah}:${n.ayah}`}>
                       <Link to={`/reader?surah=${n.surah}&ayah=${n.ayah}`} className={styles.nItem}>
-                        <span className={styles.nRef}>سورة {SURAHS_META[n.surah - 1]?.[0]} · الآية {toAr(n.ayah)}</span>
-                        <span className={styles.nText}>{n.text}</span>
+                        <span className={styles.nRef}>{tr('سورة {name}', { name: surahName(n.surah, tr.lang) })} · {tr('الآية {n}', { n: toAr(n.ayah) })}</span>
+                        <span className={styles.nText} dir="auto">{n.text}</span>
                       </Link>
                     </li>
                   ))}
@@ -410,11 +434,12 @@ export default function DashboardPage() {
 }
 
 function Kpi({ icon, value, unit, label, sub, busy }) {
+  const tr = useTr();
   return (
     <div className={`nq-card ${styles.kpi}`}>
       <Badge8 icon={icon} size={44} />
       <div className={styles.kpiVal}>
-        {busy ? <span className={styles.kpiWait} aria-label="جارٍ التحميل" /> : <><b className="nq-num">{value}</b>{unit && <span>{unit}</span>}</>}
+        {busy ? <span className={styles.kpiWait} aria-label={tr('جارٍ التحميل')} /> : <><b className="nq-num">{value}</b>{unit && <span>{unit}</span>}</>}
       </div>
       <span className={styles.kpiLabel}>{label}</span>
       {sub && <small className={styles.kpiSub}>{sub}</small>}

@@ -11,6 +11,7 @@ import { SURAHS_META, JUZ_DATA as JUZ_NAMES } from '../data';
 import { SURAH_AYAH_COUNT, JUZ_DATA, ACHIEVEMENTS, TOTAL_AYAHS, juzSurahRanges } from '../hifzData';
 import { setGlobal } from '../store';
 import { PageHero, Icon, Badge8, Pattern, Divider, toAr } from '../components/ornaments/Ornaments';
+import { useTr, trNow, num, surahName, revelationLabel, intlLocale, isRtl } from '../l10n';
 import styles from './HifzPage.module.css';
 
 // status → label, css class, glyph (glyph shows only with data-cb="on" / contrast)
@@ -28,8 +29,11 @@ const ACH_ICON = {
   hundred_ayahs: 'doc', five_hundred: 'scroll', daily_ward: 'sun',
 };
 
-const arNum = n => toAr(String(n).replace('.', '٫'));
-const sName = n => SURAHS_META[n - 1]?.[0] || '';
+// Decimal separator: Arabic comma for ar/ur, a dot otherwise
+const arNum = n => toAr(isRtl() ? String(n).replace('.', '٫') : String(n));
+const sName = n => surahName(n);
+// Ayah reference under the hero ayah: Arabic line, plus a transliterated reference in LTR languages
+const ayahRefLine = (ar, s, a) => (isRtl() ? ar : `${ar} — ${surahName(s)} ${s}:${a}`);
 
 // Advance `n` ayahs from (surah, ayah) across surah boundaries → last ayah of the range
 function advanceAyahs(surah, ayah, n) {
@@ -55,17 +59,18 @@ function countAyahs(s1, a1, s2, a2) {
 // Human-readable ward range (handles single-surah and multi-surah wards)
 function wardRangeText(w) {
   const endSurah = w.endSurah || w.surah;
-  if (endSurah === w.surah) return `سورة ${sName(w.surah)}: الآيات ${toAr(w.startAyah)}–${toAr(w.endAyah)}`;
-  return `من ${sName(w.surah)} ${toAr(w.startAyah)} إلى ${sName(endSurah)} ${toAr(w.endAyah)}`;
+  if (endSurah === w.surah) return trNow('سورة {s}: الآيات {a}–{b}', { s: sName(w.surah), a: toAr(w.startAyah), b: toAr(w.endAyah) });
+  return trNow('من {s1} {a1} إلى {s2} {a2}', { s1: sName(w.surah), a1: toAr(w.startAyah), s2: sName(endSurah), a2: toAr(w.endAyah) });
 }
 function wardShort(w) {
-  if (w.mode === 'juz') return `الجزء ${toAr(w.juz)}`;
+  if (w.mode === 'juz') return trNow('الجزء {n}', { n: toAr(w.juz) });
   const endSurah = w.endSurah || w.surah;
   if (endSurah === w.surah) return `${sName(w.surah)} ${toAr(w.startAyah)}–${toAr(w.endAyah)}`;
-  return `${sName(w.surah)} ${toAr(w.startAyah)} ← ${sName(endSurah)} ${toAr(w.endAyah)}`;
+  return `${sName(w.surah)} ${toAr(w.startAyah)} ${isRtl() ? '←' : '→'} ${sName(endSurah)} ${toAr(w.endAyah)}`;
 }
 
 export default function HifzPage() {
+  const tr = useTr();
   const { user } = useAuth();
   const {
     hifz, setSurahStatus, setDailyWard, markWardDone,
@@ -98,8 +103,8 @@ export default function HifzPage() {
   // `new Notification()` — use the service worker registration when available.
   // NOTE: no daily schedule exists yet; we only confirm notifications work.
   async function showTestNotification() {
-    const title = 'نور القرآن';
-    const opts  = { body: 'تم تفعيل الإشعارات — تذكّر وردك اليومي من القرآن الكريم', icon: '/icon.svg' };
+    const title = tr('نور القرآن');
+    const opts  = { body: tr('تم تفعيل الإشعارات — تذكّر وردك اليومي من القرآن الكريم'), icon: '/icon.svg' };
     try {
       if ('serviceWorker' in navigator) {
         const reg = await Promise.race([
@@ -111,9 +116,9 @@ export default function HifzPage() {
       } else {
         new Notification(title, opts);
       }
-      setGlobal({ toast: 'تم تفعيل الإشعارات على هذا الجهاز' });
+      setGlobal({ toast: tr('تم تفعيل الإشعارات على هذا الجهاز') });
     } catch {
-      setGlobal({ toast: 'تعذّر عرض الإشعار على هذا المتصفح' });
+      setGlobal({ toast: tr('تعذّر عرض الإشعار على هذا المتصفح') });
     }
   }
 
@@ -125,29 +130,29 @@ export default function HifzPage() {
     if (mode === 'juz') {
       const juz = parseInt(wardForm.juz, 10);
       const row = JUZ_DATA[juz - 1];
-      if (!row) { setWardError('اختر جزءاً صحيحاً (١–٣٠)'); return; }
+      if (!row) { setWardError(tr('اختر جزءاً صحيحاً ({a}–{b})', { a: toAr(1), b: toAr(30) })); return; }
       const [, s1, a1, s2, a2] = row;
       ward = { mode: 'juz', juz, surah: s1, startAyah: a1, endSurah: s2, endAyah: a2, ayahCount: countAyahs(s1, a1, s2, a2) };
     } else {
       const s1  = parseInt(wardForm.surah, 10);
       const max = SURAH_AYAH_COUNT[s1 - 1];
       const a1  = parseInt(wardForm.startAyah, 10);
-      if (!max) { setWardError('اختر سورة صحيحة'); return; }
-      if (!Number.isFinite(a1) || a1 < 1 || a1 > max) { setWardError(`آية البداية يجب أن تكون بين ١ و${toAr(max)}`); return; }
+      if (!max) { setWardError(tr('اختر سورة صحيحة')); return; }
+      if (!Number.isFinite(a1) || a1 < 1 || a1 > max) { setWardError(tr('آية البداية يجب أن تكون بين {a} و{b}', { a: toAr(1), b: toAr(max) })); return; }
       if (mode === 'ayahs') {
         const n = parseInt(wardForm.count, 10);
-        if (!Number.isFinite(n) || n < 1 || n > 50) { setWardError('عدد الآيات يجب أن يكون بين ١ و٥٠'); return; }
+        if (!Number.isFinite(n) || n < 1 || n > 50) { setWardError(tr('عدد الآيات يجب أن يكون بين {a} و{b}', { a: toAr(1), b: toAr(50) })); return; }
         const { endSurah, endAyah } = advanceAyahs(s1, a1, n);
         ward = { mode: 'ayahs', surah: s1, startAyah: a1, endSurah, endAyah, ayahCount: countAyahs(s1, a1, endSurah, endAyah) };
       } else {
         const a2 = parseInt(wardForm.endAyah, 10);
-        if (!Number.isFinite(a2) || a2 < a1 || a2 > max) { setWardError(`آية النهاية يجب أن تكون بين ${toAr(a1)} و${toAr(max)}`); return; }
+        if (!Number.isFinite(a2) || a2 < a1 || a2 > max) { setWardError(tr('آية النهاية يجب أن تكون بين {a} و{b}', { a: toAr(a1), b: toAr(max) })); return; }
         ward = { mode: 'surah', surah: s1, startAyah: a1, endSurah: s1, endAyah: a2, ayahCount: a2 - a1 + 1 };
       }
     }
     setDailyWard(ward);
     setWardOpen(false);
-    setGlobal({ toast: 'تم تحديد وردك اليومي' });
+    setGlobal({ toast: tr('تم تحديد وردك اليومي') });
   }
 
   function setWardField(field, raw) {
@@ -214,20 +219,20 @@ export default function HifzPage() {
   return (
     <div className={styles.page}>
       <PageHero
-        eyebrow="رحلة الحفظ"
-        title="ما حفظته، وما ينتظرك"
+        eyebrow={tr('رحلة الحفظ')}
+        title={tr('ما حفظته، وما ينتظرك')}
         ayah="وَلَقَدْ يَسَّرْنَا ٱلْقُرْءَانَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍ"
-        ayahRef="سورة القمر · ١٧"
-        sub="خطوة كل يوم، ومراجعة لا تنقطع."
+        ayahRef={ayahRefLine('سورة القمر · ١٧', 54, 17)}
+        sub={tr('خطوة كل يوم، ومراجعة لا تنقطع.')}
       >
         {ward ? (
           <Link className="nq-btn gold" to={`/reader?surah=${ward.surah}&ayah=${ward.startAyah}`}>
-            <Icon name="book" />ورد اليوم: {wardShort(ward)}
+            <Icon name="book" />{tr('ورد اليوم: {w}', { w: wardShort(ward) })}
           </Link>
         ) : (
-          <button type="button" className="nq-btn gold" onClick={goToWard}><Icon name="sun" />حدّد وردك اليومي</button>
+          <button type="button" className="nq-btn gold" onClick={goToWard}><Icon name="sun" />{tr('حدّد وردك اليومي')}</button>
         )}
-        <Link className="nq-btn ghost" to="/dashboard"><Icon name="chart" />لوحة التقدّم</Link>
+        <Link className="nq-btn ghost" to="/dashboard"><Icon name="chart" />{tr('لوحة التقدّم')}</Link>
       </PageHero>
 
       <div className="nq-wrap">
@@ -235,49 +240,49 @@ export default function HifzPage() {
         <div className={styles.kpis}>
           <div className={`nq-card ${styles.kpi}`}>
             <b className="nq-num">{toAr(completedSurahs)}</b>
-            <span>سورة محفوظة</span>
-            <small>{toAr(memorizedAyahs)} آية من {toAr(TOTAL_AYAHS)}</small>
+            <span>{tr('سورة محفوظة')}</span>
+            <small>{tr('{a} آية من {b}', { a: toAr(memorizedAyahs), b: toAr(TOTAL_AYAHS) })}</small>
           </div>
           <div className={`nq-card ${styles.kpi}`}>
-            <b className="nq-num">{arNum(progressPct)}٪</b>
-            <span>من القرآن الكريم</span>
+            <b className="nq-num">{tr('{n}٪', { n: arNum(progressPct) })}</b>
+            <span>{tr('من القرآن الكريم')}</span>
             <span className={styles.kpiBar} aria-hidden="true"><i style={{ width: `${Math.min(100, progressPct)}%` }} /></span>
           </div>
           <div className={`nq-card ${styles.kpi}`}>
             <b className="nq-num">{toAr(streak)}</b>
-            <span>{streak === 1 ? 'يوم ورد' : 'يوماً متتالياً'}</span>
-            <small>أفضلها {toAr(bestStreak)}</small>
+            <span>{streak === 1 ? tr('يوم ورد') : tr('يوماً متتالياً')}</span>
+            <small>{tr('أفضلها {n}', { n: toAr(bestStreak) })}</small>
           </div>
           <div className={`nq-card ${styles.kpi}`}>
             <b className="nq-num">{toAr(todayCount)}</b>
-            <span>في قائمة اليوم</span>
-            <small>{toAr(counts.review)} للمراجعة · {toAr(inProgressSurahs)} قيد الحفظ</small>
+            <span>{tr('في قائمة اليوم')}</span>
+            <small>{tr('{a} للمراجعة · {b} قيد الحفظ', { a: toAr(counts.review), b: toAr(inProgressSurahs) })}</small>
           </div>
         </div>
 
         {notification === 'default' && (
           <div className={`nq-card ${styles.notif}`}>
             <Badge8 icon="bell" size={44} />
-            <p>فعّل الإشعارات على هذا الجهاز. <small>التذكير اليومي التلقائي غير متاح بعد.</small></p>
-            <button type="button" className="nq-btn ghost sm" onClick={requestNotifications}>تفعيل</button>
+            <p>{tr('فعّل الإشعارات على هذا الجهاز.')} <small>{tr('التذكير اليومي التلقائي غير متاح بعد.')}</small></p>
+            <button type="button" className="nq-btn ghost sm" onClick={requestNotifications}>{tr('تفعيل')}</button>
           </div>
         )}
 
         {/* ── Juz ── */}
         <section className={styles.sec} aria-labelledby="hz-juz">
           <div className={styles.secHead}>
-            <h2 id="hz-juz" className={styles.h2}>الأجزاء</h2>
-            <span className={styles.secMeta}>{toAr(fullJuz)} من ٣٠ جزءاً مكتمل الحفظ</span>
+            <h2 id="hz-juz" className={styles.h2}>{tr('الأجزاء')}</h2>
+            <span className={styles.secMeta}>{tr('{n} من {t} جزءاً مكتمل الحفظ', { n: toAr(fullJuz), t: toAr(30) })}</span>
           </div>
           <ul className={styles.juzgrid}>
             {juzProgress.map(({ juz, done, total, pct }) => (
               <li key={juz} className={`nq-card ${styles.juz} ${pct === 100 ? styles.juzFull : ''}`}>
-                <span className={styles.ring} style={{ '--p': pct }} role="img" aria-label={`محفوظ ${toAr(pct)}٪`}>
-                  <b className="nq-num">{toAr(pct)}٪</b>
+                <span className={styles.ring} style={{ '--p': pct }} role="img" aria-label={tr('محفوظ {p}', { p: tr('{n}٪', { n: toAr(pct) }) })}>
+                  <b className="nq-num">{tr('{n}٪', { n: toAr(pct) })}</b>
                 </span>
                 <span className={styles.juzTxt}>
-                  <span className={styles.nm}>الجزء {toAr(juz)}</span>
-                  <small>{JUZ_NAMES[juz - 1]?.name} · {toAr(done)}/{toAr(total)} آية</small>
+                  <span className={styles.nm}>{tr('الجزء {n}', { n: toAr(juz) })}</span>
+                  <small><bdi>{JUZ_NAMES[juz - 1]?.name}</bdi> · {tr('{a}/{b} آية', { a: toAr(done), b: toAr(total) })}</small>
                 </span>
               </li>
             ))}
@@ -288,17 +293,17 @@ export default function HifzPage() {
         <div className={styles.hgrid}>
           <section className={`nq-card ${styles.mapCard}`} aria-labelledby="hz-map">
             <div className={styles.mapHead}>
-              <h2 id="hz-map" className={styles.h2}>خريطة السور</h2>
-              <div className="nq-seg" role="group" aria-label="طريقة العرض">
-                <button type="button" aria-pressed={mapView === 'map'} onClick={() => setMapView('map')}>خريطة</button>
-                <button type="button" aria-pressed={mapView === 'list'} onClick={() => setMapView('list')}>قائمة</button>
+              <h2 id="hz-map" className={styles.h2}>{tr('خريطة السور')}</h2>
+              <div className="nq-seg" role="group" aria-label={tr('طريقة العرض')}>
+                <button type="button" aria-pressed={mapView === 'map'} onClick={() => setMapView('map')}>{tr('خريطة')}</button>
+                <button type="button" aria-pressed={mapView === 'list'} onClick={() => setMapView('list')}>{tr('قائمة')}</button>
               </div>
             </div>
             <div className={styles.lgd}>
               {STATUS_ORDER.map(k => (
                 <span key={k}>
                   <i className={`${styles.sw} ${styles[STATUS[k].cls]}`} aria-hidden="true"><b className={styles.g}>{STATUS[k].glyph}</b></i>
-                  {STATUS[k].label} <em className="nq-num">{toAr(counts[k] || 0)}</em>
+                  {tr(STATUS[k].label)} <em className="nq-num">{toAr(counts[k] || 0)}</em>
                 </span>
               ))}
             </div>
@@ -309,8 +314,8 @@ export default function HifzPage() {
                   const st = STATUS[hifz.surahStatus[n] || 'none'];
                   return (
                     <button key={n} type="button" className={`${styles.cell} ${styles[st.cls]}`}
-                      onClick={() => setPicked(n)} title={`${m[0]} — ${st.label}`}
-                      aria-label={`${toAr(n)} ${m[0]}: ${st.label}`}>
+                      onClick={() => setPicked(n)} title={`${sName(n)} — ${tr(st.label)}`}
+                      aria-label={`${toAr(n)} ${sName(n)}: ${tr(st.label)}`}>
                       <span className={styles.n}>{toAr(n)}</span>
                       {st.glyph && <span className={styles.g} aria-hidden="true">{st.glyph}</span>}
                     </button>
@@ -325,34 +330,34 @@ export default function HifzPage() {
                   const st = STATUS[key];
                   return (
                     <button key={n} type="button" className={styles.srow} onClick={() => setPicked(n)}
-                      aria-label={`${m[0]}: ${st.label}. غيّر الحالة`}>
+                      aria-label={`${sName(n)}: ${tr(st.label)}. ${tr('غيّر الحالة')}`}>
                       <Badge8 size={38}>{toAr(n)}</Badge8>
                       <span className={styles.srowTxt}>
-                        <span className={styles.srowName}>{m[0]}</span>
-                        <small>{m[3]} · {toAr(m[2])} آية</small>
+                        <span className={styles.srowName}>{sName(n)}</span>
+                        <small>{revelationLabel(m[3])} · {tr('{n} آية', { n: toAr(m[2]) })}</small>
                       </span>
-                      <span className={`${styles.stag} ${styles[st.cls]}`}><b className={styles.g}>{st.glyph}</b>{st.label}</span>
+                      <span className={`${styles.stag} ${styles[st.cls]}`}><b className={styles.g}>{st.glyph}</b>{tr(st.label)}</span>
                     </button>
                   );
                 })}
               </div>
             )}
-            <p className={styles.hint}>اضغط على أي سورة لتحديد حالة حفظها.</p>
+            <p className={styles.hint}>{tr('اضغط على أي سورة لتحديد حالة حفظها.')}</p>
           </section>
 
           <section className={`nq-card ${styles.queue}`} aria-labelledby="hz-q">
-            <h2 id="hz-q" className={styles.h2}>مراجعة اليوم</h2>
+            <h2 id="hz-q" className={styles.h2}>{tr('مراجعة اليوم')}</h2>
             {ward && (
               <div className={`${styles.qitem} ${styles.qWard}`}>
                 <Badge8 size={42}>{toAr(ward.surah)}</Badge8>
                 <div className={styles.qtxt}>
                   <span className={styles.nm}>{wardShort(ward)}</span>
-                  <small>{todayDone ? 'أتممت وردك اليوم، بارك الله فيك' : `ورد اليوم · ${toAr(ward.ayahCount)} آية`}</small>
+                  <small>{todayDone ? tr('أتممت وردك اليوم، بارك الله فيك') : tr('ورد اليوم · {n} آية', { n: toAr(ward.ayahCount) })}</small>
                 </div>
                 <div className={styles.qacts}>
-                  <Link className="nq-btn ghost sm" to={`/reader?surah=${ward.surah}&ayah=${ward.startAyah}`}>اقرأ</Link>
+                  <Link className="nq-btn ghost sm" to={`/reader?surah=${ward.surah}&ayah=${ward.startAyah}`}>{tr('اقرأ')}</Link>
                   <button type="button" className={`nq-btn sm ${todayDone ? 'ghost' : 'gold'}`} onClick={markWardDone} disabled={todayDone}>
-                    <Icon name="check" />{todayDone ? 'تمّ اليوم' : 'أنهيت وردي'}
+                    <Icon name="check" />{todayDone ? tr('تمّ اليوم') : tr('أنهيت وردي')}
                   </button>
                 </div>
               </div>
@@ -362,27 +367,27 @@ export default function HifzPage() {
                 <Badge8 size={42}>{toAr(n)}</Badge8>
                 <div className={styles.qtxt}>
                   <span className={styles.nm}>{sName(n)}</span>
-                  <small><i className={`${styles.qdot} ${styles[kind === 'review' ? 'rev' : 'learn']}`} aria-hidden="true" />{kind === 'review' ? 'تحتاج مراجعة' : 'قيد الحفظ'} · {toAr(SURAH_AYAH_COUNT[n - 1])} آية</small>
+                  <small><i className={`${styles.qdot} ${styles[kind === 'review' ? 'rev' : 'learn']}`} aria-hidden="true" />{kind === 'review' ? tr('تحتاج مراجعة') : tr('قيد الحفظ')} · {tr('{n} آية', { n: toAr(SURAH_AYAH_COUNT[n - 1]) })}</small>
                 </div>
                 <div className={styles.qacts}>
-                  <Link className="nq-btn ghost sm" to={`/reader?surah=${n}&ayah=1`}>{kind === 'review' ? 'راجع' : 'تابع'}</Link>
+                  <Link className="nq-btn ghost sm" to={`/reader?surah=${n}&ayah=1`}>{kind === 'review' ? tr('راجع') : tr('تابع')}</Link>
                   <button type="button" className="nq-btn ghost sm" onClick={() => setSurahStatus(n, 'completed')}
-                    aria-label={kind === 'review' ? `راجعت سورة ${sName(n)}` : `أتممت حفظ سورة ${sName(n)}`}>
-                    <Icon name="check" />{kind === 'review' ? 'راجعتها' : 'حفظتها'}
+                    aria-label={kind === 'review' ? tr('راجعت سورة {s}', { s: sName(n) }) : tr('أتممت حفظ سورة {s}', { s: sName(n) })}>
+                    <Icon name="check" />{kind === 'review' ? tr('راجعتها') : tr('حفظتها')}
                   </button>
                 </div>
               </div>
             ))}
             {queue.length > queueShown.length && (
               <button type="button" className={`nq-btn ghost sm ${styles.qmore}`} onClick={() => setQueueAll(true)}>
-                عرض الكل ({toAr(queue.length)})
+                {tr('عرض الكل ({n})', { n: toAr(queue.length) })}
               </button>
             )}
             {!ward && queue.length === 0 && (
               <div className={styles.qempty}>
                 <Divider />
-                <p>لا شيء في قائمة اليوم. حدّد وردك اليومي، أو علّم سورة بأنها «قيد الحفظ» أو «تحتاج مراجعة» من الخريطة.</p>
-                <button type="button" className="nq-btn gold sm" onClick={goToWard}><Icon name="sun" />حدّد وردك</button>
+                <p>{tr('لا شيء في قائمة اليوم. حدّد وردك اليومي، أو علّم سورة بأنها «قيد الحفظ» أو «تحتاج مراجعة» من الخريطة.')}</p>
+                <button type="button" className="nq-btn gold sm" onClick={goToWard}><Icon name="sun" />{tr('حدّد وردك')}</button>
               </div>
             )}
           </section>
@@ -391,85 +396,85 @@ export default function HifzPage() {
         {/* ── Daily ward ── */}
         <section className={styles.sec} aria-labelledby="hz-ward" ref={wardRef}>
           <div className={styles.secHead}>
-            <h2 id="hz-ward" className={styles.h2}>الورد اليومي</h2>
-            <span className={styles.secMeta}>قليلٌ دائم خيرٌ من كثيرٍ منقطع</span>
+            <h2 id="hz-ward" className={styles.h2}>{tr('الورد اليومي')}</h2>
+            <span className={styles.secMeta}>{tr('قليلٌ دائم خيرٌ من كثيرٍ منقطع')}</span>
           </div>
           <div className={styles.wgrid}>
             <div className={`nq-card ${styles.wardCard}`}>
               <Pattern />
               {ward && !wardOpen && (
                 <div className={styles.wardNow}>
-                  <span className="nq-eyebrow">وردك الحالي</span>
-                  <p className={styles.wardName}>{ward.mode === 'juz' ? `الجزء ${toAr(ward.juz)}` : `سورة ${sName(ward.surah)}`}</p>
-                  <p className={styles.wardRange}>{wardRangeText(ward)} · {toAr(ward.ayahCount)} آية</p>
+                  <span className="nq-eyebrow">{tr('وردك الحالي')}</span>
+                  <p className={styles.wardName}>{ward.mode === 'juz' ? tr('الجزء {n}', { n: toAr(ward.juz) }) : tr('سورة {s}', { s: sName(ward.surah) })}</p>
+                  <p className={styles.wardRange}>{wardRangeText(ward)} · {tr('{n} آية', { n: toAr(ward.ayahCount) })}</p>
                   <div className={styles.wardActs}>
                     <button type="button" className={`nq-btn ${todayDone ? 'ghost' : 'gold'}`} onClick={markWardDone} disabled={todayDone}>
-                      <Icon name="check" />{todayDone ? 'تمّ ورد اليوم' : 'أنهيت وردي'}
+                      <Icon name="check" />{todayDone ? tr('تمّ ورد اليوم') : tr('أنهيت وردي')}
                     </button>
-                    <button type="button" className="nq-btn ghost" onClick={() => setWardOpen(true)}><Icon name="pen" />تغيير الورد</button>
+                    <button type="button" className="nq-btn ghost" onClick={() => setWardOpen(true)}><Icon name="pen" />{tr('تغيير الورد')}</button>
                   </div>
                 </div>
               )}
               {(!ward || wardOpen) && (
                 <div className={styles.wardForm}>
-                  <h3 className={styles.h3}>{ward ? 'تغيير الورد اليومي' : 'حدّد وردك اليومي'}</h3>
-                  <div className="nq-seg" role="group" aria-label="طريقة تحديد الورد">
+                  <h3 className={styles.h3}>{ward ? tr('تغيير الورد اليومي') : tr('حدّد وردك اليومي')}</h3>
+                  <div className="nq-seg" role="group" aria-label={tr('طريقة تحديد الورد')}>
                     {[['surah', 'بالسورة'], ['juz', 'بالجزء'], ['ayahs', 'بعدد الآيات']].map(([m, l]) => (
                       <button key={m} type="button" aria-pressed={wardForm.mode === m}
-                        onClick={() => { setWardError(''); setWardForm(w => ({ ...w, mode: m })); }}>{l}</button>
+                        onClick={() => { setWardError(''); setWardForm(w => ({ ...w, mode: m })); }}>{tr(l)}</button>
                     ))}
                   </div>
 
                   {(wardForm.mode === 'surah' || wardForm.mode === 'ayahs') && (
                     <div className={styles.fields}>
                       <label className={styles.field}>
-                        <span>{wardForm.mode === 'ayahs' ? 'البداية من سورة' : 'السورة'}</span>
+                        <span>{wardForm.mode === 'ayahs' ? tr('البداية من سورة') : tr('السورة')}</span>
                         <select className={styles.ctl} value={wardForm.surah}
                           onChange={e => {
                             const s = parseInt(e.target.value, 10);
                             setWardError('');
                             setWardForm(w => ({ ...w, surah: s, startAyah: 1, endAyah: SURAH_AYAH_COUNT[s - 1] }));
                           }}>
-                          {SURAHS_META.map((m, i) => <option key={i + 1} value={i + 1}>{toAr(i + 1)}. {m[0]}</option>)}
+                          {SURAHS_META.map((m, i) => <option key={i + 1} value={i + 1}>{toAr(i + 1)}. {sName(i + 1)}</option>)}
                         </select>
                       </label>
                       <div className={styles.fieldRow}>
                         <label className={styles.field}>
-                          <span>من الآية</span>
+                          <span>{tr('من الآية')}</span>
                           <input className={styles.ctl} type="number" inputMode="numeric" min="1" max={surahMax}
                             value={wardForm.startAyah} onChange={e => setWardField('startAyah', e.target.value)} />
                         </label>
                         {wardForm.mode === 'surah' && (
                           <label className={styles.field}>
-                            <span>إلى الآية</span>
+                            <span>{tr('إلى الآية')}</span>
                             <input className={styles.ctl} type="number" inputMode="numeric" min={wardForm.startAyah || 1} max={surahMax}
                               value={wardForm.endAyah} onChange={e => setWardField('endAyah', e.target.value)} />
                           </label>
                         )}
                         {wardForm.mode === 'ayahs' && (
                           <label className={styles.field}>
-                            <span>عدد الآيات يومياً</span>
+                            <span>{tr('عدد الآيات يومياً')}</span>
                             <input className={styles.ctl} type="number" inputMode="numeric" min="1" max="50"
                               value={wardForm.count} onChange={e => setWardField('count', e.target.value)} />
                           </label>
                         )}
                       </div>
                       {wardForm.mode === 'ayahs' && (
-                        <div className={styles.sugg} role="group" aria-label="اقتراحات">
+                        <div className={styles.sugg} role="group" aria-label={tr('اقتراحات')}>
                           {[3, 5, 10, 20].map(n => (
                             <button key={n} type="button" className={`nq-pill ${wardForm.count === n ? 'on' : ''}`} aria-pressed={wardForm.count === n}
                               onClick={() => { setWardError(''); setWardForm(w => ({ ...w, count: n })); }}>
-                              {toAr(n)} آيات
+                              {tr('{n} آيات', { n: toAr(n) })}
                             </button>
                           ))}
                         </div>
                       )}
                       <p className={styles.summary}>
                         {wardForm.mode === 'surah'
-                          ? <>عدد الآيات: <strong>{toAr(Number.isFinite(wardSurahCount) ? Math.max(0, wardSurahCount) : 0)}</strong> من سورة {sName(wardForm.surah)}</>
+                          ? <>{tr('عدد الآيات:')} <strong>{toAr(Number.isFinite(wardSurahCount) ? Math.max(0, wardSurahCount) : 0)}</strong> {tr('من سورة {s}', { s: sName(wardForm.surah) })}</>
                           : wardForm.count >= 1
-                            ? <>بـ{toAr(wardForm.count)} آيات يومياً تُتمّ القرآن في نحو <strong>{toAr(Math.ceil(TOTAL_AYAHS / wardForm.count))} يوماً</strong></>
-                            : 'أدخل عدد الآيات'}
+                            ? <>{tr('بـ{n} آيات يومياً تُتمّ القرآن في نحو', { n: toAr(wardForm.count) })} <strong>{tr('{n} يوماً', { n: toAr(Math.ceil(TOTAL_AYAHS / wardForm.count)) })}</strong></>
+                            : tr('أدخل عدد الآيات')}
                       </p>
                     </div>
                   )}
@@ -477,43 +482,43 @@ export default function HifzPage() {
                   {wardForm.mode === 'juz' && (
                     <div className={styles.fields}>
                       <label className={styles.field}>
-                        <span>الجزء</span>
+                        <span>{tr('الجزء')}</span>
                         <select className={styles.ctl} value={wardForm.juz}
                           onChange={e => { setWardError(''); setWardForm(w => ({ ...w, juz: parseInt(e.target.value, 10) })); }}>
-                          {Array.from({ length: 30 }, (_, i) => <option key={i + 1} value={i + 1}>الجزء {toAr(i + 1)} — {JUZ_NAMES[i]?.name}</option>)}
+                          {Array.from({ length: 30 }, (_, i) => <option key={i + 1} value={i + 1}>{tr('الجزء {n}', { n: toAr(i + 1) })} — {JUZ_NAMES[i]?.name}</option>)}
                         </select>
                       </label>
-                      {juzPreview && <p className={styles.summary}>{wardRangeText(juzPreview)} · <strong>{toAr(juzPreview.ayahCount)} آية</strong></p>}
-                      <p className={styles.summary}>حفظ ربع جزء يومياً يُتمّ القرآن في نحو أربعة أشهر.</p>
+                      {juzPreview && <p className={styles.summary}>{wardRangeText(juzPreview)} · <strong>{tr('{n} آية', { n: toAr(juzPreview.ayahCount) })}</strong></p>}
+                      <p className={styles.summary}>{tr('حفظ ربع جزء يومياً يُتمّ القرآن في نحو أربعة أشهر.')}</p>
                     </div>
                   )}
 
                   {wardError && <p className={styles.err} role="alert">{wardError}</p>}
                   <div className={styles.wardActs}>
-                    <button type="button" className="nq-btn gold" onClick={saveWard}><Icon name="check" />حفظ الورد</button>
-                    {ward && <button type="button" className="nq-btn ghost" onClick={() => { setWardOpen(false); setWardError(''); }}>إلغاء</button>}
+                    <button type="button" className="nq-btn gold" onClick={saveWard}><Icon name="check" />{tr('حفظ الورد')}</button>
+                    {ward && <button type="button" className="nq-btn ghost" onClick={() => { setWardOpen(false); setWardError(''); }}>{tr('إلغاء')}</button>}
                   </div>
                 </div>
               )}
             </div>
 
             <div className={`nq-card ${styles.histCard}`}>
-              <h3 className={styles.h3}>سجل الأيام · آخر ١٤ يوماً</h3>
+              <h3 className={styles.h3}>{tr('سجل الأيام · آخر {n} يوماً', { n: toAr(14) })}</h3>
               <ol className={styles.cal}>
                 {last14.map(d => (
                   <li key={d.dateStr} className={`${styles.day} ${d.completed ? styles.dayDone : ''} ${d.dateStr === localDateStr() ? styles.dayToday : ''}`}
                     title={d.dateStr}>
-                    <small>{d.d.toLocaleDateString('ar-EG', { weekday: 'short' })}</small>
+                    <small>{num(d.d.toLocaleDateString(intlLocale(), { weekday: 'short' }))}</small>
                     <b className="nq-num">{toAr(d.d.getDate())}</b>
                     <span className={styles.dayMark} aria-hidden="true">{d.completed ? <Icon name="check" /> : null}</span>
-                    <span className="nq-sr">{d.completed ? 'أتممت الورد' : 'لم يُسجَّل ورد'}</span>
+                    <span className="nq-sr">{d.completed ? tr('أتممت الورد') : tr('لم يُسجَّل ورد')}</span>
                   </li>
                 ))}
               </ol>
               <div className={styles.histFoot}>
-                <span><b className="nq-num">{toAr(done14)}</b> من ١٤ يوماً</span>
-                <span><b className="nq-num">{toAr(streak)}</b> {streak === 1 ? 'يوم متواصل' : 'أيام متواصلة'}</span>
-                <span>الأفضل <b className="nq-num">{toAr(bestStreak)}</b></span>
+                <span><b className="nq-num">{toAr(done14)}</b> {tr('من {n} يوماً', { n: toAr(14) })}</span>
+                <span><b className="nq-num">{toAr(streak)}</b> {streak === 1 ? tr('يوم متواصل') : tr('أيام متواصلة')}</span>
+                <span>{tr('الأفضل')} <b className="nq-num">{toAr(bestStreak)}</b></span>
               </div>
             </div>
           </div>
@@ -522,26 +527,26 @@ export default function HifzPage() {
         {/* ── Distribution + achievements ── */}
         <section className={styles.sec} aria-labelledby="hz-ach">
           <div className={styles.secHead}>
-            <h2 id="hz-ach" className={styles.h2}>الإحصاءات والإنجازات</h2>
-            <span className={styles.secMeta}>{toAr(unlocked.length)} من {toAr(ACHIEVEMENTS.length)} إنجازاً</span>
+            <h2 id="hz-ach" className={styles.h2}>{tr('الإحصاءات والإنجازات')}</h2>
+            <span className={styles.secMeta}>{tr('{a} من {b} إنجازاً', { a: toAr(unlocked.length), b: toAr(ACHIEVEMENTS.length) })}</span>
           </div>
           <div className={styles.sgrid}>
             <div className={`nq-card ${styles.distCard}`}>
-              <h3 className={styles.h3}>توزيع الحفظ</h3>
+              <h3 className={styles.h3}>{tr('توزيع الحفظ')}</h3>
               {STATUS_ORDER.map(k => {
                 const c = counts[k] || 0;
                 const pct = Math.round((c / 114) * 100);
                 return (
                   <div key={k} className={styles.dist}>
-                    <span className={styles.distLbl}><i className={`${styles.sw} ${styles[STATUS[k].cls]}`} aria-hidden="true"><b className={styles.g}>{STATUS[k].glyph}</b></i>{STATUS[k].label}</span>
+                    <span className={styles.distLbl}><i className={`${styles.sw} ${styles[STATUS[k].cls]}`} aria-hidden="true"><b className={styles.g}>{STATUS[k].glyph}</b></i>{tr(STATUS[k].label)}</span>
                     <span className={styles.distBar} aria-hidden="true"><i className={styles[STATUS[k].cls]} style={{ width: `${pct}%` }} /></span>
-                    <span className={`nq-num ${styles.distN}`}>{toAr(c)} سورة · {toAr(pct)}٪</span>
+                    <span className={`nq-num ${styles.distN}`}>{tr('{n} سورة', { n: toAr(c) })} · {tr('{n}٪', { n: toAr(pct) })}</span>
                   </div>
                 );
               })}
               <div className={styles.distFoot}>
-                <div><b className="nq-num">{toAr(memorizedAyahs)}</b><small>آية محفوظة من {toAr(TOTAL_AYAHS)}</small></div>
-                <div><b className="nq-num">{toAr(bestStreak)}</b><small>أطول سلسلة ورد</small></div>
+                <div><b className="nq-num">{toAr(memorizedAyahs)}</b><small>{tr('آية محفوظة من {n}', { n: toAr(TOTAL_AYAHS) })}</small></div>
+                <div><b className="nq-num">{toAr(bestStreak)}</b><small>{tr('أطول سلسلة ورد')}</small></div>
               </div>
             </div>
             <div className={`nq-card ${styles.achCard}`}>
@@ -553,9 +558,9 @@ export default function HifzPage() {
                       <span className={styles.badgeIco}>
                         <Badge8 icon={on ? (ACH_ICON[a.id] || 'star') : 'lock'} size={56} />
                       </span>
-                      <b>{a.title}</b>
-                      <small>{toAr(a.desc)}</small>
-                      <span className="nq-sr">{on ? 'مكتسب' : 'غير مكتسب بعد'}</span>
+                      <b>{tr(a.title)}</b>
+                      <small>{toAr(tr(a.desc))}</small>
+                      <span className="nq-sr">{on ? tr('مكتسب') : tr('غير مكتسب بعد')}</span>
                     </li>
                   );
                 })}
@@ -579,6 +584,7 @@ export default function HifzPage() {
 
 // Choose a surah's memorisation status
 function SurahSheet({ n, status, onPick, onClose }) {
+  const tr = useTr();
   const boxRef = useRef(null);
   const m = SURAHS_META[n - 1];
   useEffect(() => {
@@ -592,24 +598,24 @@ function SurahSheet({ n, status, onPick, onClose }) {
     <div className="nq-overlay" role="presentation">
       <div className="nq-scrim" onClick={onClose} />
       <div className={`nq-card ${styles.sheet}`} role="dialog" aria-modal="true" aria-labelledby="hz-sheet-t" ref={boxRef}>
-        <button type="button" className={`nq-ibtn ${styles.sheetX}`} onClick={onClose} aria-label="إغلاق"><Icon name="x" /></button>
+        <button type="button" className={`nq-ibtn ${styles.sheetX}`} onClick={onClose} aria-label={tr('إغلاق')}><Icon name="x" /></button>
         <div className={styles.sheetHead}>
           <Badge8 size={54}>{toAr(n)}</Badge8>
           <div>
-            <h2 id="hz-sheet-t" className={styles.sheetName}>سورة {m[0]}</h2>
-            <small>{m[3]} · {toAr(m[2])} آية</small>
+            <h2 id="hz-sheet-t" className={styles.sheetName}>{tr('سورة {s}', { s: sName(n) })}</h2>
+            <small>{revelationLabel(m[3])} · {tr('{n} آية', { n: toAr(m[2]) })}</small>
           </div>
         </div>
-        <div className={styles.sheetOpts} role="group" aria-label="حالة الحفظ">
+        <div className={styles.sheetOpts} role="group" aria-label={tr('حالة الحفظ')}>
           {STATUS_ORDER.map(k => (
             <button key={k} type="button" className={styles.opt} aria-pressed={status === k} onClick={() => onPick(k)}>
               <i className={`${styles.sw} ${styles[STATUS[k].cls]}`} aria-hidden="true"><b className={styles.g}>{STATUS[k].glyph}</b></i>
-              {STATUS[k].label}
+              {tr(STATUS[k].label)}
               {status === k && <Icon name="check" className={styles.optOn} />}
             </button>
           ))}
         </div>
-        <Link className="nq-btn ghost" to={`/reader?surah=${n}&ayah=1`}><Icon name="book" />افتحها في المصحف</Link>
+        <Link className="nq-btn ghost" to={`/reader?surah=${n}&ayah=1`}><Icon name="book" />{tr('افتحها في المصحف')}</Link>
       </div>
     </div>
   );

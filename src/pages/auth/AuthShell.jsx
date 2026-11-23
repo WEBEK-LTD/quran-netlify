@@ -5,14 +5,16 @@ import { useId, useState } from 'react';
 import { Icon, Pattern, Frieze, Corners } from '../../components/ornaments/Ornaments';
 import { useAppearance } from '../../appearance';
 import styles from '../AuthPage.module.css';
+import { useTr } from '../../l10n';
 
 export function AuthBrand({ small = false }) {
+  const tr = useTr();
   const { scheme, mode } = useAppearance();
   const onDark = scheme === 'dark' || mode === 'contrast';
   return (
     <div className={`${styles.brand} ${small ? styles.brandSm : ''}`}>
       <img className={styles.mark} src="/brand/logo-mark.svg" alt="" width="75" height="89" />
-      <img className={styles.word} src={onDark ? '/brand/wordmark-on-dark.svg' : '/brand/wordmark-on-light.svg'} alt="نور القرآن" width="140" height="40" />
+      <img className={styles.word} src={onDark ? '/brand/wordmark-on-dark.svg' : '/brand/wordmark-on-light.svg'} alt={tr('نور القرآن')} width="140" height="40" />
     </div>
   );
 }
@@ -71,6 +73,7 @@ export function TextField({ label, hint, icon, ...input }) {
 }
 
 export function PasswordField({ label, hint, ...input }) {
+  const tr = useTr();
   const [show, setShow] = useState(false);
   return (
     <Field label={label} hint={hint}>
@@ -79,7 +82,7 @@ export function PasswordField({ label, hint, ...input }) {
           <Icon name="lock" className={styles.inIcon} />
           <input id={id} type={show ? 'text' : 'password'} dir="ltr" {...input} />
           <button type="button" className={styles.eye} onClick={() => setShow(s => !s)}
-            aria-pressed={show} aria-label={show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}>
+            aria-pressed={show} aria-label={show ? tr('إخفاء كلمة المرور') : tr('إظهار كلمة المرور')}>
             <EyeIcon off={show} />
           </button>
         </div>

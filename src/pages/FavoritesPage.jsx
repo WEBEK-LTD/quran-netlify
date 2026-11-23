@@ -9,6 +9,7 @@ import { setGlobal } from '../store';
 import { normalizeArabic } from '../arabic';
 import { PageHero, Icon, Badge8, Corners, Divider, AyahMark, toAr } from '../components/ornaments/Ornaments';
 import { useAyahText, cachedAyahText } from './FavoritesPage/ayahText';
+import { useTr, trNow, surahName, revelationLabel } from '../l10n';
 import styles from './FavoritesPage.module.css';
 
 function readLocal() {
@@ -31,9 +32,12 @@ function mergeBookmarks(server, local) {
 }
 
 const PAGE = 24;
-const toLatinDigits = s => String(s || '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+const toLatinDigits = s => String(s || '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+// "1|2" plural forms in a translation: singular for 1, plural otherwise
+const pick = (s, n) => { if (!s.includes('|')) return s; const [one, many] = s.split('|'); return Number(n) === 1 ? one : many; };
 
 export default function FavoritesPage() {
+  const tr = useTr();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [bookmarks, setBookmarks] = useState([]);
@@ -83,13 +87,13 @@ export default function FavoritesPage() {
     // المحلي قد يحتوي عناصر أُضيفت من القارئ بعد فتح الصفحة — نحذف منه العنصر فقط
     const localNext = mergeBookmarks(next, readLocal().filter(drop));
     writeLocal(localNext);
-    setGlobal({ bookmarks: localNext, toast: 'أُزيلت الآية من المفضلة' });
+    setGlobal({ bookmarks: localNext, toast: tr('أُزيلت الآية من المفضلة') });
     setSyncError('');
     if (user) {
       try {
         await apiRemoveBookmark(surah, ayah);
       } catch (e) {
-        setSyncError(errorMessage(e, 'تعذّرت مزامنة الحذف مع حسابك') + ' — حُذفت من هذا الجهاز فقط');
+        setSyncError(errorMessage(e, tr('تعذّرت مزامنة الحذف مع حسابك')) + tr(' — حُذفت من هذا الجهاز فقط'));
       }
     }
   }
@@ -117,11 +121,11 @@ export default function FavoritesPage() {
 
   return (
     <div className={styles.page}>
-      <PageHero eyebrow="آياتٌ تعود إليها" title="المفضلة" sub="الآيات التي حفظتها أثناء القراءة، تعود إليها متى شئت وتنتقل منها إلى موضعها في المصحف.">
+      <PageHero eyebrow={tr('آياتٌ تعود إليها')} title={tr('المفضلة')} sub={tr('الآيات التي حفظتها أثناء القراءة، تعود إليها متى شئت وتنتقل منها إلى موضعها في المصحف.')}>
         {!loading && bookmarks.length > 0 && (
           <>
-            <span className="nq-pill on nq-num"><Icon name="bookmark" />{toAr(bookmarks.length)} آية</span>
-            <span className="nq-pill nq-num"><Icon name="book" />من {toAr(surahCount)} سورة</span>
+            <span className="nq-pill on nq-num"><Icon name="bookmark" />{pick(tr('{n} آية', { n: toAr(bookmarks.length) }), bookmarks.length)}</span>
+            <span className="nq-pill nq-num"><Icon name="book" />{pick(tr('من {n} سورة', { n: toAr(surahCount) }), surahCount)}</span>
           </>
         )}
       </PageHero>
@@ -130,8 +134,8 @@ export default function FavoritesPage() {
         {!authLoading && !user && (
           <div className={styles.notice} role="note">
             <Icon name="lock" />
-            <span>المفضلة محفوظة على هذا الجهاز فقط. سجّل الدخول لتصلك على كل أجهزتك.</span>
-            <Link to="/login" className="nq-btn ghost sm">تسجيل الدخول</Link>
+            <span>{tr('المفضلة محفوظة على هذا الجهاز فقط. سجّل الدخول لتصلك على كل أجهزتك.')}</span>
+            <Link to="/login" className="nq-btn ghost sm">{tr('تسجيل الدخول')}</Link>
           </div>
         )}
         {syncError && (
@@ -139,19 +143,19 @@ export default function FavoritesPage() {
         )}
 
         {loading ? (
-          <div className={styles.grid} aria-busy="true" aria-label="جارٍ تحميل المفضلة">
+          <div className={styles.grid} aria-busy="true" aria-label={tr('جارٍ تحميل المفضلة')}>
             {[0, 1, 2, 3].map(i => <div key={i} className={`nq-card ${styles.skel}`}><span /><span /><span /></div>)}
           </div>
         ) : bookmarks.length === 0 ? (
           <div className={`nq-card ${styles.empty}`}>
             <Corners />
             <Badge8 icon="bookmark" size={84} />
-            <h2 className={styles.emptyTitle}>لم تحفظ آية بعد</h2>
-            <p className={styles.emptyText}>أثناء القراءة، اضغط على الآية ثم اختر «حفظ في المفضلة»، وستجدها هنا مع موضعها في المصحف.</p>
+            <h2 className={styles.emptyTitle}>{tr('لم تحفظ آية بعد')}</h2>
+            <p className={styles.emptyText}>{tr('أثناء القراءة، اضغط على الآية ثم اختر «حفظ في المفضلة»، وستجدها هنا مع موضعها في المصحف.')}</p>
             <Divider />
             <div className={styles.emptyActs}>
-              <Link to="/reader" className="nq-btn gold"><Icon name="book" />ابدأ القراءة</Link>
-              <Link to="/daily-ayah" className="nq-btn ghost"><Icon name="calendar" />آية اليوم</Link>
+              <Link to="/reader" className="nq-btn gold"><Icon name="book" />{tr('ابدأ القراءة')}</Link>
+              <Link to="/daily-ayah" className="nq-btn ghost"><Icon name="calendar" />{tr('آية اليوم')}</Link>
             </div>
           </div>
         ) : (
@@ -160,31 +164,31 @@ export default function FavoritesPage() {
               <label className={`nq-input ${styles.search}`}>
                 <Icon name="search" />
                 <input type="search" value={q} onChange={e => { setQ(e.target.value); setShown(PAGE); }}
-                  placeholder="ابحث باسم السورة أو كلمة من الآية أو ٢:٢٥٥" aria-label="ابحث في المفضلة" />
-                {q && <button type="button" className={styles.clear} onClick={() => setQ('')} aria-label="مسح البحث"><Icon name="x" /></button>}
+                  placeholder={tr('ابحث باسم السورة أو كلمة من الآية أو ٢:٢٥٥')} aria-label={tr('ابحث في المفضلة')} dir="auto" />
+                {q && <button type="button" className={styles.clear} onClick={() => setQ('')} aria-label={tr('مسح البحث')}><Icon name="x" /></button>}
               </label>
-              <div className="nq-seg" role="group" aria-label="نوع السورة">
-                {[['all', 'الكل'], ['مكية', 'مكية'], ['مدنية', 'مدنية']].map(([v, l]) => (
+              <div className="nq-seg" role="group" aria-label={tr('نوع السورة')}>
+                {[['all', tr('الكل')], ['مكية', revelationLabel('مكية', tr.lang)], ['مدنية', revelationLabel('مدنية', tr.lang)]].map(([v, l]) => (
                   <button key={v} type="button" aria-pressed={kind === v} onClick={() => { setKind(v); setShown(PAGE); }}>{l}</button>
                 ))}
               </div>
-              <div className="nq-seg" role="group" aria-label="الترتيب">
-                <button type="button" aria-pressed={order === 'mushaf'} onClick={() => setOrder('mushaf')}>ترتيب المصحف</button>
-                <button type="button" aria-pressed={order === 'recent'} onClick={() => setOrder('recent')}>الأحدث</button>
+              <div className="nq-seg" role="group" aria-label={tr('الترتيب')}>
+                <button type="button" aria-pressed={order === 'mushaf'} onClick={() => setOrder('mushaf')}>{tr('ترتيب المصحف')}</button>
+                <button type="button" aria-pressed={order === 'recent'} onClick={() => setOrder('recent')}>{tr('الأحدث')}</button>
               </div>
             </div>
 
             <p className={styles.count} aria-live="polite">
               {list.length === bookmarks.length
-                ? <><b className="nq-num">{toAr(list.length)}</b> آية محفوظة</>
-                : <><b className="nq-num">{toAr(list.length)}</b> من {toAr(bookmarks.length)} آية</>}
+                ? <><b className="nq-num">{toAr(list.length)}</b> {pick(tr('آية محفوظة'), list.length)}</>
+                : <><b className="nq-num">{toAr(list.length)}</b> {pick(tr('من {total} آية', { total: toAr(bookmarks.length) }), bookmarks.length)}</>}
             </p>
 
             {list.length === 0 ? (
               <div className={`nq-card ${styles.noRes}`}>
                 <Badge8 icon="search" />
-                <p>لا توجد آية تطابق بحثك. جرّب اسم سورة آخر، أو امسح التصفية.</p>
-                <button type="button" className="nq-btn ghost sm" onClick={() => { setQ(''); setKind('all'); }}>عرض الكل</button>
+                <p>{tr('لا توجد آية تطابق بحثك. جرّب اسم سورة آخر، أو امسح التصفية.')}</p>
+                <button type="button" className="nq-btn ghost sm" onClick={() => { setQ(''); setKind('all'); }}>{tr('عرض الكل')}</button>
               </div>
             ) : (
               <ul className={styles.grid}>
@@ -196,7 +200,7 @@ export default function FavoritesPage() {
             {list.length > shown && (
               <div className={styles.more}>
                 <button type="button" className="nq-btn ghost" onClick={() => setShown(s => s + PAGE)}>
-                  عرض المزيد <span className="nq-num">({toAr(list.length - shown)})</span>
+                  {tr('عرض المزيد')} <span className="nq-num">({toAr(list.length - shown)})</span>
                 </button>
               </div>
             )}
@@ -208,15 +212,16 @@ export default function FavoritesPage() {
 }
 
 function FavCard({ b, onOpen, onRemove }) {
+  const tr = useTr();
   const meta = SURAHS_META[b.surah - 1];
   const { text, failed } = useAyahText(b.surah, b.ayah);
-  const name = meta?.[0] || '';
+  const name = surahName(b.surah, tr.lang) || '';
 
   function copy() {
     if (!text) return;
-    navigator.clipboard?.writeText(`${text}\n\n— سورة ${name}، الآية ${b.ayah}`)
-      .then(() => setGlobal({ toast: 'نُسخت الآية مع مرجعها' }))
-      .catch(() => setGlobal({ toast: 'تعذّر النسخ' }));
+    navigator.clipboard?.writeText(`${text}\n\n${trNow('— سورة {name}، الآية {n}', { name, n: b.ayah })}`)
+      .then(() => setGlobal({ toast: trNow('نُسخت الآية مع مرجعها') }))
+      .catch(() => setGlobal({ toast: trNow('تعذّر النسخ') }));
   }
   function share() {
     if (!text) return;
@@ -228,24 +233,24 @@ function FavCard({ b, onOpen, onRemove }) {
       <header className={styles.cardHead}>
         <Badge8 size={48}>{toAr(b.surah)}</Badge8>
         <div className={styles.cardTitle}>
-          <h3>سورة {name}</h3>
-          <span>الآية {toAr(b.ayah)} · {meta?.[3]}</span>
+          <h3>{tr('سورة {name}', { name })}</h3>
+          <span>{tr('الآية {n}', { n: toAr(b.ayah) })} · {meta?.[3] && revelationLabel(meta[3], tr.lang)}</span>
         </div>
-        <button type="button" className={`nq-ibtn ${styles.remove}`} onClick={onRemove} aria-label={`إزالة الآية ${toAr(b.ayah)} من سورة ${name} من المفضلة`}>
+        <button type="button" className={`nq-ibtn ${styles.remove}`} onClick={onRemove} aria-label={tr('إزالة الآية {n} من سورة {name} من المفضلة', { n: toAr(b.ayah), name })}>
           <Icon name="x" />
         </button>
       </header>
-      <button type="button" className={styles.qBtn} onClick={onOpen} aria-label={`افتح سورة ${name} عند الآية ${toAr(b.ayah)} في المصحف`}>
+      <button type="button" className={styles.qBtn} onClick={onOpen} aria-label={tr('افتح سورة {name} عند الآية {n} في المصحف', { name, n: toAr(b.ayah) })}>
         {text
-          ? <span className={`nq-q ${styles.q}`} lang="ar">{text} <AyahMark n={b.ayah} /></span>
+          ? <span className={`nq-q ${styles.q}`} lang="ar" dir="rtl">{text} <AyahMark n={b.ayah} /></span>
           : failed
-            ? <span className={styles.qFail}>تعذّر تحميل نص الآية — افتحها في المصحف.</span>
+            ? <span className={styles.qFail}>{tr('تعذّر تحميل نص الآية — افتحها في المصحف.')}</span>
             : <span className={styles.qWait} aria-hidden="true"><i /><i /></span>}
       </button>
       <footer className={styles.cardActs}>
-        <button type="button" className="nq-btn gold sm" onClick={onOpen}><Icon name="book" />افتح في المصحف</button>
-        <button type="button" className="nq-btn ghost sm" onClick={copy} disabled={!text} aria-label="نسخ الآية"><Icon name="copy" /><span className={styles.lbl}>نسخ</span></button>
-        <button type="button" className="nq-btn ghost sm" onClick={share} disabled={!text} aria-label="مشاركة الآية كصورة"><Icon name="share" /><span className={styles.lbl}>صورة</span></button>
+        <button type="button" className="nq-btn gold sm" onClick={onOpen}><Icon name="book" />{tr('افتح في المصحف')}</button>
+        <button type="button" className="nq-btn ghost sm" onClick={copy} disabled={!text} aria-label={tr('نسخ الآية')}><Icon name="copy" /><span className={styles.lbl}>{tr('نسخ')}</span></button>
+        <button type="button" className="nq-btn ghost sm" onClick={share} disabled={!text} aria-label={tr('مشاركة الآية كصورة')}><Icon name="share" /><span className={styles.lbl}>{tr('صورة')}</span></button>
       </footer>
     </li>
   );

@@ -1,11 +1,20 @@
 // ─── Long-form legal reading layout (privacy, terms) ────────────────────────
 // PageHero, a sticky table of contents on wide screens, and a ~70ch column.
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PageHero, Icon, Badge8, toAr } from '../../components/ornaments/Ornaments';
 import styles from '../LegalPage.module.css';
+import { useTr } from '../../l10n';
+
+// Fill {name} placeholders of an already-translated string with React nodes:
+//   rich(tr('توافق على {terms}.'), { terms: <Link …/> })
+export function rich(str, parts) {
+  return String(str).split(/\{(\w+)\}/g).map((seg, i) =>
+    i % 2 ? <Fragment key={i}>{parts[seg] !== undefined ? parts[seg] : `{${seg}}`}</Fragment> : seg);
+}
 
 export function LegalDoc({ eyebrow, title, sub, updated, sections, related }) {
+  const tr = useTr();
   const [current, setCurrent] = useState(sections[0]?.id);
 
   // highlight the section being read
@@ -29,8 +38,8 @@ export function LegalDoc({ eyebrow, title, sub, updated, sections, related }) {
     <div className={styles.page}>
       <PageHero eyebrow={eyebrow} title={title} sub={sub} />
       <div className={`nq-wrap ${styles.layout}`}>
-        <aside className={styles.toc} aria-label="محتويات الصفحة">
-          <span className={styles.tocHead}>المحتويات</span>
+        <aside className={styles.toc} aria-label={tr('محتويات الصفحة')}>
+          <span className={styles.tocHead}>{tr('المحتويات')}</span>
           <ol>
             {sections.map((s, i) => (
               <li key={s.id}>
@@ -45,9 +54,9 @@ export function LegalDoc({ eyebrow, title, sub, updated, sections, related }) {
         <article className={styles.doc}>
           <div className={styles.free}>
             <Badge8 icon="heart" size={52} />
-            <p>نور القرآن موقع مجاني بالكامل، لوجه الله تعالى، بلا إعلانات ولا رسوم ولا مدفوعات من أي نوع.</p>
+            <p>{tr('نور القرآن موقع مجاني بالكامل، لوجه الله تعالى، بلا إعلانات ولا رسوم ولا مدفوعات من أي نوع.')}</p>
           </div>
-          <p className={styles.updated}><Icon name="calendar" />آخر تحديث: {updated}</p>
+          <p className={styles.updated}><Icon name="calendar" />{tr('آخر تحديث: {date}', { date: updated })}</p>
 
           {sections.map((s, i) => (
             <section key={s.id} id={s.id} className={styles.section} aria-labelledby={`${s.id}-h`}>
@@ -60,16 +69,16 @@ export function LegalDoc({ eyebrow, title, sub, updated, sections, related }) {
 
           <div className={styles.contact}>
             <div>
-              <h2 className={styles.contactTitle}>لديك سؤال؟</h2>
-              <p>راسلنا على البريد، أو من صفحة الدعم.</p>
+              <h2 className={styles.contactTitle}>{tr('لديك سؤال؟')}</h2>
+              <p>{tr('راسلنا على البريد، أو من صفحة الدعم.')}</p>
             </div>
             <div className={styles.contactBtns}>
               <a href="mailto:support@webek.org" className="nq-btn ghost" dir="ltr">support@webek.org</a>
-              <Link to="/support" className="nq-btn gold"><Icon name="chat" />الدعم</Link>
+              <Link to="/support" className="nq-btn gold"><Icon name="chat" />{tr('الدعم')}</Link>
             </div>
           </div>
 
-          <nav className={styles.related} aria-label="صفحات ذات صلة">
+          <nav className={styles.related} aria-label={tr('صفحات ذات صلة')}>
             {related.map(r => (
               <Link key={r.to} to={r.to} className={`nq-card ${styles.relCard}`}>
                 <Icon name={r.icon} /><span>{r.label}</span><Icon name="back" className={styles.relArrow} />
