@@ -96,3 +96,9 @@
   .nq-footer { margin-top:64px; }
 }
 @media (max-width:380px) { .nq-brand .word { display:none !important; } }
+
+/* Printing (e.g. the monthly report): print the page content only */
+@media print {
+  .nq-top, .nq-tabbar, .nq-footer, .nq-overlay, .nq-skip { display:none !important; }
+  body { background:#fff !important; color:#000 !important; padding:0 !important; }
+}

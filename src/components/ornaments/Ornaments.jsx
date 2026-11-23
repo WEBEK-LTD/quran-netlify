@@ -228,7 +228,10 @@ export function Rosette({ states, label, onPetal, titles, hideCount = false, cla
         return (
           <path key={i} transform={`rotate(${i * step})`} d="M0 -72 C 15 -104 15 -142 0 -176 C -15 -142 -15 -104 0 -72Z"
             style={{ fill, stroke: 'var(--surface)', cursor: onPetal ? 'pointer' : undefined }} strokeWidth="1.5" opacity={st === 'taken' ? .55 : 1}
-            onClick={onPetal ? () => onPetal(i) : undefined}>
+            onClick={onPetal ? () => onPetal(i) : undefined}
+            role={onPetal ? 'button' : undefined} tabIndex={onPetal ? 0 : undefined}
+            aria-label={onPetal && titles ? titles[i] : undefined}
+            onKeyDown={onPetal ? (e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPetal(i); } }) : undefined}>
             {titles && <title>{titles[i]}</title>}
           </path>
         );
