@@ -4,31 +4,13 @@
 import { toAr } from '../../components/ornaments/Ornaments';
 import { useTr, num, intlLocale } from '../../l10n';
 import { getLang } from '../../i18n';
+import { useRef } from 'react';
+import { qiblaBearing, kaabaDistanceKm, unwrapTowards } from './compass';
 
-// الكعبة المشرفة
-export const KAABA = { lat: 21.4225, lon: 39.8262 };
-
-const toRad = d => d * Math.PI / 180;
-const toDeg = r => r * 180 / Math.PI;
-
-// اتجاه القبلة من الشمال الحقيقي (بالدرجات)
-export function calcQibla(lat, lon) {
-  const φ1 = toRad(lat), λ1 = toRad(lon);
-  const φ2 = toRad(KAABA.lat), λ2 = toRad(KAABA.lon);
-  const Δλ = λ2 - λ1;
-  const y = Math.sin(Δλ) * Math.cos(φ2);
-  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-  return (toDeg(Math.atan2(y, x)) + 360) % 360;
-}
-
-// المسافة إلى الكعبة بالكيلومتر
-export function calcDistance(lat, lon) {
-  const R = 6371;
-  const φ1 = toRad(lat), φ2 = toRad(KAABA.lat);
-  const Δφ = toRad(KAABA.lat - lat), Δλ = toRad(KAABA.lon - lon);
-  const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
+// Bearing and distance on the great circle (src/pages/qibla/compass.js, unit-tested)
+export { KAABA } from './compass';
+export const calcQibla = (lat, lon) => qiblaBearing(lat, lon);           // from TRUE north
+export const calcDistance = (lat, lon) => Math.round(kaabaDistanceKm(lat, lon));
 
 export function fmtKm(n, lang = getLang()) {
   if (lang === 'ar') return toAr(Math.round(n).toLocaleString('en-US').replace(/,/g, '٬'));
@@ -64,7 +46,11 @@ export default function QiblaRose({ bearing, heading = null, large = false, alig
   const tr = useTr();
   const latin = CARD_LATIN[tr.lang];
   const CARD = latin ? [...latin].map((c, i) => [c, i * 90]) : CARD_AR;
-  const rot = heading != null ? -heading : 0;
+  // continuous angle: crossing north turns the dial 2°, not 358° the other way
+  const cont = useRef(null);
+  if (heading != null) cont.current = unwrapTowards(cont.current, -heading);
+  else cont.current = null;
+  const rot = heading != null ? cont.current : 0;
   const ticks = [];
   const step = large ? 5 : 10;
   for (let d = 0; d < 360; d += step) {
@@ -84,7 +70,7 @@ export default function QiblaRose({ bearing, heading = null, large = false, alig
       {large && (
         <path d="M0 -176 L-9 -160 H9 Z" style={{ fill: aligned ? 'var(--ok)' : 'var(--gold)' }} />
       )}
-      <g style={{ transform: `rotate(${rot}deg)`, transition: 'transform .25s ease-out' }}>
+      <g style={{ transform: `rotate(${rot.toFixed(2)}deg)` }}>
         <circle r="150" style={{ fill: 'var(--surface)', stroke: 'var(--line2)' }} strokeWidth="1" />
         <circle r="128" fill="none" style={{ stroke: 'var(--line)' }} strokeWidth="1" />
         {large && <circle r="96" fill="none" style={{ stroke: 'var(--line2)' }} strokeDasharray="2 6" />}
