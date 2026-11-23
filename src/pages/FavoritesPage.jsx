@@ -164,7 +164,7 @@ export default function FavoritesPage() {
               <label className={`nq-input ${styles.search}`}>
                 <Icon name="search" />
                 <input type="search" value={q} onChange={e => { setQ(e.target.value); setShown(PAGE); }}
-                  placeholder={tr('ابحث باسم السورة أو كلمة من الآية أو ٢:٢٥٥')} aria-label={tr('ابحث في المفضلة')} dir="auto" />
+                  placeholder={tr('ابحث باسم السورة أو كلمة من الآية أو ٢:٢٥٥')} aria-label={tr('ابحث في المفضلة')} />
                 {q && <button type="button" className={styles.clear} onClick={() => setQ('')} aria-label={tr('مسح البحث')}><Icon name="x" /></button>}
               </label>
               <div className="nq-seg" role="group" aria-label={tr('نوع السورة')}>

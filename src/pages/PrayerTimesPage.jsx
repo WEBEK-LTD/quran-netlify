@@ -7,6 +7,9 @@ import { Link } from 'react-router-dom';
 import styles from './PrayerTimesPage.module.css';
 import { PageHero, Icon, Badge8, Pattern, Corners, toAr } from '../components/ornaments/Ornaments';
 import QiblaRose, { calcQibla, calcDistance, fmtKm } from './qibla/QiblaRose';
+import { useTr, trNow, num, intlLocale, isRtl, surahName } from '../l10n';
+import { getLang } from '../i18n';
+import { HIJRI_MONTHS } from '../locales/worship';
 
 const PRAYERS_INFO = [
   { key: 'Fajr',    name: 'الفجر',  icon: 'moon' },
@@ -30,7 +33,7 @@ const METHODS = [
   { id: '13', name: 'رئاسة الشؤون الدينية — تركيا' },
   { id: '2',  name: 'الجمعية الإسلامية لأمريكا الشمالية' },
   { id: '12', name: 'اتحاد المنظمات الإسلامية — فرنسا' },
-  { id: '21', name: 'المغرب' },
+  { id: '21', name: 'المغرب', tkey: 'المملكة المغربية' }, // «المغرب» alone is also the prayer name
   { id: '18', name: 'تونس' },
   { id: '19', name: 'الجزائر' },
   { id: '23', name: 'وزارة الأوقاف الأردنية' },
@@ -87,13 +90,22 @@ function fmt24(t) {
   return toAr(String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
 }
 
-// ١٢ ساعة: { t: '٥:٠١', ap: 'ص' | 'م' }
+// Arabic and English read prayer times on a 12-hour clock; Turkish, French,
+// Urdu and Indonesian timetables use the 24-hour clock.
+const uses12h = (lang = getLang()) => lang === 'ar' || lang === 'en';
+
+// { t: '٥:٠١', ap: 'ص' | 'م', long: 'صباحاً' | 'مساءً' } — ap/long are empty on a 24-hour clock
 function fmt12(t) {
-  if (!t) return { t: '--:--', ap: '' };
+  if (!t) return { t: '--:--', ap: '', long: '' };
   const { h, m } = parseHM(t);
-  return { t: toAr(`${h % 12 || 12}:${String(m).padStart(2, '0')}`), ap: h < 12 ? 'ص' : 'م' };
+  if (!uses12h()) return { t: fmt24(t), ap: '', long: '' };
+  return {
+    t: toAr(`${h % 12 || 12}:${String(m).padStart(2, '0')}`),
+    ap: trNow(h < 12 ? 'ص' : 'م'),
+    long: trNow(h < 12 ? 'صباحاً' : 'مساءً'),
+  };
 }
-const fmt12s = t => { const f = fmt12(t); return `${f.t} ${f.ap}`; };
+const fmt12s = t => { const f = fmt12(t); return f.ap ? `${f.t} ${f.ap}` : f.t; };
 
 function toMins(t) {
   const { h, m } = parseHM(t);
@@ -150,9 +162,9 @@ function getNextPrayer(times, tomorrowTimes, cn) {
 function fmtLeft(secs) {
   if (secs == null || secs <= 0) return null;
   const diff = Math.ceil(secs / 60);
-  if (diff < 60) return `${toAr(diff)} دقيقة`;
+  if (diff < 60) return trNow('{n} دقيقة', { n: toAr(diff) });
   const h = Math.floor(diff / 60), m = diff % 60;
-  return `${toAr(h)} س ${m ? toAr(m) + ' د' : ''}`.trim();
+  return m ? trNow('{h} س {m} د', { h: toAr(h), m: toAr(m) }) : trNow('{h} س', { h: toAr(h) });
 }
 
 function fmtClock(secs) {
@@ -162,7 +174,7 @@ function fmtClock(secs) {
 }
 
 async function geocodeCity(name) {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=1&accept-language=ar`;
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name)}&format=json&limit=1&accept-language=${getLang()}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('تعذّر البحث عن المدينة، حاول مرة أخرى');
   const data = await res.json();
@@ -203,28 +215,81 @@ function readTz() {
 const DAYS_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
+// Weekday name in the visitor's language (1 Jan 2023 was a Sunday).
+function dayName(dow, lang = getLang()) {
+  if (lang === 'ar') return DAYS_AR[dow];
+  try { return new Intl.DateTimeFormat(intlLocale(lang), { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2023, 0, 1 + dow))); }
+  catch { return DAYS_AR[dow]; }
+}
+
+// "الأحد ٢٣ نوفمبر ٢٠٢٦" / "Sunday 23 November 2026" for the city's calendar date
+function fmtDateLine({ y, mo, d, dow }, lang = getLang()) {
+  if (lang === 'ar') return `${DAYS_AR[dow]} ${toAr(d)} ${MONTHS_AR[mo - 1]} ${toAr(y)}`;
+  try {
+    return num(new Intl.DateTimeFormat(intlLocale(lang), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+      .format(new Date(Date.UTC(y, mo - 1, d))), lang);
+  } catch { return `${DAYS_AR[dow]} ${toAr(d)} ${MONTHS_AR[mo - 1]} ${toAr(y)}`; }
+}
+
+// Hijri date from aladhan's gToH: Arabic month name as given, translated names otherwise
+function fmtHijri(h, lang = getLang()) {
+  if (!h) return '';
+  if (lang === 'ar') return `${toAr(h.day)} ${h.month.ar} ${toAr(h.year)} هـ`;
+  const loc = HIJRI_MONTHS[lang];
+  const month = loc?.months[(+h.month.number || 0) - 1] || h.month.en || h.month.ar;
+  return `${num(parseInt(h.day, 10) || h.day, lang)} ${month} ${num(h.year, lang)}${loc?.era ? ' ' + loc.era : ''}`;
+}
+
+// Ayah reference for the hero: Arabic as written; other languages add "An-Nisa 4:103"
+function heroRef(ar, s, a, lang = getLang()) {
+  if (lang === 'ar' || lang === 'ur') return ar;
+  return <><bdi lang="ar">{ar}</bdi> · <bdi>{surahName(s, lang)} {s}:{a}</bdi></>;
+}
+
+// Rough text width in SVG units (to keep the sun-path labels inside the card)
+const textW = (s, fs) => [...String(s)].length * fs * (isRtl() ? 0.46 : 0.56);
+const clampX = (x, w) => Math.min(640 - w / 2 - 4, Math.max(w / 2 + 4, x));
+// Split a long label in two lines at the space nearest the middle
+function splitLabel(s) {
+  if (s.length <= 9 || !s.includes(' ')) return [s];
+  const mid = s.length / 2;
+  let best = -1;
+  for (let i = 0; i < s.length; i++) if (s[i] === ' ' && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i;
+  return [s.slice(0, best), s.slice(best + 1)];
+}
+
 // ── sun path: sunrise (right) → maghrib (left), the sun at the city's "now" ──
 function SunArc({ times, nowMins }) {
+  const tr = useTr();
+  const lang = tr.lang;
   const sr = toMins(times.Sunrise), mg = toMins(times.Maghrib);
   const cx = 320, cy = 215, rx = 250, ry = 170;
+  // RTL: sunrise on the right, maghrib on the left; LTR mirrors it so the day reads left → right
+  const rtl = isRtl(lang);
+  const X = x => (rtl ? x : 2 * cx - x);
+  const sweep = rtl ? 0 : 1;
   const span = Math.max(1, mg - sr);
   const pos = m => {
     const th = Math.PI * Math.min(1, Math.max(0, (m - sr) / span));
-    return [cx + rx * Math.cos(th), cy - ry * Math.sin(th)];
+    return [X(cx + rx * Math.cos(th)), cy - ry * Math.sin(th)];
   };
   const day = nowMins > sr && nowMins < mg;
   const sun = day ? pos(nowMins) : null;
   const marks = ['Sunrise', 'Dhuhr', 'Asr', 'Maghrib'].map(k => ({ k, p: pos(toMins(times[k])), info: PRAYERS_INFO.find(x => x.key === k) }));
+  const fit = (x, s, fs) => (lang === 'ar' ? x : clampX(x, textW(s, fs)));
+  const fajrTxt = `${tr('الفجر')} ${fmt12s(times.Fajr)}`;
+  const ishaTxt = `${tr('العشاء')} ${fmt12s(times.Isha)}`;
+  const arcFrom = `M${X(cx + rx)} ${cy} A${rx} ${ry} 0 0 ${sweep}`;
   return (
     <svg className={styles.arc} viewBox="0 0 640 292" role="img"
-      aria-label={`مسار الشمس اليوم: الشروق ${fmt12s(times.Sunrise)} والمغرب ${fmt12s(times.Maghrib)}`}>
+      aria-label={tr('مسار الشمس اليوم: الشروق {sr} والمغرب {mg}', { sr: fmt12s(times.Sunrise), mg: fmt12s(times.Maghrib) })}>
       <line x1="20" y1={cy} x2="620" y2={cy} style={{ stroke: 'var(--line2)' }} strokeDasharray="4 6" />
-      <path d={`M${cx + rx} ${cy} A${rx} ${ry} 0 0 0 ${cx - rx} ${cy}`} fill="none" style={{ stroke: 'var(--line2)' }} strokeWidth="1.4" strokeDasharray="2 5" />
+      <path d={`${arcFrom} ${X(cx - rx)} ${cy}`} fill="none" style={{ stroke: 'var(--line2)' }} strokeWidth="1.4" strokeDasharray="2 5" />
       {sun && (
-        <path d={`M${cx + rx} ${cy} A${rx} ${ry} 0 0 0 ${sun[0].toFixed(1)} ${sun[1].toFixed(1)}`} fill="none" style={{ stroke: 'var(--gold)' }} strokeWidth="2" />
+        <path d={`${arcFrom} ${sun[0].toFixed(1)} ${sun[1].toFixed(1)}`} fill="none" style={{ stroke: 'var(--gold)' }} strokeWidth="2" />
       )}
       {!sun && nowMins >= mg && (
-        <path d={`M${cx + rx} ${cy} A${rx} ${ry} 0 0 0 ${cx - rx} ${cy}`} fill="none" style={{ stroke: 'var(--gold)' }} strokeWidth="1.6" strokeOpacity=".7" />
+        <path d={`${arcFrom} ${X(cx - rx)} ${cy}`} fill="none" style={{ stroke: 'var(--gold)' }} strokeWidth="1.6" strokeOpacity=".7" />
       )}
       {sun && (
         <g>
@@ -234,20 +299,31 @@ function SunArc({ times, nowMins }) {
       )}
       {marks.map(({ k, p, info }) => {
         // the two ends sit on the horizon: put their labels outside the arc
-        const dx = k === 'Sunrise' ? 34 : k === 'Maghrib' ? -34 : 0;
+        const dx = (k === 'Sunrise' ? 34 : k === 'Maghrib' ? -34 : 0) * (rtl ? 1 : -1);
         const end = dx !== 0;
+        const name = tr(info.name);
+        // long names (e.g. "Lever du soleil") go on two lines, stacked upwards
+        const lines = lang === 'ar' ? [name] : splitLabel(name);
+        const longest = lines.reduce((a, b) => (b.length > a.length ? b : a), '');
+        const lx = fit(p[0] + dx, longest, 26);
+        const ly = p[1] - (end ? 10 : 14);
+        const tm = fmt12s(times[k]);
         return (
           <g key={k}>
             <circle cx={p[0].toFixed(1)} cy={p[1].toFixed(1)} r="5" style={{ fill: 'var(--surface)', stroke: 'var(--gold)' }} strokeWidth="1.6" />
-            <text className={styles.arcLbl} x={(p[0] + dx).toFixed(1)} y={(p[1] - (end ? 10 : 14)).toFixed(1)} textAnchor="middle">{info.name}</text>
-            <text className={styles.arcTm} x={(p[0] + dx).toFixed(1)} y={(p[1] + (end ? 22 : 26)).toFixed(1)} textAnchor="middle">{fmt12s(times[k])}</text>
+            <text className={styles.arcLbl} x={lx.toFixed(1)} y={ly.toFixed(1)} textAnchor="middle">
+              {lines.length === 1 ? name : lines.map((l, i) => (
+                <tspan key={i} x={lx.toFixed(1)} dy={i === 0 ? `${-1.1 * (lines.length - 1)}em` : '1.1em'}>{l}</tspan>
+              ))}
+            </text>
+            <text className={styles.arcTm} x={fit(p[0] + dx, tm, 21).toFixed(1)} y={(p[1] + (end ? 22 : 26)).toFixed(1)} textAnchor="middle">{tm}</text>
           </g>
         );
       })}
-      <circle cx="600" cy="258" r="4" style={{ fill: 'var(--muted)' }} />
-      <text className={styles.arcTm} x="600" y="282" textAnchor="middle">الفجر {fmt12s(times.Fajr)}</text>
-      <circle cx="40" cy="258" r="4" style={{ fill: 'var(--muted)' }} />
-      <text className={styles.arcTm} x="40" y="282" textAnchor="middle">العشاء {fmt12s(times.Isha)}</text>
+      <circle cx={X(600)} cy="258" r="4" style={{ fill: 'var(--muted)' }} />
+      <text className={styles.arcTm} x={fit(X(600), fajrTxt, 21).toFixed(1)} y="282" textAnchor="middle">{fajrTxt}</text>
+      <circle cx={X(40)} cy="258" r="4" style={{ fill: 'var(--muted)' }} />
+      <text className={styles.arcTm} x={fit(X(40), ishaTxt, 21).toFixed(1)} y="282" textAnchor="middle">{ishaTxt}</text>
     </svg>
   );
 }
