@@ -12,6 +12,9 @@ function isNativeApp() {
 export const API_BASE = (() => {
   try {
     const host = window.location.hostname;
+    // The native app is served from https://localhost (Android) / capacitor://localhost (iOS):
+    // it always talks to production unless a developer set nq_api_base explicitly.
+    if (isNativeApp()) return localStorage.getItem('nq_api_base') || PROD_API;
     if (host === 'localhost' || host === '127.0.0.1') {
       return localStorage.getItem('nq_api_base') || 'http://localhost:8080/v1';
     }
@@ -26,6 +29,8 @@ export function getToken() { try { return CLIENT === 'app' ? localStorage.getIte
 export function setToken(t) {
   if (CLIENT !== 'app') return;
   try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch {}
+  // src/native/tokenStore.js mirrors the token into native storage (survives WebView storage purges)
+  try { window.dispatchEvent(new CustomEvent('nq-token-change', { detail: t || null })); } catch {}
 }
 
 export function localDate(d = new Date()) {

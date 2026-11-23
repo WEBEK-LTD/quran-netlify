@@ -22,7 +22,22 @@ final class Integrations
         'smtp_username'        => ['اسم مستخدم SMTP', false],
         'smtp_password'        => ['كلمة مرور SMTP', true],
         'smtp_encryption'      => ['تشفير SMTP', false],                 // tls (STARTTLS, 587) | ssl (465) | none
+        // Voice rooms (self-hosted LiveKit, deploy/livekit/)
+        'livekit_url'          => ['عنوان خادم LiveKit للتطبيق (wss://rtc.nuralquran.net:7443)', false],
+        'livekit_api_url'      => ['عنوان LiveKit للخادم (اختياري، مثل http://127.0.0.1:7880)', false],
+        'livekit_api_key'      => ['مفتاح LiveKit ‏(API Key)', false],
+        'livekit_api_secret'   => ['السر السري لـ LiveKit ‏(API Secret)', true],
+        // Push notifications
+        'fcm_service_account'  => ['حساب خدمة Firebase (محتوى ملف JSON) لإشعارات أندرويد', true],
+        'apns_key_p8'          => ['مفتاح Apple Push ‏(.p8)', true],
+        'apns_key_id'          => ['معرّف مفتاح APNs ‏(Key ID)', false],
+        'apns_team_id'         => ['معرّف فريق Apple ‏(Team ID)', false],
+        'apns_bundle_id'       => ['معرّف تطبيق iOS ‏(Bundle ID)', false],
+        'apns_environment'     => ['بيئة APNs ‏(production أو sandbox)', false],
     ];
+
+    /** Values that may be long and span several lines (pasted files), with their maximum length. */
+    public const MULTILINE = ['fcm_service_account' => 12000, 'apns_key_p8' => 4000];
 
     /** @var array<string,string>|null */
     private static ?array $cache = null;

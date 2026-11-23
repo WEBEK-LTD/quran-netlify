@@ -14,7 +14,7 @@ namespace NQ\Core;
 final class Migrations
 {
     /** Bump when a step is added below. */
-    public const VERSION = 3;
+    public const VERSION = 4;
 
     /** Whether every column of VERSION is known to exist (false only when an upgrade failed). */
     private static bool $ready = true;
@@ -57,6 +57,34 @@ final class Migrations
         self::addColumn('oauth_states', 'lang', 'VARCHAR(5) NULL AFTER client');
         // v3: uploaded profile photo (file name in storage/avatars; avatar_url keeps the Google picture)
         self::addColumn('users', 'avatar_file', 'VARCHAR(100) NULL AFTER avatar_url');
+        // v4: voice rooms & community — new tables, created from schema.sql (CREATE TABLE IF NOT EXISTS, in file order)
+        self::createMissingTables();
+    }
+
+    /** Run every `CREATE TABLE IF NOT EXISTS` of schema.sql whose table is missing (never touches existing tables). */
+    private static function createMissingTables(): void
+    {
+        $file = Config::baseDir() . '/schema.sql';
+        if (!is_file($file)) {
+            throw new \RuntimeException('schema.sql not found next to app/ (upload it with the update)');
+        }
+        $existing = array_flip(array_map('strtolower', array_column(
+            Db::all('SELECT TABLE_NAME AS t FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()'),
+            't'
+        )));
+        $lines = [];
+        foreach (preg_split('/\R/', (string) file_get_contents($file)) ?: [] as $line) {
+            $t = ltrim($line);
+            if ($t !== '' && !str_starts_with($t, '--') && !str_starts_with($t, '#')) {
+                $lines[] = $line;
+            }
+        }
+        foreach (preg_split('/;\s*(?:\R|$)/', implode("\n", $lines)) ?: [] as $stmt) {
+            $stmt = trim($stmt);
+            if (preg_match('/^CREATE TABLE IF NOT EXISTS\s+`?([a-z0-9_]+)`?/i', $stmt, $m) && !isset($existing[strtolower($m[1])])) {
+                Db::pdo()->exec($stmt);
+            }
+        }
     }
 
     private static function addColumn(string $table, string $column, string $definition): void

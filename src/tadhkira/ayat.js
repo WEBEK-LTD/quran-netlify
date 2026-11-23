@@ -118,7 +118,6 @@ export const AYAT = [
   ['2:255', 'tumanina'],
   ['33:41-42', 'tumanina'],
   ['18:46', 'tumanina'],
-  ['5:16', 'tumanina'],
 
   // ── توكل ──
   ['65:2-3', 'tawakkul'],
@@ -184,8 +183,6 @@ export const AYAT = [
   ['16:96', 'sabr'],
   ['11:115', 'sabr'],
   ['12:86', 'sabr'],
-  ['52:48', 'sabr'],
-  ['40:55', 'sabr'],
   ['29:69', 'sabr'],
   ['13:24', 'sabr'],
   ['41:34-35', 'sabr'],

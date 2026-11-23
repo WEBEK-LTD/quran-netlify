@@ -1,0 +1,103 @@
+{
+  "_comment": "Adhan recordings the app may ship. Only freely licensed recordings with a clear chain of rights. status=bundled: processed files are in the repo (store-assets/adhan + android res/raw). status=candidate: run scripts/fetch-adhan.sh (needs network access to the source host), LISTEN to it, then set status to bundled. See docs/APP.md#adhan-recordings.",
+  "recordings": [
+    {
+      "id": "khalaf1",
+      "type": "regular",
+      "status": "bundled",
+      "name": { "ar": "أحمد خلف — الأذان (١)", "en": "Ahmed Khalaf — Adhan 1" },
+      "author": "Ahmed Khalaf",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "source": "https://github.com/nandxorandor/Athan/blob/ad2bf1799add51cca4aaf1f123b1c212378c7786/app/src/main/assets/athan/developer/Developer_Athan-1.mp3",
+      "download": "https://raw.githubusercontent.com/nandxorandor/Athan/ad2bf1799add51cca4aaf1f123b1c212378c7786/app/src/main/assets/athan/developer/Developer_Athan-1.mp3",
+      "sha1": "b59ea280615007d4c2f3521f0efd6907172cb811",
+      "evidence": "The repository LICENSE (audio section) states Developer_Athan-1.mp3, -2.mp3 and -3_Fajr.mp3 are original recordings by Ahmed Khalaf released under CC BY 4.0.",
+      "trim": { "start": 0, "end": null }
+    },
+    {
+      "id": "khalaf2",
+      "type": "regular",
+      "status": "bundled",
+      "name": { "ar": "أحمد خلف — الأذان (٢)", "en": "Ahmed Khalaf — Adhan 2" },
+      "author": "Ahmed Khalaf",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "source": "https://github.com/nandxorandor/Athan/blob/ad2bf1799add51cca4aaf1f123b1c212378c7786/app/src/main/assets/athan/developer/Developer_Athan-2.mp3",
+      "download": "https://raw.githubusercontent.com/nandxorandor/Athan/ad2bf1799add51cca4aaf1f123b1c212378c7786/app/src/main/assets/athan/developer/Developer_Athan-2.mp3",
+      "sha1": "fac1543515c36da12841d77921466ad80e48c1f1",
+      "evidence": "Same LICENSE as above.",
+      "trim": { "start": 0, "end": null }
+    },
+    {
+      "id": "khalaf_fajr",
+      "type": "fajr",
+      "status": "bundled",
+      "name": { "ar": "أحمد خلف — أذان الفجر", "en": "Ahmed Khalaf — Fajr adhan" },
+      "author": "Ahmed Khalaf",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "source": "https://github.com/nandxorandor/Athan/blob/ad2bf1799add51cca4aaf1f123b1c212378c7786/app/src/main/assets/athan/fajr/Developer_Athan-3_Fajr.mp3",
+      "download": "https://raw.githubusercontent.com/nandxorandor/Athan/ad2bf1799add51cca4aaf1f123b1c212378c7786/app/src/main/assets/athan/fajr/Developer_Athan-3_Fajr.mp3",
+      "sha1": "deb914243d02f53dde75d79c3b0605bd3ce8e9b8",
+      "evidence": "Same LICENSE as above. The author labels it the Fajr adhan; «الصلاة خير من النوم» must still be confirmed by ear before release.",
+      "trim": { "start": 0, "end": null }
+    },
+    {
+      "id": "malmo_fajr",
+      "type": "fajr",
+      "status": "candidate",
+      "name": { "ar": "بسيم عزمي — أذان الفجر (مالمو)", "en": "Besim Azemi — Fajr adhan (Malmö)" },
+      "author": "Besim Azemi; published by Islamic Center Malmö",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "source": "https://commons.wikimedia.org/wiki/File:Eid_al-Fitr_Fajr_azan_at_Malm%C3%B6_Mosque_-_19_August_2012.webm",
+      "download": "https://commons.wikimedia.org/wiki/Special:FilePath/Eid_al-Fitr_Fajr_azan_at_Malm%C3%B6_Mosque_-_19_August_2012.webm",
+      "sha1": null,
+      "evidence": "Commons: {{YouTube CC-BY|Islamic Center Malmö}} with a YouTube licence review (2020-02-12). Not verified from this sandbox (Commons unreachable) — check the file page.",
+      "trim": { "start": 11.5, "end": 235 }
+    },
+    {
+      "id": "azeez",
+      "type": "regular",
+      "status": "candidate",
+      "name": { "ar": "عاقب عزيز — الأذان", "en": "Aaqib Azeez — Adhan" },
+      "author": "Aaqib Azeez",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "source": "https://commons.wikimedia.org/wiki/File:The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3",
+      "download": "https://commons.wikimedia.org/wiki/Special:FilePath/The_Adhan_-_Muslim_Call_to_Prayer_-_Aaqib_Azeez.mp3",
+      "sha1": null,
+      "evidence": "Commons {{self|cc-by-sa-4.0}}; the uploader states on User talk:Atcovi that he is the reciter and rights holder. Share-alike: our trimmed/normalised copies are also CC BY-SA 4.0. Not verified from this sandbox.",
+      "trim": { "start": 0, "end": null }
+    },
+    {
+      "id": "makkah2013",
+      "type": "regular",
+      "status": "candidate",
+      "name": { "ar": "المسجد الحرام — تسجيل زائر (٢٠١٣)", "en": "Great Mosque of Mecca — visitor recording (2013)" },
+      "author": "Recorded by Seyfula Islam (YouTube)",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "source": "https://commons.wikimedia.org/wiki/File:Adhan,_Great_Mosque_of_Mecca_-_Jan_21,_2013.webm",
+      "download": "https://commons.wikimedia.org/wiki/Special:FilePath/Adhan,_Great_Mosque_of_Mecca_-_Jan_21,_2013.webm",
+      "sha1": null,
+      "evidence": "Commons {{YouTube CC-BY}} + licence review (2018-07-19). Caveat: the recordist licensed the recording; the Haram muezzin's performer rights are not licensed by anyone. Owner decision required. Not verified from this sandbox.",
+      "trim": { "start": 0, "end": null }
+    },
+    {
+      "id": "asim_javed",
+      "type": "regular",
+      "status": "candidate",
+      "name": { "ar": "عاصم جاويد — الأذان", "en": "Asim Javed — Adhan" },
+      "author": "Asim Javed (ICR)",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "source": "https://archive.org/details/icr-friday-prayer-1st-adhan-17th-may-2024-9th-dhul-qadah-1445-by-asim-javed",
+      "download": "ia:icr-friday-prayer-1st-adhan-17th-may-2024-9th-dhul-qadah-1445-by-asim-javed",
+      "sha1": null,
+      "evidence": "Internet Archive item licenseurl = CC0 1.0; the item creator is the muezzin himself. Not verified from this sandbox (archive.org unreachable).",
+      "trim": { "start": 0, "end": null }
+    }
+  ]
+}

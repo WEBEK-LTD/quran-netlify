@@ -1,0 +1,8 @@
+{
+  "generated": "scripts/fetch-adhan.sh",
+  "ids": [
+    "khalaf1",
+    "khalaf2",
+    "khalaf_fajr"
+  ]
+}

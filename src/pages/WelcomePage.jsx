@@ -18,6 +18,9 @@ import { normalizeArabic } from '../arabic';
 import { fetchAyahWithTafsir } from '../api';
 import { savedCity, loadTodayTimes, cityNow, nextPrayer, fmt12, PRAYER_NAMES, PRAYER_ORDER } from '../prayerToday';
 import { getDailyAyah } from './DailyAyahPage';
+import { tadTr } from '../locales/tadhkira';
+import Gift from '../tadhkira/Gift';
+import { useTadhkira, useTadhkiraEntry, refLabel } from '../tadhkira/useTadhkira';
 
 // Home "bento": which features get a card, and which are wide.
 const BENTO = [
@@ -91,8 +94,13 @@ export default function WelcomePage() {
         </button>
       </div>
 
-      {/* ── verse of the day ── */}
+      {/* ── today's reminder (a closed gift until opened) ── */}
       <div className={`nq-wrap ${styles.sec}`}>
+        <TadhkiraCard />
+      </div>
+
+      {/* ── verse of the day ── */}
+      <div className={`nq-wrap ${styles.secTight}`}>
         <DailyAyah />
       </div>
 
@@ -203,6 +211,49 @@ function PrayerBar() {
         <small>{tr('متبقٍّ')}</small>
         <div className={`nq-num ${styles.cd}`} aria-live="off">{cd}</div>
       </div>
+    </Link>
+  );
+}
+
+// ── «تذكرة من كتاب الله لقلبك اليوم» ────────────────────────────────────────
+// Closed: the gift, which opens the experience on /tadhkira. Opened today: a
+// small card with the ayah, until tomorrow brings a closed gift again.
+function TadhkiraCard() {
+  const tr = tadTr(coreTr(useTr()));
+  const t = useTadhkira();
+  if (!t.opened) {
+    return (
+      <Link to="/tadhkira?open=1" className={`nq-card ${styles.tadh}`} aria-label={`${tr('تذكرة من كتاب الله لقلبك اليوم')} — ${tr('اضغط لتفتح تذكرتك اليوم')}`}>
+        <Pattern />
+        <span className={styles.tadhGift}><Gift /></span>
+        <span className={styles.tadhText}>
+          <span className="nq-eyebrow">{tr('تذكرتك اليوم')}</span>
+          <span className={styles.tadhTitle}>{tr('تذكرة من كتاب الله لقلبك اليوم')}</span>
+          <span className={styles.tadhHint}><Icon name="heart" />{tr('اضغط لتفتح تذكرتك اليوم')}</span>
+        </span>
+      </Link>
+    );
+  }
+  return <TadhkiraOpened tr={tr} t={t} />;
+}
+
+function TadhkiraOpened({ tr, t }) {
+  const { entry } = useTadhkiraEntry(t.ref, 'ar');
+  return (
+    <Link to="/tadhkira" className={`nq-card ${styles.tadh} ${styles.tadhOpen}`}>
+      <Corners />
+      <span className={styles.tadhText}>
+        <span className={styles.tadhTop}>
+          <span className="nq-eyebrow">{tr('تذكرتك اليوم')}</span>
+          <span className={`nq-pill on ${styles.tadhTheme}`}><Icon name="heart" />{tr(t.themeName)}</span>
+        </span>
+        <span className={`nq-q ${styles.tadhQ}`} lang="ar" dir="rtl">
+          {entry ? entry.seg.map(([n, text, whole]) => <span key={n}>{text}{whole !== 0 && <>{' '}<AyahMark n={n} /></>}{' '}</span>) : '…'}
+        </span>
+        <span className={styles.tadhRef}>{refLabel(tr, t.ref, entry?.part)}</span>
+        <span className={styles.tadhRenew}>{tr('تذكرتك لهذا اليوم — تتجدد غداً')}</span>
+      </span>
+      <span className={`nq-btn ghost sm ${styles.tadhBtn}`}><Icon name="book" />{tr('اقرأ تذكرتك')}</span>
     </Link>
   );
 }

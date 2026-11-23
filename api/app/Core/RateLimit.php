@@ -18,6 +18,14 @@ final class RateLimit
         'presence' => [10, 60],
         'avatar'  => [10, 3600],
         'riwayat' => [60, 600],   // uncached riwaya texts fetched from upstream, per IP
+        // community
+        'room_chat' => [10, 20],
+        'dm' => [30, 60],
+        'report' => [20, 3600],
+        'social' => [60, 3600],   // friend requests, follows
+        'room_create' => [10, 3600],
+        'group_create' => [5, 3600],
+        'search' => [60, 60],
     ];
 
     /**

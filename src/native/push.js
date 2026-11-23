@@ -1,0 +1,95 @@
+// ─── Push notifications (groundwork for voice rooms / community) ────────────
+// FCM on Android (needs android/app/google-services.json), APNs on iOS (needs
+// the Push Notifications capability + an APNs key on the backend). Off unless the
+// build sets VITE_NQ_PUSH=1 — calling register() without Firebase configured
+// crashes on Android, so the flag must only be set when google-services.json is
+// present (the CI workflow does this automatically).
+//
+// Flow: askForPush() explains in Arabic why, then asks the OS → register() →
+// 'registration' token → POST /me/devices {platform, token, app_version, lang}
+// (rooms backend; a 404 is ignored and retried on the next launch). A tap opens
+// data.path / data.url inside the app.
+import { PushNotifications } from '@capacitor/push-notifications';
+import { App } from '@capacitor/app';
+import { api, getToken } from '../apiClient';
+import { getLang } from '../i18n';
+import { trNow } from '../l10n';
+import { setGlobal } from '../store';
+import { platform } from './platform';
+import { navigate, webPathToRoute } from './links';
+import { confirmDialog } from './ui';
+
+export const PUSH_ENABLED = import.meta.env.VITE_NQ_PUSH === '1';
+const SENT_KEY = 'nq_push_sent';   // `${token}|${sessionTokenTail}|${lang}` last sent to the API
+
+let deviceToken = null;
+let started = false;
+
+async function sendToken() {
+  if (!deviceToken || !getToken()) return;      // only signed-in users have device rows
+  const lang = getLang();
+  const sig = `${deviceToken}|${(getToken() || '').slice(-8)}|${lang}`;
+  try { if (localStorage.getItem(SENT_KEY) === sig) return; } catch {}
+  let appVersion = '';
+  try { const info = await App.getInfo(); appVersion = `${info.version} (${info.build})`; } catch {}
+  try {
+    await api.post('/me/devices', { platform: platform(), token: deviceToken, app_version: appVersion, lang });
+    try { localStorage.setItem(SENT_KEY, sig); } catch {}
+  } catch (e) {
+    // 404 until the rooms backend ships /me/devices; 401 when signed out — both fine.
+    if (import.meta.env.DEV) console.info('[push] /me/devices not stored:', e && e.status);
+  }
+}
+
+function openFromData(data) {
+  if (!data) return;
+  let path = typeof data.path === 'string' ? data.path : null;
+  if (!path && typeof data.url === 'string') {
+    try { const u = new URL(data.url); if (/(^|\.)nuralquran\.net$/.test(u.hostname)) path = webPathToRoute(u.pathname, u.search, u.hash); } catch {}
+  }
+  if (path) navigate(path);
+}
+
+export async function initPush() {
+  if (!PUSH_ENABLED || started) return;
+  started = true;
+  PushNotifications.addListener('registration', (t) => { deviceToken = t && t.value; sendToken(); });
+  PushNotifications.addListener('registrationError', (e) => { if (import.meta.env.DEV) console.warn('[push] registration error', e); });
+  PushNotifications.addListener('pushNotificationReceived', (n) => {
+    if (n && (n.title || n.body)) setGlobal({ toast: n.title || n.body });
+  });
+  PushNotifications.addListener('pushNotificationActionPerformed', (a) => openFromData(a && a.notification && a.notification.data));
+  window.addEventListener('nq-token-change', () => sendToken());
+  window.addEventListener('nq-lang-change', () => sendToken());
+  if (platform() === 'android') {
+    PushNotifications.createChannel({
+      id: 'community', name: trNow('الغرف والمجتمع'), description: trNow('تنبيهات الغرف الصوتية والجروبات التي تتابعها'),
+      importance: 4, visibility: 1, vibration: true,
+    }).catch(() => {});
+  }
+  try {
+    const p = await PushNotifications.checkPermissions();
+    if (p.receive === 'granted') await PushNotifications.register();
+  } catch {}
+}
+
+/** Ask for push permission with a clear explanation first. Returns true when granted. */
+export async function askForPush() {
+  if (!PUSH_ENABLED) return false;
+  await initPush();
+  try {
+    const p = await PushNotifications.checkPermissions();
+    if (p.receive === 'granted') { await PushNotifications.register(); return true; }
+    if (p.receive === 'denied') return false;
+    const ok = await confirmDialog({
+      title: trNow('تنبيهات الغرف والمجتمع'),
+      body: trNow('نرسل لك تنبيهاً عندما تبدأ غرفة صوتية في جروب تتابعه، أو عندما يصلك ردّ أو دعوة. لا نرسل إعلانات، ويمكنك إيقافها في أي وقت من إعدادات الجهاز.'),
+      confirm: trNow('السماح بالتنبيهات'), cancel: trNow('ليس الآن'),
+    });
+    if (!ok) return false;
+    const r = await PushNotifications.requestPermissions();
+    if (r.receive !== 'granted') return false;
+    await PushNotifications.register();
+    return true;
+  } catch { return false; }
+}

@@ -13,7 +13,13 @@ final class Request
      */
     public static function bodyLimit(string $method, string $path): int
     {
-        return $method === 'POST' && $path === '/me/avatar' ? Avatar::MAX_REQUEST : self::MAX_BODY;
+        return $method === 'POST' && self::isPhotoUpload($path) ? Avatar::MAX_REQUEST : self::MAX_BODY;
+    }
+
+    /** Multipart photo uploads: the profile photo and a community group's photo. */
+    public static function isPhotoUpload(string $path): bool
+    {
+        return $path === '/me/avatar' || preg_match('#^/community/groups/\d{1,9}/photo$#', $path) === 1;
     }
 
     public string $method;
@@ -121,11 +127,13 @@ final class Request
         return is_array($f) ? $f : null;
     }
 
-    /** @return array<string,mixed> the decoded JSON object body (empty array if none) */
-    public function body(): array
+    private ?string $rawBody = null;
+
+    /** The raw request body (≤ 64 KB), e.g. to verify a webhook signature. */
+    public function raw(): string
     {
-        if ($this->body !== null) {
-            return $this->body;
+        if ($this->rawBody !== null) {
+            return $this->rawBody;
         }
         $len = (int) ($this->headers['content-length'] ?? 0);
         if ($len > self::MAX_BODY) {
@@ -135,6 +143,16 @@ final class Request
         if (strlen($raw) > self::MAX_BODY) {
             throw new ApiError(413, 'payload_too_large');
         }
+        return $this->rawBody = $raw;
+    }
+
+    /** @return array<string,mixed> the decoded JSON object body (empty array if none) */
+    public function body(): array
+    {
+        if ($this->body !== null) {
+            return $this->body;
+        }
+        $raw = $this->raw();
         if (trim($raw) === '') {
             return $this->body = [];
         }

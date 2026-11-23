@@ -8,11 +8,12 @@ final class Http
 {
     /**
      * $allowHttp permits plain http:// (only for local test upstreams; production calls stay https-only).
-     * $maxBytes > 0 aborts responses larger than that.
+     * $maxBytes > 0 aborts responses larger than that. $curlOpts are extra curl options (e.g. HTTP/2 for APNs).
      * @param array<string,string> $headers
+     * @param array<int,mixed> $curlOpts
      * @return array{status:int, json:mixed, raw:string, error:string}
      */
-    public static function request(string $method, string $url, array $headers = [], ?string $body = null, int $timeout = 45, bool $allowHttp = false, int $maxBytes = 0): array
+    public static function request(string $method, string $url, array $headers = [], ?string $body = null, int $timeout = 45, bool $allowHttp = false, int $maxBytes = 0, array $curlOpts = []): array
     {
         $ch = curl_init($url);
         $h = [];
@@ -37,6 +38,9 @@ final class Http
         }
         if ($method === 'HEAD') {
             curl_setopt($ch, CURLOPT_NOBODY, true);
+        }
+        if ($curlOpts !== []) {
+            curl_setopt_array($ch, $curlOpts);
         }
         if ($maxBytes > 0) {
             curl_setopt($ch, CURLOPT_NOPROGRESS, false);
@@ -189,6 +193,13 @@ final class Http
             $ordered[(string) $k] = $out[(string) $k];
         }
         return $ordered;
+    }
+
+    /** Plain http is only ever allowed to this machine (local LiveKit API, test stand-ins). */
+    public static function isLocalHttp(string $url): bool
+    {
+        $p = parse_url($url);
+        return is_array($p) && ($p['scheme'] ?? '') === 'http' && in_array($p['host'] ?? '', ['127.0.0.1', 'localhost', '[::1]'], true);
     }
 
     /** Resolve a Location header against the URL that sent it. */

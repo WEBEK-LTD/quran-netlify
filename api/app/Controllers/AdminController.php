@@ -321,8 +321,14 @@ final class AdminController
                 throw ApiError::validation([(string) $key => 'يجب أن تكون القيمة نصاً.']);
             }
             $value = trim($value);
-            if (strlen($value) > 1000 || preg_match('/[\x00-\x1F\x7F]/', $value)) {
+            $multi = Integrations::MULTILINE[(string) $key] ?? 0;
+            if ($multi > 0
+                ? (strlen($value) > $multi || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', $value))
+                : (strlen($value) > 1000 || preg_match('/[\x00-\x1F\x7F]/', $value))) {
                 throw ApiError::validation([(string) $key => 'قيمة غير صالحة.']);
+            }
+            if ($value !== '') {
+                self::validateCommunityIntegration((string) $key, $value);
             }
             if ($value !== '') {
                 if ($key === 'ai_provider' && !in_array($value, ['openai', 'anthropic'], true)) {
@@ -359,6 +365,9 @@ final class AdminController
         foreach ($values as $k => $v) {
             Integrations::set($k, $v);
         }
+        if (array_intersect(array_keys($values), ['fcm_service_account', 'apns_key_p8', 'apns_key_id', 'apns_team_id']) !== []) {
+            \NQ\Core\Push::clearCaches(); // cached FCM access token / APNs JWT belong to the old keys
+        }
         if ($values !== []) {
             // log which keys changed, never their values
             self::audit($r, 'integrations.update', implode(',', array_keys($values)), array_map(
@@ -369,11 +378,72 @@ final class AdminController
         return ['items' => Integrations::listing()];
     }
 
+    /** Validation of the LiveKit / FCM / APNs keys (throws 422). */
+    private static function validateCommunityIntegration(string $key, string $value): void
+    {
+        $fail = static fn (string $msg) => throw ApiError::validation([$key => $msg]);
+        switch ($key) {
+            case 'livekit_url':
+                if (!preg_match('#^wss://[a-z0-9.-]+(:\d{1,5})?/?$#i', $value) && !preg_match('#^ws://(127\.0\.0\.1|localhost)(:\d{1,5})?/?$#', $value)) {
+                    $fail('يجب أن يبدأ العنوان بـ wss:// (مثال: wss://rtc.nuralquran.net:7443).');
+                }
+                break;
+            case 'livekit_api_url':
+                if (!preg_match('#^https://[a-z0-9.-]+(:\d{1,5})?(/[A-Za-z0-9._/-]*)?$#i', $value) && !preg_match('#^http://(127\.0\.0\.1|localhost)(:\d{1,5})?(/[A-Za-z0-9._/-]*)?$#', $value)) {
+                    $fail('يجب أن يبدأ العنوان بـ https:// أو http://127.0.0.1 (على نفس الخادم).');
+                }
+                break;
+            case 'livekit_api_key':
+                if (!preg_match('/^[A-Za-z0-9_-]{3,64}$/', $value)) {
+                    $fail('المفتاح يتكون من أحرف إنجليزية وأرقام فقط.');
+                }
+                break;
+            case 'livekit_api_secret':
+                if (strlen($value) < 32 || !preg_match('/^[\x21-\x7E]+$/', $value)) {
+                    $fail('السر قصير جداً (32 حرفاً على الأقل).');
+                }
+                break;
+            case 'fcm_service_account':
+                $sa = json_decode($value, true);
+                if (!is_array($sa) || ($sa['type'] ?? '') !== 'service_account' || empty($sa['client_email']) || empty($sa['project_id'])
+                    || !is_string($sa['private_key'] ?? null) || openssl_pkey_get_private($sa['private_key']) === false) {
+                    $fail('الصق محتوى ملف JSON الخاص بحساب الخدمة كما نزّلته من Firebase (Service account).');
+                }
+                break;
+            case 'apns_key_p8':
+                $pk = openssl_pkey_get_private($value);
+                $det = $pk !== false ? openssl_pkey_get_details($pk) : false;
+                if (!is_array($det) || ($det['type'] ?? -1) !== OPENSSL_KEYTYPE_EC) {
+                    $fail('الصق محتوى ملف ‎.p8‎ كاملاً (يبدأ بـ -----BEGIN PRIVATE KEY-----).');
+                }
+                break;
+            case 'apns_key_id':
+            case 'apns_team_id':
+                if (!preg_match('/^[A-Z0-9]{10}$/', $value)) {
+                    $fail('يتكون من 10 أحرف إنجليزية كبيرة وأرقام.');
+                }
+                break;
+            case 'apns_bundle_id':
+                if (!preg_match('/^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/', $value)) {
+                    $fail('مثال: net.nuralquran.app');
+                }
+                break;
+            case 'apns_environment':
+                if (!in_array($value, ['production', 'sandbox'], true)) {
+                    $fail('القيم المسموحة: production أو sandbox.');
+                }
+                break;
+        }
+    }
+
     public static function testIntegration(Request $r): array
     {
         Auth::requireAdmin($r);
-        $target = V::enum($r->body(), 'target', ['ai', 'mail', 'google']);
+        $target = V::enum($r->body(), 'target', ['ai', 'mail', 'google', 'livekit', 'fcm', 'apns']);
         self::audit($r, 'integrations.test', (string) $target);
+        if (in_array($target, ['livekit', 'fcm', 'apns'], true)) {
+            return AdminCommunityController::testIntegration((string) $target);
+        }
         switch ($target) {
             case 'ai':
                 $cfg = AiClient::config();

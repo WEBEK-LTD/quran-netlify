@@ -14,6 +14,7 @@ export const FEATURE_GROUPS = [
     { key: 'tafsir', path: '/reader', icon: 'doc', title: 'التفسير', desc: 'الميسّر وابن كثير والسعدي وغيرها' },
     { key: 'search', path: '/search', icon: 'search', title: 'البحث في القرآن', desc: 'بلا تشكيل، أو باسم السورة، أو برقم الآية', flag: 'search' },
     { key: 'daily', path: '/daily-ayah', icon: 'star', title: 'آية اليوم', desc: 'آية مختارة كل يوم مع تفسيرها' },
+    { key: 'tadhkira', path: '/tadhkira', icon: 'heart', title: 'تذكرة لقلبك اليوم', desc: 'آية من كتاب الله تُفتح لك كل يوم' },
     { key: 'radio', path: '/radio', icon: 'radio', title: 'إذاعة القرآن', desc: 'بث مباشر من إذاعات القرآن الكريم' },
     { key: 'ijaza', path: '/ijaza', icon: 'scroll', title: 'الإجازة والقراءات', desc: 'القراءات العشر وأسانيد الإجازة', flag: 'ijaza' },
   ]},

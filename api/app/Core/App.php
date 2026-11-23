@@ -6,7 +6,7 @@ namespace NQ\Core;
 /** The HTTP kernel: security headers, CORS, CSRF, auth, maintenance, routing, JSON output. */
 final class App
 {
-    private const ALLOWED_HEADERS = 'Content-Type, Authorization, X-NQ-Client, X-NQ-Date';
+    private const ALLOWED_HEADERS = 'Content-Type, Authorization, X-NQ-Client, X-NQ-Date, If-None-Match';
     private const ALLOWED_METHODS = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
 
     public static function securityHeaders(string $csp = "default-src 'none'; frame-ancestors 'none'"): void
@@ -45,7 +45,7 @@ final class App
             if ($allowed) {
                 header('Access-Control-Allow-Origin: ' . $origin);
                 header('Access-Control-Allow-Credentials: true');
-                header('Access-Control-Expose-Headers: Retry-After, Content-Disposition');
+                header('Access-Control-Expose-Headers: Retry-After, Content-Disposition, ETag');
             }
             header('Vary: Origin');
 
@@ -61,7 +61,9 @@ final class App
             }
 
             $isWrite = !in_array($req->method, ['GET', 'HEAD'], true);
-            if ($isWrite) {
+            // LiveKit's webhook is server-to-server (no Origin, no X-NQ-Client); it is authenticated by its signed JWT.
+            $isWebhook = $req->method === 'POST' && $req->path === '/v1/livekit/webhook';
+            if ($isWrite && !$isWebhook) {
                 if ($origin !== null && $origin !== '' && !$allowed) {
                     throw ApiError::forbidden('المصدر غير مسموح.');
                 }
@@ -82,7 +84,7 @@ final class App
             $path = substr($path, 3);
 
             if ((int) ($req->header('content-length') ?? 0) > Request::bodyLimit($req->method, $path)) {
-                throw new ApiError(413, $path === '/me/avatar' ? 'avatar_too_large' : 'payload_too_large');
+                throw new ApiError(413, Request::isPhotoUpload($path) ? 'avatar_too_large' : 'payload_too_large');
             }
 
             $router = new Router();
@@ -97,12 +99,15 @@ final class App
             }
 
             Migrations::ensure();
-            Auth::resolve($req);
+            if (!$isWebhook) {
+                Auth::resolve($req);
+            }
+            Background::register(); // pushes + community housekeeping after the response
 
             if (!self::maintenanceExempt($req->method, $path) && Settings::get('maintenance_mode') === true && !$req->isAdmin()) {
                 throw ApiError::of(503, 'maintenance');
             }
-            if ($isWrite) {
+            if ($isWrite && !$isWebhook) {
                 RateLimit::hit('writes', RateLimit::subjects($req));
             }
 
@@ -126,7 +131,8 @@ final class App
     {
         return ($method === 'GET' && ($path === '/settings/public' || $path === '/health'))
             || str_starts_with($path, '/auth/')
-            || str_starts_with($path, '/admin/');
+            || str_starts_with($path, '/admin/')
+            || $path === '/livekit/webhook'; // keep presence/auto-close consistent during maintenance
     }
 
     private static function emit(mixed $result): void
@@ -143,6 +149,11 @@ final class App
         if ($result instanceof Reply) {
             foreach ($result->headers as $k => $v) {
                 header($k . ': ' . $v);
+            }
+            if ($result->status === 304) { // conditional GET (ETag): no body
+                http_response_code(304);
+                header_remove('Content-Type');
+                return;
             }
             self::send($result->status, ['ok' => true, 'data' => $result->data]);
             return;
