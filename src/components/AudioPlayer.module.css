@@ -187,3 +187,6 @@
   .metaLink { font-size: .82rem; }
   :global(body.nq-has-dock.nq-has-tabbar) { padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
 }
+/* App: the tab bar is there at every width (src/styles/native.css) */
+:global(html.nq-native) .dock { bottom: var(--dock-bottom, calc(80px + env(safe-area-inset-bottom, 0px))); }
+:global(html.nq-native body.nq-has-dock.nq-has-tabbar) { padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)); }

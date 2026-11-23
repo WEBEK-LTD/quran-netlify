@@ -108,3 +108,8 @@
 .appActs { display:flex; gap:8px; flex-wrap:wrap; }
 :global(.nq-native) .wrap { padding-top:16px; }
 :global(.nq-native) .roseCard { padding-top:30px; }
+/* the hint cards and the declination note stay clear of the frame's corner ornaments */
+@media (max-width:560px) {
+  .roseCard { padding-bottom:50px; }
+  .calib, .nosensor { width:calc(100% - 8px); }
+}

@@ -3,7 +3,11 @@
 // the app («افتحها في مصحفي» opens the reader while the room keeps playing).
 //
 //   join(roomId)  POST /rooms/{id}/join → {url, token, role, room, me} → Room.connect()
-//   audio only: we publish the microphone (stage roles) and play remote audio tracks
+//   audio only: we publish the microphone (stage roles) and play remote audio tracks.
+//   Everyone joins with the microphone closed — the owner and speakers included (designs
+//   09/11: «الميكروفون مغلق»). It opens only from the mic button (setMic(true)); `wantMic`
+//   is that wish, and any microphone the SDK publishes without it (a republish after a full
+//   reconnect, a late publish after a timed-out attempt) is closed again (reconcileMic).
 //   data packets come from the API only (clients have canPublishData:false); they
 //   are re-emitted to the screen as { topic, msg } (topics chat | reaction | page | room)
 //   role changes arrive as LiveKit permission/metadata updates on the same connection
@@ -22,9 +26,9 @@ const initial = () => ({
   title: '',
   role: null,
   me: null,
-  mic: false,              // my microphone is publishing and unmuted
-  micBusy: false,
-  micError: null,          // denied | unavailable | null
+  mic: false,              // my microphone is publishing and unmuted (read from the SDK, never assumed)
+  micBusy: false,          // opening it (permission prompt, publish) — bounded by MIC_TIMEOUT
+  micError: null,          // denied | nodevice | busy | timeout | unavailable | null
   speaking: [],            // identities (user ids as strings) speaking now
   muted: {},               // identity → true when their mic track is muted
   audioBlocked: false,     // autoplay blocked: needs a tap (startAudio)
@@ -38,6 +42,8 @@ let lk = null;             // the livekit-client module
 let room = null;
 let audioHost = null;
 let leaving = false;
+let wantMic = false;       // the user pressed «افتح الميكروفون» and has not closed it since
+const MIC_TIMEOUT = 30000; // long enough for the Android/iOS permission dialog
 
 function emit(patch) {
   state = { ...state, ...patch };
@@ -80,7 +86,19 @@ function refreshMuted() {
   emit({ muted, mic: !!(myPub && !myPub.isMuted && lp.isMicrophoneEnabled) });
 }
 
+// The microphone is open only because the user asked for it. Anything else — the SDK
+// republishing tracks after a full reconnect, a publish that finished after we gave up
+// waiting — is closed again here.
+function reconcileMic() {
+  if (!room || !lk) return;
+  const lp = room.localParticipant;
+  if (!lp || wantMic || state.micBusy) return;
+  const pub = lp.getTrackPublication(lk.Track.Source.Microphone);
+  if (pub && !pub.isMuted) lp.setMicrophoneEnabled(false).catch(() => {}).finally(refreshMuted);
+}
+
 function endWith(kind) {
+  wantMic = false;
   emit({ status: 'ended', ended: kind, mic: false, speaking: [], audioBlocked: false });
   if (audioHost) audioHost.innerHTML = '';
   room = null;
@@ -97,9 +115,14 @@ function wire(r) {
     refreshMuted();
   });
   r.on(E.TrackUnsubscribed, (track) => { track.detach().forEach(el => el.remove()); refreshMuted(); });
-  r.on(E.TrackMuted, refreshMuted);
-  r.on(E.TrackUnmuted, refreshMuted);
-  r.on(E.LocalTrackPublished, refreshMuted);
+  const isMyMic = (pub, p) => p === r.localParticipant && pub && pub.source === lk.Track.Source.Microphone;
+  r.on(E.TrackMuted, (pub, p) => {
+    // a moderator muted me (server-side mute) — the next open is a new, deliberate press
+    if (isMyMic(pub, p) && !state.micBusy) { wantMic = false; setAudioMode('media'); }
+    refreshMuted();
+  });
+  r.on(E.TrackUnmuted, (pub, p) => { refreshMuted(); if (isMyMic(pub, p)) reconcileMic(); });
+  r.on(E.LocalTrackPublished, () => { refreshMuted(); reconcileMic(); });
   r.on(E.LocalTrackUnpublished, refreshMuted);
   r.on(E.ParticipantConnected, refreshMuted);
   r.on(E.ParticipantDisconnected, refreshMuted);
@@ -107,7 +130,7 @@ function wire(r) {
   r.on(E.AudioPlaybackStatusChanged, () => emit({ audioBlocked: !r.canPlaybackAudio }));
   r.on(E.Reconnecting, () => emit({ status: 'reconnecting' }));
   r.on(E.SignalReconnecting, () => emit({ status: 'reconnecting' }));
-  r.on(E.Reconnected, () => { emit({ status: 'connected' }); refreshMuted(); dataSubs.forEach(f => { try { f({ topic: '_reconnected', msg: {} }); } catch {} }); });
+  r.on(E.Reconnected, () => { emit({ status: 'connected' }); refreshMuted(); reconcileMic(); dataSubs.forEach(f => { try { f({ topic: '_reconnected', msg: {} }); } catch {} }); });
   r.on(E.ParticipantPermissionsChanged, (_prev, p) => {
     if (p !== r.localParticipant) return;
     const can = !!(p.permissions && p.permissions.canPublish);
@@ -129,8 +152,8 @@ function wire(r) {
     dataSubs.forEach(f => { try { f({ topic: topic || '', msg }); } catch {} });
   });
   r.on(E.MediaDevicesError, (e) => {
-    const name = e && e.name;
-    emit({ micError: name === 'NotAllowedError' || name === 'SecurityError' ? 'denied' : 'unavailable', micBusy: false });
+    // also fires for a capture that fails outside setMic (device unplugged, restart after mute)
+    if (!state.micBusy) { wantMic = false; emit({ micError: micErrorKind(e) }); refreshMuted(); }
   });
   r.on(E.Disconnected, (reason) => {
     const R = lk.DisconnectReason || {};
@@ -150,6 +173,7 @@ export async function join(roomId) {
   if (room && String(state.roomId) === String(roomId) && (state.status === 'connected' || state.status === 'reconnecting' || state.status === 'connecting')) return state;
   if (room) await leave({ quiet: true });
   leaving = false;
+  wantMic = false;
   state = initial();
   emit({ status: 'connecting', roomId: String(roomId) });
   let j;
@@ -167,12 +191,16 @@ export async function join(roomId) {
       dynacast: false,
       disconnectOnPageLeave: false,
       audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      // closing the mic releases it (no OS mic indicator, iOS back to .playback); opening it
+      // again is a fresh capture — no new permission prompt once granted
+      publishDefaults: { stopMicTrackOnMute: true },
     });
     room = r;
     wire(r);
     await r.connect(j.url, j.token, { autoSubscribe: true });
     emit({ status: 'connected', audioBlocked: !r.canPlaybackAudio });
     refreshMuted();
+    reconcileMic();
     return { ...state, join: j };
   } catch (e) {
     try { if (room) await room.disconnect(); } catch {}
@@ -208,29 +236,62 @@ export async function endBy(kind) {
 export function reset() { if (!room) { state = initial(); emit({}); } }
 
 async function stopMic(silent) {
+  wantMic = false;
   if (!room) return;
   try { await room.localParticipant.setMicrophoneEnabled(false); } catch {}
   emit({ mic: false, micBusy: false });
-  setAudioMode('media');
+  setAudioMode('media').catch(() => {});
   if (!silent) refreshMuted();
 }
 
-/** Turn my microphone on/off (stage roles only). Returns false when the OS refused. */
+/** getUserMedia / LiveKit errors → what the screen tells the user. */
+export function micErrorKind(e) {
+  const name = (e && (e.name || (e.cause && e.cause.name))) || '';
+  const msg = String((e && e.message) || '');
+  if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError' || /permission|not allowed|denied/i.test(msg)) return 'denied';
+  if (name === 'NotFoundError' || name === 'OverconstrainedError' || name === 'DevicesNotFoundError') return 'nodevice';
+  if (name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError') return 'busy';
+  if (name === 'MicTimeout') return 'timeout';
+  return 'unavailable';
+}
+
+function timeout(ms) {
+  let id;
+  const p = new Promise((_, reject) => { id = setTimeout(() => reject(Object.assign(new Error('mic_timeout'), { name: 'MicTimeout' })), ms); });
+  return { p, clear: () => clearTimeout(id) };
+}
+
+/** Turn my microphone on/off (stage roles only). Returns false when it could not be opened;
+ *  state.micError says why. Never leaves micBusy set: every path below clears it. */
 export async function setMic(on) {
   if (!room) return false;
   if (!on) { await stopMic(false); return true; }
-  if (!STAGE.includes(state.role)) return false;
+  if (!STAGE.includes(state.role)) { emit({ micError: 'unavailable' }); return false; }
+  if (state.micBusy) return false;
+  const r = room;
+  wantMic = true;
   emit({ micBusy: true, micError: null });
-  await setAudioMode('voice');
+  // iOS only (.playAndRecord); a no-op elsewhere — never allowed to block the microphone
+  try { await setAudioMode('voice'); } catch {}
+  const t = timeout(MIC_TIMEOUT);
   try {
-    await room.localParticipant.setMicrophoneEnabled(true);
+    await Promise.race([r.localParticipant.setMicrophoneEnabled(true), t.p]);
+    t.clear();
+    if (room !== r) return false;
     emit({ micBusy: false });
+    // closed meanwhile (button pressed again, moved to listeners): honour that
+    if (!wantMic || !STAGE.includes(state.role)) { await stopMic(false); return false; }
     refreshMuted();
     return true;
   } catch (e) {
-    const name = e && e.name;
-    emit({ micBusy: false, mic: false, micError: name === 'NotAllowedError' || name === 'SecurityError' ? 'denied' : 'unavailable' });
-    setAudioMode('media');
+    t.clear();
+    const kind = micErrorKind(e);
+    // a timed-out attempt may still finish later: reconcileMic closes it then
+    wantMic = false;
+    emit({ micBusy: false, mic: false, micError: kind });
+    if (kind !== 'timeout') { try { await r.localParticipant.setMicrophoneEnabled(false); } catch {} }
+    setAudioMode('media').catch(() => {});
+    if (room === r) refreshMuted();
     return false;
   }
 }

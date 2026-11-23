@@ -163,6 +163,7 @@ export default function ListenPage() {
             {Object.entries(groups).map(([g, rs]) => (
               <div key={g} className={styles.rGroup}>
                 <span className={styles.rGroupT}>{tr(g)}</span>
+                <div className={styles.rList}>
                 {rs.map(r => {
                   const name = readerName(r, tr.lang);
                   const on = r.id === reader.id;
@@ -178,6 +179,7 @@ export default function ListenPage() {
                     </button>
                   );
                 })}
+                </div>
               </div>
             ))}
           </div>

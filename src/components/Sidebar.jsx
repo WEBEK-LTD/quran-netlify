@@ -62,9 +62,12 @@ export default function Sidebar() {
   useEffect(() => {
     if (!open || !isMobile()) return;
     function onKey(e) { if (e.key === 'Escape') setGlobal({ sidebarOpen: false }); }
+    // Android back (the app) closes the index before leaving the page
+    function onBack(e) { e.preventDefault(); setGlobal({ sidebarOpen: false }); }
+    window.addEventListener('nq-native-back', onBack);
     window.addEventListener('keydown', onKey);
     setTimeout(() => asideRef.current?.querySelector('input,button')?.focus(), 30);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('nq-native-back', onBack); };
   }, [open]);
 
   const q = filter.trim();

@@ -16,61 +16,27 @@ import { EtiquetteList } from './Gate';
 import ReportSheet from './Report';
 import { surahName } from '../l10n';
 import { SURAHS_META } from '../data';
-import { fetchSurahAyahs } from '../api';
+import { isAndroid, isIOS, isNative } from '../native/platform';
+import { NQNative } from '../native/nqNative';
+import SharedMushaf from './SharedMushaf';
+import { pageOf } from './mushafPages';
 
 const STAGE = ['owner', 'moderator', 'speaker'];
 const MIC_OK_KEY = 'nq_room_mic_explained';
-const ayahCache = new Map();
+
+// The system screen where the user can allow the microphone for the app.
+function openAppSettings() {
+  if (isAndroid()) {
+    NQNative.openAppSettings().catch(() => NQNative.openChannelSettings({}).catch(() => {}));
+  } else if (isIOS()) {
+    window.location.href = 'app-settings:';
+  }
+}
 
 function useSession() { return useSyncExternalStore(live.subscribe, live.getSession); }
 
 function roleLabel(t, role) {
   return role === 'owner' ? t('المضيف') : role === 'moderator' ? t('مشرف') : role === 'speaker' ? t('متحدث') : t('مستمع');
-}
-
-// ── shared mushaf card ──────────────────────────────────────────────────────
-function SharedAyah({ shared, canSet, onSet }) {
-  const t = useT();
-  const navigate = useNavigate();
-  const [text, setText] = useState('');
-  useEffect(() => {
-    if (!shared) return;
-    let alive = true;
-    const key = shared.surah;
-    const got = ayahCache.get(key);
-    const pick = (list) => { const a = (list || []).find(x => x.number === shared.ayah); if (alive) setText(a ? a.text : ''); };
-    if (got) pick(got);
-    else fetchSurahAyahs(key).then(list => { ayahCache.set(key, list); pick(list); }).catch(() => alive && setText(''));
-    return () => { alive = false; };
-  }, [shared && shared.surah, shared && shared.ayah]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!shared) {
-    if (!canSet) return null;
-    return (
-      <button type="button" className={`${s.card} ${s.cardLink}`} style={{ display: 'flex', gap: 10, alignItems: 'center' }} onClick={onSet}>
-        <RIcon name="book" style={{ color: 'var(--gold)' }} />
-        <span className={s.grow}><b>{t('المصحف المشترك')}</b><span className={s.faint} style={{ display: 'block' }}>{t('اختر آية تظهر لكل من في الغرفة')}</span></span>
-      </button>
-    );
-  }
-  const ref = `${surahName(shared.surah, t.lang)} · ${t('آية {n}', { n: n(shared.ayah, t.lang) })}${shared.page ? ` · ${t('ص {n}', { n: n(shared.page, t.lang) })}` : ''}`;
-  return (
-    <section className={s.mushaf} aria-labelledby="mushafH">
-      <div className={s.mushafIn}>
-        <div className={s.mushafHead}>
-          <span className={s.row} style={{ gap: 6 }}><RIcon name="book" size={18} style={{ color: 'var(--gold)' }} /><b id="mushafH">{t('المصحف المشترك')}</b><span>· {t('يحدده المضيف')}</span></span>
-          <span>{ref}</span>
-        </div>
-        {text ? <p className={s.ayah} lang="ar">{text} <span aria-hidden="true">﴿{n(shared.ayah, 'ar')}﴾</span></p> : <p className={s.faint} style={{ textAlign: 'center' }}>{ref}</p>}
-        <div className={s.mushafFoot}>
-          <span className={s.faint}>{t('ظاهرة لكل من في الغرفة')}</span>
-          <span className={s.row} style={{ gap: 8 }}>
-            {canSet && <button type="button" className={`${s.btn} ${s.btnSm} ${s.btnGhost}`} onClick={onSet}>{t('تغيير')}</button>}
-            <button type="button" className={`${s.btn} ${s.btnSm} ${s.btnOutline}`} onClick={() => navigate(`/reader?surah=${shared.surah}&ayah=${shared.ayah}`)}>{t('افتحها في مصحفي')}</button>
-          </span>
-        </div>
-      </div>
-    </section>
-  );
 }
 
 // ── scheduled room (not started) ────────────────────────────────────────────
@@ -201,7 +167,10 @@ export default function RoomScreen({ params, profile }) {
       setTimeout(() => setFloats(f => f.filter(x => x.key !== key)), 3000);
       if (msg.to) setChat(c => [...c, { id: `c${key}`, kind: 'clap', from: msg.from, to: msg.to }].slice(-200));
     } else if (topic === 'page') {
-      setRoom(r => (r ? { ...r, shared: { surah: msg.surah, ayah: msg.ayah, page: msg.page, updated_at: new Date().toISOString() } } : r));
+      // my own moves are already on screen (optimistic, latest wins); an echo of an older
+      // one must not pull the page back while I keep pressing «الآية التالية»
+      if (String(msg.by) === meId && (moveBusy.current || moveNext.current)) return;
+      setRoom(r => (r ? { ...r, shared: { surah: msg.surah, ayah: msg.ayah, page: msg.page, by: msg.by, updated_at: new Date().toISOString() } } : r));
     } else if (topic === 'room') {
       if (msg.type === 'role') {
         const uid = String(msg.user && msg.user.id);
@@ -250,13 +219,36 @@ export default function RoomScreen({ params, profile }) {
     if (r !== null) { setRoom(x => ({ ...x, hand_raised: !raised })); setParts(p => ({ ...p, listeners: p.listeners.map(x => (String(x.id) === meId ? { ...x, hand_raised: !raised } : x)) })); }
   }
 
+  // Host/moderators move the shared mushaf: shown at once, sent one at a time, latest wins.
+  const moveNext = useRef(null);
+  const moveBusy = useRef(false);
+  async function moveShared(pos) {
+    const next = { surah: pos.surah, ayah: pos.ayah, page: pageOf(pos.surah, pos.ayah), by: Number(meId) || meId, updated_at: new Date().toISOString() };
+    setRoom(r => (r ? { ...r, shared: next } : r));
+    moveNext.current = next;
+    if (moveBusy.current) return;
+    moveBusy.current = true;
+    try {
+      while (moveNext.current) {
+        const p = moveNext.current;
+        moveNext.current = null;
+        const r = await api(() => capi.put(`/rooms/${id}/page`, { surah: p.surah, ayah: p.ayah, page: p.page }));
+        if (r === null) { moveNext.current = null; loadRoom(); break; }
+      }
+    } finally { moveBusy.current = false; }
+  }
+
+  async function openMic() {
+    const ok = await live.setMic(true);
+    if (!ok && live.getSession().micError) setSheet('micDenied');
+  }
   async function toggleMic() {
+    if (sess.micBusy) return;
     if (sess.mic) { await live.setMic(false); return; }
     let explained = false;
     try { explained = localStorage.getItem(MIC_OK_KEY) === '1'; } catch {}
     if (!explained) { setSheet('mic'); return; }
-    const ok = await live.setMic(true);
-    if (!ok) setSheet('micDenied');
+    await openMic();
   }
 
   async function react(type, to) {
@@ -380,7 +372,7 @@ export default function RoomScreen({ params, profile }) {
         </ul>
       </section>
 
-      <SharedAyah shared={room.shared} canSet={isMod && active} onSet={() => setSheet('host')} />
+      <SharedMushaf shared={room.shared} canSet={isMod && active} onMove={moveShared} />
 
       <section aria-labelledby="lstH">
         <div className={s.secHead}>
@@ -409,8 +401,10 @@ export default function RoomScreen({ params, profile }) {
       <nav className={s.bar} aria-label={t('أدوات الغرفة')}>
         <div className={s.barIn}>
           {onStage ? (
-            <button type="button" className={`${s.barBtn} ${sess.mic ? s.barOn : s.barPrimary}`} disabled={!active || sess.micBusy} aria-pressed={sess.mic} onClick={toggleMic}>
-              <RIcon name={sess.mic ? 'mic' : 'micOff'} size={22} />{sess.mic ? t('أغلق الميكروفون') : t('افتح الميكروفون')}
+            <button type="button" className={`${s.barBtn} ${sess.mic ? s.barOn : s.barPrimary}`} disabled={!active} aria-busy={sess.micBusy || undefined}
+              aria-pressed={sess.mic} onClick={toggleMic} data-mic={sess.micBusy ? 'busy' : sess.mic ? 'on' : 'off'}>
+              {sess.micBusy ? <span className={s.micSpin} aria-hidden="true" /> : <RIcon name={sess.mic ? 'mic' : 'micOff'} size={22} />}
+              {sess.micBusy ? t('جارٍ فتح الميكروفون…') : sess.mic ? t('أغلق الميكروفون') : t('افتح الميكروفون')}
             </button>
           ) : (
             <button type="button" className={`${s.barBtn} ${room.hand_raised ? s.barOn : s.barPrimary}`} disabled={!active} aria-pressed={!!room.hand_raised} onClick={toggleHand}>
@@ -480,7 +474,7 @@ export default function RoomScreen({ params, profile }) {
 
       {isMod && (
         <HostSheet open={sheet === 'host'} onClose={() => setSheet(null)} room={room} myRole={myRole} roomId={id} hands={visibleHands}
-          onIgnore={(uid) => setIgnored(g => ({ ...g, [uid]: true }))} api={api} setRoom={setRoom} loadParts={loadParts}
+          onIgnore={(uid) => setIgnored(g => ({ ...g, [uid]: true }))} api={api} setRoom={setRoom} loadParts={loadParts} onMove={moveShared}
           onMore={() => setSheet('more')} onClose2={() => setAsk('close')} />
       )}
 
@@ -491,16 +485,26 @@ export default function RoomScreen({ params, profile }) {
           <button type="button" data-autofocus className={`${s.btn} ${s.btnGold}`} onClick={async () => {
             try { localStorage.setItem(MIC_OK_KEY, '1'); } catch {}
             setSheet(null);
-            const ok = await live.setMic(true);
-            if (!ok) setSheet('micDenied');
+            await openMic();
           }}>{t('متابعة')}</button>
         </div>
       </Sheet>
-      <Sheet open={sheet === 'micDenied'} onClose={() => setSheet(null)} title={t('الميكروفون غير متاح')}>
-        <p className={s.muted}>{sess.micError === 'denied'
-          ? t('لم يُسمح للتطبيق باستخدام الميكروفون. اسمح به من إعدادات الجهاز (التطبيقات ← نور القرآن ← الأذونات) ثم حاول مرة أخرى. يمكنك متابعة الاستماع كالمعتاد.')
+      <Sheet open={sheet === 'micDenied'} onClose={() => setSheet(null)} title={sess.micError === 'denied' ? t('الميكروفون غير مسموح') : t('الميكروفون غير متاح')}>
+        <p className={s.muted}>{
+          sess.micError === 'denied' ? (isNative()
+            ? t('لم يُسمح للتطبيق باستخدام الميكروفون. اضغط «افتح الإعدادات» واسمح لنور القرآن بالميكروفون، ثم ارجع واضغط «افتح الميكروفون». يمكنك متابعة الاستماع كالمعتاد.')
+            : t('لم يُسمح للتطبيق باستخدام الميكروفون. اسمح به من إعدادات الجهاز (التطبيقات ← نور القرآن ← الأذونات) ثم حاول مرة أخرى. يمكنك متابعة الاستماع كالمعتاد.'))
+          : sess.micError === 'nodevice' ? t('لم نجد ميكروفوناً في هذا الجهاز.')
+          : sess.micError === 'timeout' ? t('استغرق فتح الميكروفون وقتاً أطول من المعتاد. تحقّق من الاتصال ثم حاول مرة أخرى.')
           : t('تعذّر تشغيل الميكروفون. تأكد أن تطبيقاً آخر لا يستخدمه ثم حاول مرة أخرى.')}</p>
-        <div className={s.rowEnd}><button type="button" className={`${s.btn} ${s.btnGold}`} onClick={() => setSheet(null)}>{t('حسناً')}</button></div>
+        <div className={s.rowEnd}>
+          <button type="button" className={`${s.btn} ${s.btnGhost}`} onClick={() => setSheet(null)}>{t('حسناً')}</button>
+          {sess.micError === 'denied' && isNative() ? (
+            <button type="button" data-autofocus className={`${s.btn} ${s.btnGold}`} onClick={() => { setSheet(null); openAppSettings(); }}><RIcon name="gear" />{t('افتح الإعدادات')}</button>
+          ) : sess.micError !== 'nodevice' && (
+            <button type="button" data-autofocus className={`${s.btn} ${s.btnGold}`} onClick={() => { setSheet(null); openMic(); }}>{t('حاول مرة أخرى')}</button>
+          )}
+        </div>
       </Sheet>
 
       <ReportSheet open={sheet === 'report'} targets={report} onClose={() => setSheet(null)} />
@@ -615,7 +619,7 @@ function PersonSheet({ open, person, myRole, meId, roomId, muted, onClose, api, 
 }
 
 // ── host tools (design 11) ──────────────────────────────────────────────────
-function HostSheet({ open, onClose, room, myRole, roomId, hands, onIgnore, api, setRoom, loadParts, onMore, onClose2 }) {
+function HostSheet({ open, onClose, room, myRole, roomId, hands, onIgnore, api, setRoom, loadParts, onMove, onMore, onClose2 }) {
   const t = useT();
   const isOwner = myRole === 'owner';
   const [title, setTitle] = useState(room.title);
@@ -667,7 +671,7 @@ function HostSheet({ open, onClose, room, myRole, roomId, hands, onIgnore, api, 
             </span>
           </div>
           <button type="button" className={`${s.btn} ${s.btnOutline} ${s.btnBlock}`}
-            onClick={async () => { const r = await api(() => capi.put(`/rooms/${roomId}/page`, { surah, ayah }), t('ظهرت الآية لكل من في الغرفة.')); if (r) setRoom(x => ({ ...x, shared: r })); }}>{t('اعرضها للجميع')}</button>
+            onClick={() => { onMove({ surah, ayah }); toast(t('ظهرت الآية لكل من في الغرفة.')); onClose(); }}>{t('اعرضها للجميع')}</button>
         </div>
         {isOwner && (
           <div className={s.setRow} style={{ borderTop: 'var(--bw) solid var(--line)', borderBottom: 0, paddingBottom: 0 }}>

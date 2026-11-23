@@ -50,7 +50,8 @@
   .bBtn :global(.nq-ico) { width: 21px; height: 21px; }
 }
 @media (max-width: 760px) {
-  .bar { padding: 6px; padding-inline-start: 12px; gap: 6px; border-radius: 16px; }
+  /* phones: span the screen like the dock, so every tool fits without scrolling */
+  .bar { padding: 6px; padding-inline-start: 12px; gap: 6px; border-radius: 16px; inset-inline: 10px; width: auto; }
   .ref { font-size: .92rem; }
   .barBtns { justify-content: space-between; }
   .bBtn { min-height: 40px; padding: 0 7px; }

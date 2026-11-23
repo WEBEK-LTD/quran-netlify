@@ -31,14 +31,15 @@ export async function initNative() {
   const step = async (name, fn) => {
     try { await fn(); } catch (e) { if (import.meta.env.DEV) console.warn(`[native] ${name} failed`, e); }
   };
-  await step('token', initTokenStore);
-  await step('links', initLinks);
-  await step('bars', initSystemBars);
+  // links need the token mirror first (a launch URL may carry a sign-in token); the
+  // splash waits for them too, so a deep-linked launch never flashes the home screen
+  const linked = (async () => { await step('token', initTokenStore); await step('links', initLinks); })();
+  step('bars', initSystemBars);
   trackMedia();
-  if (isAndroid()) await step('media', initMediaBridge);
+  if (isAndroid()) step('media', initMediaBridge);
   step('keyboard', initKeyboard);
   // drop the splash onto the painted first screen (src/native/NativeShell.jsx), never onto a blank page
-  await firstScreen(2500);
+  await Promise.all([linked, firstScreen(2500)]);
   SplashScreen.hide({ fadeOutDuration: 200 }).catch(() => {});
   // after the first screen: the adhan listeners (a tapped notification is retained
   // until they attach) and re-planning, then the rest when the main thread is idle

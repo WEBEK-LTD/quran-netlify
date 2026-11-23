@@ -105,6 +105,20 @@ public class NQNativePlugin extends Plugin {
         call.resolve();
     }
 
+    /** The app's own system page (Apps → نور القرآن): voice rooms send the user here to allow the
+     *  microphone after they denied it (Android stops asking after the second «Don't allow»). */
+    @PluginMethod
+    public void openAppSettings(PluginCall call) {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getContext().getPackageName()));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("no_settings_activity");
+        }
+    }
+
     @PluginMethod
     public void mediaUpdate(PluginCall call) {
         NQMediaService.State s = new NQMediaService.State();

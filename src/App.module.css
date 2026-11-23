@@ -115,3 +115,7 @@
 @media (max-width: 768px) {
   .announcement { bottom: 76px; }
 }
+
+/* App (Capacitor): the tab bar is fixed at every width (~70px), so the dock and the
+   ayah tools always sit above it, tablets included */
+:global(html.nq-native body.nq-reader) { --dock-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }

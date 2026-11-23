@@ -4,6 +4,11 @@
    ──────────────────────────────────────────────────────────────────────────── */
 
 .nq-native { --header-h:60px; -webkit-tap-highlight-color:transparent; }
+/* No grey/blue flash under a tapped control (Android WebView paints one per element), and no focus
+   ring after a finger tap; the gold ring stays for keyboard / switch access (:focus-visible). */
+.nq-native *, .nq-native *::before, .nq-native *::after { -webkit-tap-highlight-color:transparent; }
+.nq-native :focus:not(:focus-visible) { outline:none; }
+.nq-native button, .nq-native a, .nq-native [role="button"], .nq-native summary { -webkit-touch-callout:none; }
 /* the page never rubber-bands away from the header / tab bar */
 .nq-native, .nq-native body { overscroll-behavior-y:none; }
 .nq-native body { -webkit-text-size-adjust:100%; }
@@ -71,3 +76,18 @@
 
 /* Landscape on tablets / notched phones: keep content off the notch */
 .nq-native .nq-top-in { padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); }
+
+/* Floating bits sit above the tab bar at every width (on the website it only shows ≤760px) */
+@media (min-width:761px) {
+  .nq-native [class*="_announcement_"] { bottom:calc(84px + env(safe-area-inset-bottom,0px)); }
+  .nq-native [class*="_fab_"] { bottom:calc(84px + env(safe-area-inset-bottom,0px)); }
+}
+
+/* Inner pages: the website's tall mihrab hero becomes a compact screen header, so the
+   page's content (times, counters, lists) is on screen at once */
+.nq-native .nq-phero { padding:20px max(16px,env(safe-area-inset-right,0px)) 30px max(16px,env(safe-area-inset-left,0px)) !important; gap:8px; }
+.nq-native .nq-phero .ph-arch { display:none; }
+.nq-native .nq-phero h1 { font-size:clamp(1.7rem,7vw,2.2rem) !important; }
+.nq-native .nq-phero .ph-sub { display:none; }
+.nq-native .nq-phero .ph-ayah { font-size:1.08rem; line-height:1.9; }
+.nq-native .nq-phero .nq-frieze { height:18px; }

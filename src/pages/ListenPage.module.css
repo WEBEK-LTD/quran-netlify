@@ -37,8 +37,9 @@
 
 /* ── reciters ── */
 .readers { display: grid; gap: 14px; }
-.rGroup { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
-.rGroupT { grid-column: 1 / -1; font-size: .78rem; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.rGroup { display: grid; gap: 8px; }
+.rList { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.rGroupT { font-size: .78rem; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
 .reader { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 12px 6px 8px; border-radius: 14px; text-align: start;
   border: var(--bw) solid var(--line); background: var(--surface); color: var(--text); transition: border-color .15s, background .15s; }
 @media (hover: hover) { .reader:hover { border-color: var(--line2); } }
@@ -52,9 +53,8 @@
 
 /* phones: one row per country that scrolls sideways, instead of a long block */
 @media (max-width: 760px) {
-  .rGroup { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; margin-inline: -20px; padding-inline: 20px; padding-bottom: 2px; }
-  .rGroup::-webkit-scrollbar { display: none; }
-  .rGroupT { flex: none; align-self: center; writing-mode: horizontal-tb; min-width: 0; padding-inline-end: 2px; }
+  .rList { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; margin-inline: -20px; padding-inline: 20px; scroll-padding-inline: 20px; padding-bottom: 2px; }
+  .rList::-webkit-scrollbar { display: none; }
   .reader { flex: none; width: min(64vw, 230px); scroll-snap-align: start; }
 }
 

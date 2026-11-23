@@ -3,6 +3,7 @@
 // isAndroid() first. Methods:
 //   setBackgroundColor({ color })            window/WebView-parent colour (status-bar strip on old WebViews)
 //   openChannelSettings({ channelId? })      the system screen where the user may let a channel bypass DND
+//   openAppSettings()                        the app's own system page (permissions: microphone for voice rooms)
 //   mediaUpdate({ title, artist, album, playing, position?, duration?, rate?, actions[] })
 //   mediaClear()                             stop the media foreground service + notification
 //   events: 'mediaAction' { action: play|pause|stop|previoustrack|nexttrack|seekbackward|seekforward|seekto, seekTime? }

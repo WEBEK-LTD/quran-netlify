@@ -121,9 +121,12 @@ export default function TafsirPanel() {
   // Close on Escape; move focus into the panel when it opens
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') close(); }
+    // Android back (the app) closes the panel before leaving the page
+    function onBack(e) { e.preventDefault(); close(); }
     window.addEventListener('keydown', onKey);
+    window.addEventListener('nq-native-back', onBack);
     panelRef.current?.focus({ preventScroll: true });
-    return () => window.removeEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('nq-native-back', onBack); };
   }, []);
 
   const words = Object.entries(WORD_HINTS).filter(([word]) => data?.text?.includes(word));

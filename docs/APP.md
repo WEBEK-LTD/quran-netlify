@@ -30,7 +30,7 @@ npm run build          # the website (unchanged: vite build + SEO pages)
 npm run build:app      # app bundle: vite build + adhan files into dist/ + cap sync (both platforms)
 npm run android        # build:android + open Android Studio
 npm run ios            # build:ios + open Xcode (ios/App/App.xcodeproj)
-npm run test:native    # unit tests: adhan schedule, 64-notification budget, time zones, DST
+npm run test:native    # unit tests: adhan schedule, 64-notification budget, time zones, DST, Qibla compass maths
 npm run check:native   # static checks: plists, entitlements, manifest, audio files, .well-known
 npm run app:assets     # regenerate every icon/splash density from public/brand + store-assets
 npm run app:adhan      # (re)process the adhan recordings (scripts/fetch-adhan.sh)
@@ -47,6 +47,10 @@ npm run app:adhan      # (re)process the adhan recordings (scripts/fetch-adhan.s
 | `src/main.jsx` | imports `src/native/boot.js` first; loads `src/native/index.js` lazily **only** inside the app |
 | `src/native/index.js` | bootstrap: token mirror → deep links → system bars → media bridge → splash → adhan → push |
 | `src/native/links.js` | universal/App links, `nuralquran://` scheme, Google sign-in return, Android back button |
+| `src/native/boot.js`, `src/styles/native.css` | `html.nq-native` before the first paint; every app-only style rule (§2 "App shell") |
+| `src/native/NativeShell.jsx`, `src/native/keyboard.js` | first-screen signal for the splash, scroll-to-top on new screens; keyboard (tab bar hides, focused field scrolled into view) |
+| `src/pages/AppHome.jsx` | the app's home screen (the website keeps `WelcomePage`) |
+| `src/pages/qibla/compass.js`, `wmm.js`, `useCompass.js` | Qibla: bearing, sensor heading, smoothing, declination (WMM2025) — §2 "Qibla compass" |
 | `src/native/adhan/*` | schedule (pure, tested), times (aladhan cache + local calc), notifications, adhan screen, player, settings, recordings |
 | `src/native/NativeAdhanSettings.jsx` | the app-only section inside the prayer page's «تنبيه الأذان» row |
 | `src/native/mediaShim.js`, `mediaBridge.js` | Android lock-screen/notification media controls |
@@ -99,6 +103,47 @@ before sign-out, app only), `netlify.toml` (content type of the two `.well-known
 - **Back button (Android)**: closes the adhan screen / dialogs first, then goes back in
   history, then minimises the app.
 - **Orientation**: phones portrait; tablets (smallest width ≥ 600 dp, all iPads) any orientation.
+
+### App shell (feel of a native app)
+
+Only inside the app (`isNative()`; `html.nq-native` is set by `boot.js` before the first
+paint) — the website is unchanged:
+
+- **Home**: `AppHome` instead of the website hero — greeting + Hijri date, next prayer with a
+  live countdown, «تابع القراءة», a grid of sections (المصحف، التلاوات `/listen`، التفسير `/tafsir`،
+  المواقيت، القبلة، الأذكار، التسبيح، الإذاعة، الغرف، الحفظ، الختمة الجماعية، البحث — admin switches
+  respected), the «تذكرة من كتاب الله لقلبك اليوم» gift (same logic/route as the site) and the verse
+  of the day (text cached for the day). Dates and network parts fill in after the first paint.
+- **Chrome**: no website footer; compact app bar; the tab bar is always shown (every width) with a
+  pill indicator; no text selection / long-press callout on controls (Quran text, articles and
+  fields stay selectable); no tap highlight; `overscroll-behavior: none`; instant pressed states;
+  a 180 ms fade between screens (off with reduced motion); new screens start at the top.
+- **Splash** hides when the first screen has painted (`nq-first-screen`, max 2.5 s) and the launch
+  URL has been handled — no blank frame; adhan re-planning starts right after, push/SW on idle.
+- **Back button (Android)**: screen-specific handlers (`nq-native-back`: adhan screen, dialogs,
+  rooms) → any open drawer/sheet/dialog closes → history back (a screen opened directly goes to
+  home) → on home the app goes to the background (`App.minimizeApp`, so a recitation keeps playing).
+- **Keyboard** (`@capacitor/keyboard`, already installed): `html.nq-kb` while it is up hides the tab
+  bar; the focused field is scrolled into view.
+
+### Qibla compass
+
+- Android: `deviceorientationabsolute` only (its alpha is relative to north; the plain
+  `deviceorientation` alpha is relative to how the phone was held at start — never used unless the
+  event says `absolute: true`). iOS: `webkitCompassHeading` after `DeviceOrientationEvent.requestPermission()`
+  from the «تفعيل البوصلة» tap.
+- Heading = screen-up edge projected on the ground, handing over to the back-camera direction as
+  the phone is raised (no swing when tilted), plus `screen.orientation.angle`.
+- Both sensors are magnetic: the place's **declination** from the World Magnetic Model (WMM2025,
+  `src/pages/qibla/wmm.js`, valid to 2030 — update the coefficients then) is added; the bearing is the
+  great-circle bearing to the Kaaba (21.422487, 39.826206) from true north.
+- Needle: low-pass on the unit circle each frame (359→0 goes the short way), continuous dial
+  rotation; «البوصلة تحتاج إلى معايرة» (figure 8) when iOS reports poor accuracy or readings jump;
+  a clear «لا يوجد حسّاس بوصلة» state; facing the Qibla (±4°, leaves at 8°) turns the needle green
+  with one soft ring. No haptics: no haptics plugin is installed (adding one would be a new native
+  plugin).
+- Tested: `scripts/test-qibla.mjs` (bearings against published values, heading maths, wrap,
+  smoothing, calibration detection, WMM2025 declination against the reference implementation).
 
 ---
 

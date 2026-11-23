@@ -108,6 +108,11 @@ for (const d of readdirSync(resDir)) {
 }
 ok(true, 'res/**/*.xml well-formed');
 ok(/registerPlugin\(NQNativePlugin\.class\)/.test(readFileSync(R('android/app/src/main/java/net/nuralquran/app/MainActivity.java'), 'utf8')), 'NQNativePlugin registered in MainActivity');
+{
+  const plugin = readFileSync(R('android/app/src/main/java/net/nuralquran/app/NQNativePlugin.java'), 'utf8');
+  const usesIt = /NQNative\.openAppSettings\(/.test(readFileSync(R('src/community/Room.jsx'), 'utf8'));
+  ok(!usesIt || /@PluginMethod\s+public void openAppSettings\(/.test(plugin) && /ACTION_APPLICATION_DETAILS_SETTINGS/.test(plugin), 'NQNative.openAppSettings (voice rooms: allow the microphone) implemented in NQNativePlugin');
+}
 
 console.log('Adhan audio');
 const { ids } = JSON.parse(readFileSync(R('src/native/adhan/available.json'), 'utf8'));

@@ -371,8 +371,11 @@ export default function Reader() {
   useEffect(() => {
     if (!barOpen) return;
     function onKey(e) { if (e.key === 'Escape' && !state.showTafsir) closeBar(); }
+    // Android back (the app) closes the tools before leaving the page
+    function onBack(e) { if (!state.showTafsir) { e.preventDefault(); closeBar(); } }
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('nq-native-back', onBack);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('nq-native-back', onBack); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [barOpen, state.showTafsir, state.highlightMode]);
 
