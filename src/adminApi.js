@@ -65,3 +65,48 @@ export const getUnreadCount = () => api.get('/admin/unread');
 // ── Audit log ─────────────────────────────────────────────────────────────────
 export const getLog = ({ page = 1, perPage = 50 } = {}) =>
   api.get('/admin/log' + qs({ page, per_page: perPage }));
+
+// ── Rooms & community moderation (docs/API.md «Rooms & community» → Admin) ──
+// status: 'open' | 'dismissed' | 'actioned' | 'all'; source: '' | 'user' | 'dictionary'; type: '' | target type
+export const listCommunityReports = ({ status = 'open', source, type, page = 1, perPage = 20 } = {}) =>
+  api.get('/admin/community/reports' + qs({ status, source, type, page, per_page: perPage }));
+export const getCommunityReport = (reportId) => api.get(`/admin/community/reports/${id(reportId)}`);
+// action: dismiss | delete_content | remove_photo | suspend | ban_rooms | ban_app | release
+// durationDays: number, or null for permanent
+export const decideCommunityReport = (reportId, { action, durationDays, note, alsoDelete } = {}) =>
+  api.post(`/admin/community/reports/${id(reportId)}/decision`, {
+    action,
+    ...(durationDays !== undefined ? { duration_days: durationDays } : {}),
+    ...(note ? { note } : {}),
+    ...(alsoDelete ? { also_delete: true } : {}),
+  });
+
+// source: '' | 'dictionary' | 'admin'
+export const listCommunitySuspensions = ({ source, page = 1, perPage = 20 } = {}) =>
+  api.get('/admin/community/suspensions' + qs({ source, page, per_page: perPage }));
+export const reactivateCommunityUser = (userId) => api.post(`/admin/community/suspensions/${id(userId)}/reactivate`);
+export const lockCommunityUser = (userId) => api.post(`/admin/community/suspensions/${id(userId)}/lock`);
+// scope: 'community' | 'rooms' | 'app'; durationDays: number or null (permanent)
+export const suspendCommunityUser = (userId, { scope, durationDays = null, reason }) =>
+  api.post(`/admin/community/users/${id(userId)}/suspend`, { scope, duration_days: durationDays, ...(reason ? { reason } : {}) });
+// patch: { gender?: 'male'|'female', birthdate?: 'YYYY-MM-DD' } → User
+export const correctCommunityUser = (userId, patch) => api.patch(`/admin/community/users/${id(userId)}`, patch);
+export const removeCommunityUserPhoto = (userId) => api.del(`/admin/community/users/${id(userId)}/photo`);
+export const removeCommunityGroupPhoto = (groupId) => api.del(`/admin/community/groups/${id(groupId)}/photo`);
+export const deleteCommunityGroup = (groupId) => api.del(`/admin/community/groups/${id(groupId)}`);
+
+// status: 'open' | 'scheduled' → { items, limits, open_count }
+export const listCommunityRooms = ({ status = 'open' } = {}) => api.get('/admin/community/rooms' + qs({ status }));
+export const closeCommunityRoom = (roomId) => api.del(`/admin/community/rooms/${id(roomId)}`);
+
+// level: '' | 'severe' | 'possible'
+export const listDictionary = ({ q, level, page = 1, perPage = 100 } = {}) =>
+  api.get('/admin/community/dictionary' + qs({ q, level, page, per_page: perPage }));
+export const addDictionaryWord = ({ word, level, note }) =>
+  api.post('/admin/community/dictionary', { word, level, ...(note ? { note } : {}) });
+export const updateDictionaryWord = (wordId, patch) => api.patch(`/admin/community/dictionary/${id(wordId)}`, patch);
+export const deleteDictionaryWord = (wordId) => api.del(`/admin/community/dictionary/${id(wordId)}`);
+export const testDictionary = (text) => api.post('/admin/community/dictionary/test', { text });
+
+export const getCommunitySettings = () => api.get('/admin/community/settings');
+export const saveCommunitySettings = (rooms) => api.put('/admin/community/settings', { rooms });

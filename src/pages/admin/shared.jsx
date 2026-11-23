@@ -7,7 +7,12 @@ import styles from '../AdminPage.module.css';
 export { styles };
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
-export function errMsg(e) { return (e && e.message) || 'حدث خطأ غير متوقع، حاول مرة أخرى'; }
+export function errMsg(e) {
+  const base = (e && e.message) || 'حدث خطأ غير متوقع، حاول مرة أخرى';
+  // validation errors carry the per-field reasons ({field: message}); show them, not just the generic line
+  const f = e && e.fields && typeof e.fields === 'object' ? Object.values(e.fields).filter(v => typeof v === 'string' && v) : [];
+  return f.length ? `${base} ${f.join(' ')}` : base;
+}
 
 // Runs fn() when deps change. Stale responses (older request, unmounted) are ignored.
 export function useLoader(fn, deps) {

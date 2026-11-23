@@ -9,6 +9,7 @@ import { Icon, Badge8, Pattern } from '../components/ornaments/Ornaments';
 import { styles, useInterval, Avatar, Ico } from './admin/shared';
 import { OverviewTab, AnalyticsTab } from './admin/StatsTabs';
 import UsersTab from './admin/UsersTab';
+import CommunityTab from './admin/CommunityTab';
 import BroadcastsTab from './admin/BroadcastsTab';
 import SettingsTab from './admin/SettingsTab';
 import IntegrationsTab from './admin/IntegrationsTab';
@@ -19,6 +20,7 @@ const TABS = [
   { id: 'overview',     icon: 'home',   label: 'الرئيسية' },
   { id: 'analytics',    icon: 'chart',  label: 'الإحصائيات' },
   { id: 'users',        icon: 'users',  label: 'الأعضاء' },
+  { id: 'community',    icon: 'shield', label: 'الإشراف' },
   { id: 'broadcasts',   icon: 'bell',   label: 'الإشعارات' },
   { id: 'settings',     icon: 'gear',   label: 'الإعدادات' },
   { id: 'integrations', icon: 'key',    label: 'التكاملات' },
@@ -152,6 +154,7 @@ export default function AdminPage({ defaultTab }) {
         {tab === 'overview'     && <OverviewTab onTabChange={go}/>}
         {tab === 'analytics'    && <AnalyticsTab/>}
         {tab === 'users'        && <UsersTab currentUser={user}/>}
+        {tab === 'community'    && <CommunityTab onTabChange={go}/>}
         {tab === 'broadcasts'   && <BroadcastsTab/>}
         {tab === 'settings'     && <SettingsTab/>}
         {tab === 'integrations' && <IntegrationsTab/>}
