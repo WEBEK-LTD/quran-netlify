@@ -1,3 +1,5 @@
+// Must stay the first import: native media-controls shim (no-op on the website)
+import './native/boot.js'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
@@ -7,14 +9,12 @@ import './styles/fonts.css'
 import './styles/theme.css'
 import { initAppearance } from './appearance'
 import { isNative } from './native/platform'
-import { installMediaShim } from './native/mediaShim'
 
 initAppearance();
 
-// Native app (Capacitor): media-controls shim must be in place before the audio
-// code attaches to navigator.mediaSession; the rest loads lazily (not on the website).
+// Native app (Capacitor): adhan, deep links, system bars, push… loaded lazily so
+// the website never downloads them.
 if (isNative()) {
-  installMediaShim();
   import('./native/index.js').then(m => m.initNative()).catch(() => {});
 }
 
