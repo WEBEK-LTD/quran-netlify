@@ -10,9 +10,13 @@ design canvas (20 screens). Decided by the owner on 2026-11-23.
    visible to friends only.
 3. **Mixed rooms:** women may be raised to speak, like men.
 4. **Men's / women's groups** may open rooms of their own type or mixed rooms.
-5. **Under 18 (13–17):** may enter mixed rooms and may speak on stage. Nobody can send
-   them direct messages or friend requests (pending confirmation of the exact rule — see
-   below).
+5. **Under 18 (13–17):** may enter mixed rooms and may speak on stage. Direct messages and
+   friendship are **fully off** for them: they cannot send or receive DMs or friend
+   requests. They may follow people and groups and be followed (follow = room
+   notifications only, no contact). Their profile is always private. (Stricter than
+   store policy requires — Apple 1.2 and Google Play's Child Safety Standards ask for
+   reporting, blocking and published safety standards — and in line with "high privacy
+   by default for minors" rules such as the EU DSA art. 28 and the UK Children's Code.)
 6. **Dictionary:** «شديدة» → message never delivered, account suspended automatically until
    an admin decides; «محتملة» → message not delivered, sent to admins for review.
 7. **«تذكرة من كتاب الله لقلبك اليوم»:** one ayah per person per day (same ayah all day,
@@ -25,6 +29,6 @@ design canvas (20 screens). Decided by the owner on 2026-11-23.
     «لأعضاء الجروب فقط». «من جروباتي» is a filter in the rooms hub (rooms of the user's
     groups, including members-only ones), plus a «جروباتي» section.
 
-## Open
-- Under-18 rule wording: confirm whether minors also cannot *send* DMs/friend requests,
-  and whether following/being followed is allowed.
+11. **Public groups stay:** anyone can create a public group (listed in search, join
+    directly) so people who don't know each other can gather and open rooms anyone of the
+    allowed type can see. The rooms hub gets an «اكتشف الجروبات» section.
