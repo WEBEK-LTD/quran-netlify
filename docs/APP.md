@@ -12,6 +12,7 @@ push — lives in `src/native/**` and the two native projects. The website build
 | Capacitor | `@capacitor/core|cli|android|ios` **8.6.2**; plugins app 8.1.2, browser 8.0.5, local-notifications 8.3.1, push-notifications 8.1.3, preferences 8.0.1, splash-screen 8.0.2, keyboard 8.0.6; `@capacitor/assets` 4.0.0 |
 | Android | minSdk 24 (Android 7), compile/target SDK 36, AGP 8.13, Gradle 8.14.3, Java 21 |
 | iOS | iOS 15+, Swift Package Manager (no CocoaPods), iPhone portrait, iPad all orientations |
+| iOS build SDK | **iOS 27 SDK or newer — always the newest available** (Xcode 27+). Owner rule; the CI fails any build made with an older SDK. |
 | Node | **22+** (required by the Capacitor 8 CLI) |
 | API | `https://api.nuralquran.net/v1`, session as `Authorization: Bearer` (see `src/apiClient.js`) |
 
@@ -19,8 +20,9 @@ push — lives in `src/native/**` and the two native projects. The website build
 
 ## 1. Build and run
 
-Requirements: Node 22+, **Android Studio** (SDK 36) + JDK 21 for Android, **Xcode 16+ on
-macOS** for iOS.
+Requirements: Node 22+, **Android Studio** (SDK 36) + JDK 21 for Android, **Xcode 27 or newer
+(iOS 27 SDK or newer, newest preferred) on macOS** for iOS. Never ship an iOS build made with an
+older SDK.
 
 ```bash
 npm install
@@ -328,7 +330,8 @@ Modes → Audio, Remote notifications** are shown (they come from `App.entitleme
 otherwise `assembleDebug` → artifacts. Runs on tags `app-v*`, manual dispatch, and PRs that
 touch the app.
 
-`.github/workflows/app-ios.yml` (macos-15, latest Xcode): `npm ci` → tests →
+`.github/workflows/app-ios.yml` (macos-26, latest stable Xcode, fails unless the iOS SDK is 27
+or newer): `npm ci` → tests →
 `npm run build:ios` → unsigned device build (always) → with secrets: archive + export a
 signed `.ipa` → optional TestFlight upload.
 
