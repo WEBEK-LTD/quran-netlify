@@ -1,282 +1,300 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+// ─── Home ────────────────────────────────────────────────────────────────────
+// Mihrab hero with the ayah ﴿قد جاءكم من الله نور وكتاب مبين﴾, live prayer bar,
+// verse of the day, every feature, the surah index and the group khatma.
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import styles from './WelcomePage.module.css';
+import { Icon, Badge8, Pattern, Frieze, Divider, Shamsa, Corners, Rosette, AyahMark, toAr } from '../components/ornaments/Ornaments';
+import { openPalette } from '../components/shell/Shell';
+import { visibleGroups, featureText } from '../features';
+import { usePublicSettings } from '../hooks/usePublicSettings';
+import { useAuth } from '../hooks/useAuth';
+import { useStore } from '../store';
+import { useLang } from '../i18n';
+import { SURAHS_META } from '../data';
+import { normalizeArabic } from '../arabic';
+import { fetchAyahWithTafsir } from '../api';
+import { savedCity, loadTodayTimes, cityNow, nextPrayer, fmt12, PRAYER_NAMES, PRAYER_ORDER } from '../prayerToday';
+import { getDailyAyah } from './DailyAyahPage';
 
-const LANGS = [
-  { code: 'ar', label: 'العربية', flag: '🇸🇦', dir: 'rtl' },
-  { code: 'en', label: 'English', flag: '🇬🇧', dir: 'ltr' },
-  { code: 'tr', label: 'Türkçe',  flag: '🇹🇷', dir: 'ltr' },
-  { code: 'fr', label: 'Français',flag: '🇫🇷', dir: 'ltr' },
-  { code: 'ur', label: 'اردو',    flag: '🇵🇰', dir: 'rtl' },
-  { code: 'id', label: 'Indonesia',flag:'🇮🇩', dir: 'ltr' },
-];
-
-const T = {
-  ar: {
-    title: 'نور القرآن', subtitle: 'رفيقك في رحلة القرآن الكريم',
-    login: '🔑 دخول', signup: '✨ حساب جديد', dashboard: '📊 لوحتي',
-    help: 'شرح الاستخدام', privacy: 'الخصوصية', terms: 'الشروط',
-    docs: 'دليل المميزات', support: 'الدعم',
-    features: [
-      { icon:'📖', title:'قراءة القرآن',      desc:'114 سورة بخطوط عثمانية',           path:'/reader',       color:'#52b788' },
-      { icon:'📻', title:'الراديو الإسلامي',  desc:'قرآن وبرامج دينية وأناشيد',        path:'/radio',        color:'#f97316' },
-      { icon:'🕌', title:'أوقات الصلاة',      desc:'مواعيد دقيقة لموقعك',              path:'/prayer-times', color:'#10b981' },
-      { icon:'🧭', title:'اتجاه القبلة',      desc:'بوصلة الكعبة المشرفة',             path:'/qibla',        color:'#6366f1' },
-      { icon:'📿', title:'الأذكار والأدعية',  desc:'أذكار الصباح والمساء والنوم',      path:'/adhkar',       color:'#c9a84c' },
-      { icon:'📚', title:'نظام الحفظ',        desc:'تتبع حفظك مع ورد يومي',            path:'/hifz',         color:'#eab308' },
-      { icon:'📿', title:'الختمات',           desc:'ختماتك الشخصية والجماعية',          path:'/khatma',       color:'#e879f9' },
-      { icon:'📊', title:'لوحة التحكم',       desc:'إحصائياتك وتقدمك اليومي',          path:'/dashboard',    color:'#a78bfa' },
-      { icon:'🔍', title:'البحث',             desc:'ابحث في كل آيات القرآن',            path:'/search',       color:'#38bdf8' },
-      { icon:'📝', title:'الملاحظات',         desc:'دوّن تأملاتك على الآيات',           path:'/notes',        color:'#fb7185' },
-      { icon:'🏆', title:'المتصدرون',         desc:'أبرز القراء والحفّاظ',              path:'/leaderboard',  color:'#f59e0b' },
-      { icon:'✦',  title:'المساعد الذكي',     desc:'تفسير بالذكاء الاصطناعي',          path:'/reader',       color:'#60a5fa' },
-      { icon:'🗂️', title:'الأجزاء',          desc:'تصفح القرآن بالأجزاء الثلاثين',    path:'/reader',       color:'#34d399' },
-      { icon:'📜', title:'الإجازة والقراءات', desc:'القراءات العشر وأسانيد الإجازة',   path:'/ijaza',        color:'#94a3b8' },
-      { icon:'📿', title:'السبحة الإلكترونية', desc:'عدّاد تسبيح بأهداف وجلسات',         path:'/tasbih',       color:'#52b788' },
-      { icon:'✨', title:'آية اليوم',           desc:'آية مميزة كل يوم مع تفسير',          path:'/daily-ayah',   color:'#f59e0b' },
-      { icon:'📊', title:'التقرير الشهري',       desc:'إحصائياتك وخريطة قراءتك الشهرية',    path:'/report',       color:'#6366f1' },
-      { icon:'🌍', title:'الختمة الجماعية',   desc:'ختم القرآن مع الأهل والأحبة',      path:'/khatma-group', color:'#2dd4bf' },
-    ],
-  },
-  en: {
-    title: 'Nur Al-Quran', subtitle: 'Your companion in the Quran journey',
-    login: '🔑 Login', signup: '✨ Sign Up', dashboard: '📊 Dashboard',
-    help: 'Help Guide', privacy: 'Privacy', terms: 'Terms',
-    docs: 'Features Guide', support: 'Support',
-    features: [
-      { icon:'📖', title:'Read Quran',         desc:'114 Surahs in Ottoman script',      path:'/reader',       color:'#52b788' },
-      { icon:'📻', title:'Islamic Radio',      desc:'Quran, programs & nasheeds',        path:'/radio',        color:'#f97316' },
-      { icon:'🕌', title:'Prayer Times',       desc:'Accurate times for your city',      path:'/prayer-times', color:'#10b981' },
-      { icon:'🧭', title:'Qibla',              desc:'Compass to the Holy Kaaba',         path:'/qibla',        color:'#6366f1' },
-      { icon:'📿', title:'Dhikr & Dua',        desc:'Morning, evening & sleep adhkar',   path:'/adhkar',       color:'#c9a84c' },
-      { icon:'📚', title:'Hifz Tracker',       desc:'Track memorization with daily wird', path:'/hifz',       color:'#eab308' },
-      { icon:'📿', title:'Khatma',             desc:'Personal & group completions',      path:'/khatma',       color:'#e879f9' },
-      { icon:'📊', title:'Dashboard',          desc:'Daily stats & reading streaks',     path:'/dashboard',    color:'#a78bfa' },
-      { icon:'🔍', title:'Search',             desc:'Search all Quran verses',           path:'/search',       color:'#38bdf8' },
-      { icon:'📝', title:'Notes',              desc:'Annotate any verse',                path:'/notes',        color:'#fb7185' },
-      { icon:'🏆', title:'Leaderboard',        desc:'Top readers & memorizers',          path:'/leaderboard',  color:'#f59e0b' },
-      { icon:'✦',  title:'AI Assistant',       desc:'AI-powered tafsir',                 path:'/reader',       color:'#60a5fa' },
-      { icon:'🗂️', title:'30 Juz',            desc:'Browse by Juz & Hizb',              path:'/reader',       color:'#34d399' },
-      { icon:'📜', title:"Ijaza & Qira'at",   desc:'Ten readings & chain of narration',  path:'/ijaza',        color:'#94a3b8' },
-      { icon:'📿', title:'Tasbih Counter',     desc:'Digital rosary with sessions',        path:'/tasbih',       color:'#52b788' },
-      { icon:'✨', title:'Verse of the Day',   desc:'A featured verse daily with tafsir',  path:'/daily-ayah',   color:'#f59e0b' },
-      { icon:'📊', title:'Monthly Report',       desc:'Your reading stats & heatmap',        path:'/report',       color:'#6366f1' },
-      { icon:'🌍', title:'Group Khatma',       desc:'Complete Quran with loved ones',    path:'/khatma-group', color:'#2dd4bf' },
-    ],
-  },
-  tr: {
-    title: 'Nur Al-Kuran', subtitle: 'Kuran yolculuğunuzda rehberiniz',
-    login: '🔑 Giriş', signup: '✨ Kayıt Ol', dashboard: '📊 Panelim',
-    help: 'Yardım', privacy: 'Gizlilik', terms: 'Koşullar',
-    docs: 'Özellikler', support: 'Destek',
-    features: [
-      { icon:'📖', title:'Kuran Okuma',        desc:'Osmanlı hatlı 114 Sure',            path:'/reader',       color:'#52b788' },
-      { icon:'📻', title:'İslami Radyo',       desc:'Kuran, programlar ve ilahiler',     path:'/radio',        color:'#f97316' },
-      { icon:'🕌', title:'Namaz Vakitleri',    desc:'Konumuna göre doğru vakitler',      path:'/prayer-times', color:'#10b981' },
-      { icon:'🧭', title:'Kıble',              desc:"Kabe'ye pusula",                    path:'/qibla',        color:'#6366f1' },
-      { icon:'📿', title:'Dua & Zikir',        desc:'Sabah akşam ve uyku zikirleri',     path:'/adhkar',       color:'#c9a84c' },
-      { icon:'📚', title:'Hıfz Takip',         desc:'Günlük wird ile ezberleme takibi',  path:'/hifz',         color:'#eab308' },
-      { icon:'📿', title:'Hatim',              desc:'Kişisel ve grup hatmi',             path:'/khatma',       color:'#e879f9' },
-      { icon:'📊', title:'Kontrol Paneli',     desc:'Günlük istatistikler',              path:'/dashboard',    color:'#a78bfa' },
-      { icon:'🔍', title:'Arama',              desc:"Kuran'da ayet ara",                 path:'/search',       color:'#38bdf8' },
-      { icon:'📝', title:'Notlar',             desc:'Ayetlere not ekle',                 path:'/notes',        color:'#fb7185' },
-      { icon:'🏆', title:'Sıralama',           desc:'En iyi okuyucular',                 path:'/leaderboard',  color:'#f59e0b' },
-      { icon:'✦',  title:'Yapay Zeka',         desc:'AI ile tefsir',                     path:'/reader',       color:'#60a5fa' },
-      { icon:'🗂️', title:'30 Cüz',            desc:'Cüz ve Hizb ile göz at',            path:'/reader',       color:'#34d399' },
-      { icon:'📜', title:'İcazet',             desc:'Kıraat ilimleri ve senet',          path:'/ijaza',        color:'#94a3b8' },
-      { icon:'🌍', title:'Grup Hatmi',         desc:'Sevdiklerinizle birlikte hatim',    path:'/khatma-group', color:'#2dd4bf' },
-    ],
-  },
-  fr: {
-    title: 'Nur Al-Coran', subtitle: 'Votre compagnon dans le voyage coranique',
-    login: '🔑 Connexion', signup: "✨ S'inscrire", dashboard: '📊 Tableau de bord',
-    help: "Guide d'utilisation", privacy: 'Confidentialité', terms: 'Conditions',
-    docs: 'Guide des fonctionnalités', support: 'Support',
-    features: [
-      { icon:'📖', title:'Lire le Coran',      desc:'114 Sourates en écriture ottomane', path:'/reader',       color:'#52b788' },
-      { icon:'📻', title:'Radio Islamique',    desc:'Coran, émissions et anashid',       path:'/radio',        color:'#f97316' },
-      { icon:'🕌', title:'Heures de Prière',   desc:'Horaires précis pour ta ville',     path:'/prayer-times', color:'#10b981' },
-      { icon:'🧭', title:'Qibla',              desc:'Boussole vers la Kaaba',            path:'/qibla',        color:'#6366f1' },
-      { icon:'📿', title:'Dhikr & Douaa',      desc:'Invocations matin, soir et sommeil',path:'/adhkar',       color:'#c9a84c' },
-      { icon:'📚', title:'Suivi Hifz',         desc:'Suivi mémorisation avec wird',      path:'/hifz',         color:'#eab308' },
-      { icon:'📿', title:'Khatma',             desc:'Khatma personnelle et en groupe',   path:'/khatma',       color:'#e879f9' },
-      { icon:'📊', title:'Tableau de bord',    desc:'Statistiques et séries de lecture', path:'/dashboard',    color:'#a78bfa' },
-      { icon:'🔍', title:'Recherche',          desc:'Chercher dans tous les versets',    path:'/search',       color:'#38bdf8' },
-      { icon:'📝', title:'Notes',              desc:'Annoter des versets',               path:'/notes',        color:'#fb7185' },
-      { icon:'🏆', title:'Classement',         desc:'Meilleurs lecteurs et mémorisants', path:'/leaderboard',  color:'#f59e0b' },
-      { icon:'✦',  title:'Assistant IA',       desc:'Tafsir par intelligence artificielle',path:'/reader',    color:'#60a5fa' },
-      { icon:'🗂️', title:'30 Juz',            desc:'Parcourir par Juz et Hizb',         path:'/reader',       color:'#34d399' },
-      { icon:'📜', title:'Ijaza',              desc:'Sciences de récitation et chaînes', path:'/ijaza',        color:'#94a3b8' },
-      { icon:'🌍', title:'Khatma de groupe',   desc:'Terminer le Coran ensemble',        path:'/khatma-group', color:'#2dd4bf' },
-    ],
-  },
-  ur: {
-    title: 'نور القرآن', subtitle: 'قرآن کریم کے سفر میں آپ کا ساتھی',
-    login: '🔑 لاگ ان', signup: '✨ رجسٹر', dashboard: '📊 ڈیش بورڈ',
-    help: 'مدد', privacy: 'رازداری', terms: 'شرائط',
-    docs: 'خصوصیات کی رہنمائی', support: 'سپورٹ',
-    features: [
-      { icon:'📖', title:'قرآن پڑھیں',        desc:'عثمانی خط میں ۱۱۴ سورتیں',         path:'/reader',       color:'#52b788' },
-      { icon:'📻', title:'اسلامی ریڈیو',      desc:'قرآن، دینی پروگرام اور نشید',      path:'/radio',        color:'#f97316' },
-      { icon:'🕌', title:'نماز کے اوقات',     desc:'آپ کے شہر کے اوقات',               path:'/prayer-times', color:'#10b981' },
-      { icon:'🧭', title:'قبلہ',              desc:'کعبہ کی سمت',                       path:'/qibla',        color:'#6366f1' },
-      { icon:'📿', title:'دعا و ذکر',         desc:'صبح شام اور سونے کے اذکار',         path:'/adhkar',       color:'#c9a84c' },
-      { icon:'📚', title:'حفظ ٹریکر',         desc:'یومیہ ورد کے ساتھ حفظ ٹریکنگ',    path:'/hifz',         color:'#eab308' },
-      { icon:'📿', title:'ختم',               desc:'ذاتی اور گروہی ختم',               path:'/khatma',       color:'#e879f9' },
-      { icon:'📊', title:'ڈیش بورڈ',          desc:'روزانہ اعداد و شمار',              path:'/dashboard',    color:'#a78bfa' },
-      { icon:'🔍', title:'تلاش',              desc:'قرآن میں آیت تلاش کریں',           path:'/search',       color:'#38bdf8' },
-      { icon:'📝', title:'نوٹس',              desc:'آیات پر نوٹ لکھیں',               path:'/notes',        color:'#fb7185' },
-      { icon:'🏆', title:'لیڈربورڈ',          desc:'بہترین قارئین اور حافظ',            path:'/leaderboard',  color:'#f59e0b' },
-      { icon:'✦',  title:'AI مددگار',         desc:'AI سے تفسیر',                       path:'/reader',       color:'#60a5fa' },
-      { icon:'🗂️', title:'تیس پارے',         desc:'پاروں کے ذریعے تلاوت',             path:'/reader',       color:'#34d399' },
-      { icon:'📜', title:'اجازہ و قراءات',   desc:'قراءات کا علم اور سند',             path:'/ijaza',        color:'#94a3b8' },
-      { icon:'🌍', title:'گروپ ختم',          desc:'اپنوں کے ساتھ ختم القرآن',         path:'/khatma-group', color:'#2dd4bf' },
-    ],
-  },
-  id: {
-    title: 'Nur Al-Quran', subtitle: 'Teman perjalanan Quran Anda',
-    login: '🔑 Masuk', signup: '✨ Daftar', dashboard: '📊 Dashboard',
-    help: 'Panduan', privacy: 'Privasi', terms: 'Syarat',
-    docs: 'Panduan Fitur', support: 'Dukungan',
-    features: [
-      { icon:'📖', title:'Baca Al-Quran',      desc:'114 Surah tulisan Utsmani',         path:'/reader',       color:'#52b788' },
-      { icon:'📻', title:'Radio Islam',        desc:'Quran, program agama & nasyid',     path:'/radio',        color:'#f97316' },
-      { icon:'🕌', title:'Waktu Shalat',       desc:'Jadwal tepat untuk kotamu',         path:'/prayer-times', color:'#10b981' },
-      { icon:'🧭', title:'Kiblat',             desc:"Kompas ke Ka'bah",                  path:'/qibla',        color:'#6366f1' },
-      { icon:'📿', title:'Dzikir & Doa',       desc:'Dzikir pagi, sore dan tidur',       path:'/adhkar',       color:'#c9a84c' },
-      { icon:'📚', title:'Lacak Hafalan',      desc:'Pantau hafalan dengan wird harian', path:'/hifz',         color:'#eab308' },
-      { icon:'📿', title:'Khatam',             desc:'Khatam pribadi & kelompok',         path:'/khatma',       color:'#e879f9' },
-      { icon:'📊', title:'Dashboard',          desc:'Statistik dan rekam jejak membaca', path:'/dashboard',    color:'#a78bfa' },
-      { icon:'🔍', title:'Cari',               desc:'Cari ayat dalam Al-Quran',          path:'/search',       color:'#38bdf8' },
-      { icon:'📝', title:'Catatan',            desc:'Beri catatan pada ayat',            path:'/notes',        color:'#fb7185' },
-      { icon:'🏆', title:'Papan Peringkat',    desc:'Pembaca dan penghafal terbaik',     path:'/leaderboard',  color:'#f59e0b' },
-      { icon:'✦',  title:'Asisten AI',         desc:'Tafsir dengan kecerdasan buatan',   path:'/reader',       color:'#60a5fa' },
-      { icon:'🗂️', title:'30 Juz',            desc:'Telusuri per Juz dan Hizb',         path:'/reader',       color:'#34d399' },
-      { icon:'📜', title:'Ijazah & Qira\'at',  desc:'Ilmu qira\'at dan sanad',           path:'/ijaza',        color:'#94a3b8' },
-      { icon:'🌍', title:'Khatam Kelompok',    desc:'Khatamkan Al-Quran bersama',        path:'/khatma-group', color:'#2dd4bf' },
-    ],
-  },
+const UI = {
+  ar: { lead: 'اقرأ المصحف بالرسم العثماني، واستمع لكبار القرّاء، واحفظ بخطة تناسبك. مواقيت الصلاة والقبلة والأذكار في مكان واحد.', start: 'ابدأ القراءة', cont: 'تابع' },
+  en: { lead: 'Read the Mushaf in Uthmani script, listen to renowned reciters and memorise at your own pace — with prayer times, qibla and adhkar in one place.', start: 'Start reading', cont: 'Continue' },
+  tr: { lead: "Mushaf'ı Osmanlı hattıyla okuyun, büyük kârileri dinleyin ve kendi planınızla ezberleyin. Namaz vakitleri, kıble ve zikirler tek yerde.", start: 'Okumaya başla', cont: 'Devam et' },
+  fr: { lead: "Lisez le Mushaf en écriture uthmanie, écoutez les grands récitateurs et mémorisez à votre rythme — heures de prière, qibla et adhkar au même endroit.", start: 'Commencer la lecture', cont: 'Continuer' },
+  ur: { lead: 'عثمانی رسم الخط میں مصحف پڑھیں، بڑے قاریوں کو سنیں اور اپنے منصوبے سے حفظ کریں۔ نماز کے اوقات، قبلہ اور اذکار ایک جگہ۔', start: 'پڑھنا شروع کریں', cont: 'جاری رکھیں' },
+  id: { lead: 'Baca Mushaf dengan rasm Utsmani, dengarkan para qari ternama, dan hafalkan sesuai rencana Anda — jadwal salat, kiblat, dan dzikir di satu tempat.', start: 'Mulai membaca', cont: 'Lanjutkan' },
 };
 
-function detectLang() {
-  const saved = localStorage.getItem('nq_ui_lang');
-  if (saved && T[saved]) return saved;
-  const b = (navigator.language || 'ar').split('-')[0].toLowerCase();
-  if (T[b]) return b;
-  if (b === 'ms') return 'id';
-  if (['az','kk','uz','tk'].includes(b)) return 'tr';
-  return 'ar';
-}
+// Home "bento": which features get a card, and which are wide.
+const BENTO = [
+  { key: 'reader', wide: true, stat: '١١٤ سورة · ٦٢٣٦ آية', desc: 'المصحف كاملاً بالرسم العثماني، آية بآية مع ترجمة إن شئت، وتفاسير معتمدة ومعاني الكلمات.' },
+  { key: 'listen', desc: '١٦ قارئاً من كبار القرّاء، مع تظليل الآية أثناء التلاوة وتكرار المقطع للحفظ.' },
+  { key: 'prayer', desc: 'مواقيت دقيقة لمدينتك بطريقة الحساب المعتمدة في بلدك، وتنبيه بالأذان.' },
+  { key: 'hifz', desc: 'خريطة لحفظك، وورد يومي، ومراجعة لما حفظت حتى لا يتفلّت.' },
+  { key: 'qibla', desc: 'اتجاه الكعبة المشرّفة من موقعك بالدرجة.' },
+  { key: 'group', wide: true, stat: '٣٠ جزءاً · ٦٠ حزباً', desc: 'اجمع أهلك وأحبابك على ختمة واحدة تُهدى لروح من تحب. وزّعوا الأجزاء، وتابعوا التقدّم معاً.' },
+  { key: 'adhkar', desc: 'أذكار الصباح والمساء والنوم وبعد الصلاة.' },
+  { key: 'tasbih', desc: 'عدّاد تسبيح بأهداف يومية وجلسات.' },
+  { key: 'radio', desc: 'إذاعات القرآن الكريم، بث مباشر.' },
+  { key: 'search', desc: 'ابحث في الآيات بلا تشكيل، أو باسم السورة، أو برقم الآية.' },
+];
+
+// decorative rosette for the group-khatma card (not real data)
+const DECOR = Array.from({ length: 30 }, (_, i) => (i < 19 ? 'done' : i < 24 ? 'taken' : 'free'));
 
 export default function WelcomePage() {
-  const navigate = useNavigate();
+  const lang = useLang();
+  const ui = UI[lang] || UI.ar;
+  const [state] = useStore();
+  const settings = usePublicSettings();
   const { user } = useAuth();
-  const [lang,     setLang]     = useState(detectLang);
-  const [exiting,  setExiting]  = useState(false);
-  const [showLangs,setShowLangs]= useState(false);
+  const groups = useMemo(() => visibleGroups(settings, user), [settings, user]);
+  const byKey = useMemo(() => Object.fromEntries(groups.flatMap(g => g.items).map(i => [i.key, i])), [groups]);
 
-  const t   = T[lang] || T.ar;
-  const dir = LANGS.find(l => l.code === lang)?.dir || 'rtl';
-
-  function go(path) {
-    setExiting(true);
-    setTimeout(() => navigate(path), 260);
-  }
-
-  function changeLang(code) {
-    setLang(code);
-    localStorage.setItem('nq_ui_lang', code);
-    setShowLangs(false);
-    // sync html dir
-    const l = LANGS.find(x => x.code === code);
-    document.documentElement.setAttribute('dir', l?.dir || 'rtl');
-    document.documentElement.setAttribute('lang', code);
-  }
-
-  const currentLang = LANGS.find(l => l.code === lang);
+  const s = state.currentSurah || 1, a = state.currentAyah || 1;
+  const hasProgress = !(s === 1 && a === 1);
 
   return (
-    <div className={`${styles.page} ${exiting ? styles.exiting : ''}`} dir={dir}>
-      {/* Background */}
-      <div className={styles.bg}>
-        <div className={styles.bgRing1} /><div className={styles.bgRing2} /><div className={styles.bgRing3} />
-        <div className={styles.bgStar}>✦</div>
+    <div className={styles.home}>
+      {/* ── hero ── */}
+      <section className={styles.hero} aria-labelledby="home-ayah">
+        <Pattern />
+        <div className={styles.rays} aria-hidden="true" />
+        <Shamsa className={styles.shamsa} />
+        <svg className={styles.arch} viewBox="0 0 760 700" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M20 700V300C20 175 210 70 380 20 550 70 740 175 740 300V700Z M40 700V306C40 190 220 92 380 44 540 92 720 190 720 306V700Z" fill="url(#nq-girih)" fillRule="evenodd" opacity=".9" />
+          <path d="M20 700V300C20 175 210 70 380 20 550 70 740 175 740 300V700" fill="none" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M40 700V306C40 190 220 92 380 44 540 92 720 190 720 306V700" fill="none" stroke="currentColor" strokeOpacity=".55" strokeWidth="1" />
+          <path d="M64 700V314C64 206 232 116 380 74 528 116 696 206 696 314V700" fill="none" stroke="currentColor" strokeOpacity=".28" strokeWidth="1" />
+        </svg>
+        <Frieze className={styles.heroFrieze} />
+        <div className={`nq-wrap ${styles.heroWrap}`}>
+          <div className={styles.heroIn}>
+            <h1 id="home-ayah" className={styles.qh} lang="ar">﴿قَدْ جَاءَكُم مِّنَ ٱللَّهِ نُورٌ وَكِتَٰبٌ مُّبِينٌ﴾</h1>
+            <p className={styles.qref}>سورة المائدة · ١٥</p>
+            <p className={`nq-lead ${styles.heroLead}`}>{ui.lead}</p>
+            <div className={styles.ctas}>
+              <Link className="nq-btn gold" to={hasProgress ? `/reader?surah=${s}&ayah=${a}` : '/reader?surah=1&ayah=1'}>
+                <Icon name="book" />{ui.start}
+              </Link>
+              {hasProgress && (
+                <Link className="nq-btn ghost" to={`/reader?surah=${s}&ayah=${a}`}>
+                  {ui.cont}: {SURAHS_META[s - 1]?.[0]} · الآية {toAr(a)}
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── prayer bar + search ── */}
+      <div className={`nq-wrap ${styles.prayerbar}`}>
+        <PrayerBar />
+        <button type="button" className={styles.searchbox} onClick={openPalette}>
+          <Icon name="search" style={{ color: 'var(--gold)' }} />
+          <span>ابحث عن سورة أو ميزة، أو اكتب رقم آية مثل ٢:٢٥٥</span>
+          <span className="nq-kbd">/</span>
+        </button>
       </div>
 
-      {/* Top bar */}
-      <div className={styles.topBar}>
-        {/* Language switcher */}
-        <div className={styles.langWrap}>
-          <button className={styles.langBtn} onClick={() => setShowLangs(s => !s)}>
-            <span>{currentLang?.flag}</span>
-            <span className={styles.langLabel}>{currentLang?.label}</span>
-            <span className={styles.langCaret}>{showLangs ? '▴' : '▾'}</span>
+      {/* ── verse of the day ── */}
+      <div className={`nq-wrap ${styles.sec}`}>
+        <DailyAyah />
+      </div>
+
+      {/* ── features ── */}
+      <section className={`nq-wrap ${styles.sec}`} aria-labelledby="home-feats">
+        <div className={styles.secHead}>
+          <Divider />
+          <h2 id="home-feats" className="nq-h-sec">كل ما يعينك على صحبة القرآن</h2>
+          <p className="nq-lead">أدوات مصمّمة باحترام للنص، تعمل على الجوال والحاسوب، وتتبع وضع جهازك الليلي والنهاري.</p>
+        </div>
+        <div className={styles.bento}>
+          {BENTO.filter(b => byKey[b.key]).map(b => {
+            const it = byKey[b.key];
+            const t = featureText(it, lang);
+            return (
+              <Link key={b.key} to={it.path} className={`nq-card ${styles.feat} ${b.wide ? styles.wide : ''}`}>
+                {b.wide && <Pattern />}
+                <Badge8 icon={it.icon} />
+                <h3>{t.title}</h3>
+                <p>{lang === 'ar' ? b.desc : t.desc}</p>
+                {b.stat && <span className={`nq-num ${styles.stat}`}>{b.stat}</span>}
+              </Link>
+            );
+          })}
+        </div>
+        <div className={styles.more}>
+          <Link to="/docs" className="nq-btn ghost"><Icon name="grid" />كل المميزات</Link>
+        </div>
+      </section>
+
+      {/* ── surah index ── */}
+      <SurahIndex />
+
+      {/* ── group khatma ── */}
+      {byKey.group && (
+        <section className={`nq-wrap ${styles.sec}`}>
+          <div className={`nq-card ${styles.soul}`}>
+            <Pattern />
+            <div className={styles.soulText}>
+              <span className="nq-eyebrow">الختمة الجماعية</span>
+              <h2 className="nq-h-sec">ختمةٌ واحدة، وقلوبٌ كثيرة</h2>
+              <p className="nq-lead">أنشئ ختمة لروح من فقدت، وشارك رابطها مع أهلك وأحبابك. كل من يقرأ جزءاً يظهر في الوردة، حتى تكتمل الختمة ويُرفع الدعاء.</p>
+              <div><Link className="nq-btn gold" to="/khatma-group"><Icon name="users" />ابدأ ختمة جماعية</Link></div>
+            </div>
+            <div className={styles.soulRose}>
+              <Rosette states={DECOR} label="مثال لوردة الختمة الجماعية" hideCount style={{ width: 'min(300px,100%)', height: 'auto' }} />
+            </div>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+// ── live prayer bar ─────────────────────────────────────────────────────────
+function hijriToday() {
+  try { return new Intl.DateTimeFormat('ar-EG-u-ca-islamic-umalqura', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()); } catch { return ''; }
+}
+
+function PrayerBar() {
+  const city = useMemo(savedCity, []);
+  const [times, setTimes] = useState(null);
+  const [now, setNow] = useState(() => cityNow(city?.tz).secs);
+  useEffect(() => {
+    if (!city) return;
+    let alive = true;
+    loadTodayTimes(city).then(t => { if (alive) setTimes(t); });
+    const id = setInterval(() => setNow(cityNow(city.tz).secs), 1000);
+    return () => { alive = false; clearInterval(id); };
+  }, [city]);
+
+  if (!city) {
+    return (
+      <div className={`nq-card ${styles.pb} ${styles.pbEmpty}`}>
+        <Badge8 icon="mosque" />
+        <div>
+          <b className={styles.pbTitle}>مواقيت الصلاة في مدينتك</b>
+          <small className={styles.pbSmall}>{hijriToday()} · حدّد مدينتك مرة واحدة، وتظهر المواقيت هنا كل يوم.</small>
+        </div>
+        <Link to="/prayer-times" className="nq-btn gold sm"><Icon name="pin" />حدّد مدينتك</Link>
+      </div>
+    );
+  }
+
+  const nx = times ? nextPrayer(times, now) : null;
+  const pad = n => String(n).padStart(2, '0');
+  const cd = nx ? toAr(`${pad(Math.floor(nx.left / 3600))}:${pad(Math.floor(nx.left % 3600 / 60))}:${pad(nx.left % 60)}`) : '--:--:--';
+  return (
+    <Link to="/prayer-times" className={`nq-card ${styles.pb}`} aria-label="مواقيت الصلاة اليوم">
+      <div className={styles.pbNext}>
+        <small><Icon name="pin" style={{ width: '1em', height: '1em' }} /> {city.name || 'مدينتك'} · {hijriToday()}</small>
+        <b>الصلاة القادمة: {nx ? PRAYER_NAMES[nx.key] : '…'}</b>
+      </div>
+      <div className={styles.pbRow}>
+        {PRAYER_ORDER.map(k => {
+          const f = times ? fmt12(times[k]) : { t: '--:--' };
+          const isNext = nx && nx.key === k;
+          const past = times && !isNext && !nx?.tomorrow && times[k] && (+times[k].slice(0, 2) * 3600 + +times[k].slice(3, 5) * 60) < now;
+          return (
+            <div key={k} className={`${isNext ? styles.now : ''} ${past ? styles.past : ''}`}>
+              {PRAYER_NAMES[k]}<b className="nq-num">{toAr(f.t)}</b>
+            </div>
+          );
+        })}
+      </div>
+      <div className={styles.pbNext} style={{ textAlign: 'end' }}>
+        <small>متبقٍّ</small>
+        <div className={`nq-num ${styles.cd}`} aria-live="off">{cd}</div>
+      </div>
+    </Link>
+  );
+}
+
+// ── verse of the day ────────────────────────────────────────────────────────
+function DailyAyah() {
+  const navigate = useNavigate();
+  const d = useMemo(getDailyAyah, []);
+  const [text, setText] = useState('');
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    fetchAyahWithTafsir(d.surah, d.ayah).then(r => { if (alive) setText(r.text); }).catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, [d]);
+  const name = SURAHS_META[d.surah - 1][0];
+  return (
+    <div className={`nq-card ${styles.daily}`}>
+      <Corners />
+      <span className="nq-eyebrow">آية اليوم</span>
+      {text
+        ? <p className={`nq-q ${styles.dailyQ}`} lang="ar">{text.replace(/^﻿/, '')} <AyahMark n={d.ayah} /></p>
+        : <p className={`nq-q ${styles.dailyQ} ${styles.dailyWait}`}>{failed ? d.reason : '…'}</p>}
+      <p className={styles.dailyRef}>سورة {name} · الآية {toAr(d.ayah)}</p>
+      <div className={styles.dailyActs}>
+        <button type="button" className="nq-btn ghost sm" onClick={() => navigate(`/reader?surah=${d.surah}&ayah=${d.ayah}`)}><Icon name="book" />اقرأ في المصحف</button>
+        <Link className="nq-btn ghost sm" to="/daily-ayah"><Icon name="doc" />التفسير</Link>
+        {text && (
+          <button type="button" className="nq-btn ghost sm"
+            onClick={() => window.dispatchEvent(new CustomEvent('shareAyah', { detail: { surah: d.surah, ayah: d.ayah, text } }))}>
+            <Icon name="share" />شارك كصورة
           </button>
-          {showLangs && (
-            <>
-              <div className={styles.langBackdrop} onClick={() => setShowLangs(false)} />
-              <div className={styles.langDropdown}>
-                {LANGS.map(l => (
-                  <button key={l.code}
-                    className={`${styles.langOption} ${lang === l.code ? styles.langOptionActive : ''}`}
-                    onClick={() => changeLang(l.code)} dir={l.dir}>
-                    <span>{l.flag}</span><span>{l.label}</span>
-                    {lang === l.code && <span className={styles.langCheck}>✓</span>}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Auth buttons */}
-        <div className={styles.authBtns}>
-          {user
-            ? <button className={styles.authBtn} onClick={() => go('/dashboard')}>{t.dashboard}</button>
-            : <>
-                <button className={styles.authBtnGhost} onClick={() => go('/login')}>{t.login}</button>
-                <button className={styles.authBtn}      onClick={() => go('/signup')}>{t.signup}</button>
-              </>
-          }
-        </div>
-      </div>
-
-      {/* Logo */}
-      <div className={styles.logo}>
-        <img src="/brand/logo-mark.svg" alt="" width="88" height="104" style={{ display: 'block', margin: '0 auto 12px' }} />
-        <h1>{t.title}</h1>
-        <p>{t.subtitle}</p>
-      </div>
-
-      {/* Features grid */}
-      <div className={styles.grid}>
-        {t.features.map((f, i) => (
-          <button key={i} className={styles.featureBtn}
-            style={{ '--accent': f.color, animationDelay: `${i * 40}ms` }}
-            onClick={() => go(f.path)}>
-            <span className={styles.fIcon}>{f.icon}</span>
-            <span className={styles.fTitle}>{f.title}</span>
-            <span className={styles.fDesc}>{f.desc}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Footer */}
-      <div className={styles.footer}>
-        <div className={styles.footerLinks}>
-          <button className={styles.footerLink} onClick={() => go('/help')}>📘 {t.help}</button>
-          <span className={styles.footerDot}>·</span>
-          <button className={styles.footerLink} onClick={() => go('/docs')}>📄 {t.docs}</button>
-          <span className={styles.footerDot}>·</span>
-          <button className={styles.footerLink} onClick={() => go('/support')}>💬 {t.support}</button>
-          <span className={styles.footerDot}>·</span>
-          <button className={styles.footerLink} onClick={() => go('/privacy')}>🔒 {t.privacy}</button>
-          <span className={styles.footerDot}>·</span>
-          <button className={styles.footerLink} onClick={() => go('/terms')}>📋 {t.terms}</button>
-        </div>
-        <div className={styles.footerBrand}>نور القرآن © {new Date().getFullYear()}</div>
+        )}
       </div>
     </div>
+  );
+}
+
+// ── surah index ─────────────────────────────────────────────────────────────
+function SurahIndex() {
+  const navigate = useNavigate();
+  const [filter, setFilter] = useState('all');
+  const [q, setQ] = useState('');
+  const [all, setAll] = useState(false);
+  const list = useMemo(() => {
+    const nq = normalizeArabic(q.trim());
+    const num = +q.trim().replace(/[٠-٩]/g, x => '٠١٢٣٤٥٦٧٨٩'.indexOf(x));
+    return SURAHS_META.map((m, i) => ({ m, n: i + 1 })).filter(({ m, n }) =>
+      (filter === 'all' || m[3] === filter) &&
+      (!nq || normalizeArabic(m[0]).includes(nq) || m[1].toLowerCase().includes(q.trim().toLowerCase()) || num === n));
+  }, [filter, q]);
+  const shown = all || q ? list : list.slice(0, 24);
+  return (
+    <section className={`nq-wrap ${styles.sec}`} aria-labelledby="home-index">
+      <div className={styles.secHead}>
+        <Divider />
+        <h2 id="home-index" className="nq-h-sec">فهرس السور</h2>
+        <p className="nq-lead">١١٤ سورة · ٦٢٣٦ آية</p>
+      </div>
+      <div className={styles.indexTools}>
+        <div className="nq-seg" role="group" aria-label="تصفية السور">
+          {[['all', 'الكل'], ['مكية', 'مكية'], ['مدنية', 'مدنية']].map(([v, l]) => (
+            <button key={v} type="button" aria-pressed={filter === v} onClick={() => setFilter(v)}>{l}</button>
+          ))}
+        </div>
+        <label className={`nq-input ${styles.miniSearch}`}>
+          <Icon name="search" />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="اسم السورة أو رقمها" aria-label="ابحث عن سورة" />
+        </label>
+      </div>
+      <div className={styles.surahs}>
+        {shown.map(({ m, n }) => (
+          <button key={n} type="button" className={`nq-card ${styles.sura}`} onClick={() => navigate(`/reader?surah=${n}&ayah=1`)}>
+            <Badge8 size={46}>{toAr(n)}</Badge8>
+            <span>
+              <span className={styles.suraName}>{m[0]}</span>
+              <span className={styles.suraMeta}>{m[3]} · {toAr(m[2])} آية</span>
+            </span>
+            <span className={styles.suraEn}>{m[1]}</span>
+          </button>
+        ))}
+        {shown.length === 0 && <p style={{ color: 'var(--muted)' }}>لا توجد سورة بهذا الاسم.</p>}
+      </div>
+      {!all && !q && list.length > 24 && (
+        <div className={styles.more}><button type="button" className="nq-btn ghost" onClick={() => setAll(true)}>عرض كل السور</button></div>
+      )}
+    </section>
   );
 }

@@ -4,7 +4,8 @@ import { Routes, Route, useLocation, Link } from 'react-router-dom';
 import { useStore, setGlobal } from './store';
 import { SURAHS_META } from './data';
 import Toolbar from './components/Toolbar';
-import Header          from './components/Header';
+import { SiteHeader, SiteFooter, SiteChrome } from './components/shell/Shell';
+import { OrnamentDefs } from './components/ornaments/Ornaments';
 import Sidebar         from './components/Sidebar';
 import Reader          from './components/Reader';
 import AudioPlayer     from './components/AudioPlayer';
@@ -12,7 +13,6 @@ import Toast           from './components/Toast';
 import AIAssistant     from './components/AIAssistant';
 import QuickNoteWidget from './components/QuickNoteWidget';
 import ShareCard       from './components/ShareCard';
-import BottomNav       from './components/BottomNav';
 import LoginPage       from './pages/LoginPage';
 import SignupPage      from './pages/SignupPage';
 import DashboardPage   from './pages/DashboardPage';
@@ -62,7 +62,7 @@ function ReaderLayout() {
   return (
     <div className={styles.appRoot}>
       <div className={styles.stickyTop}>
-        <Header />
+        <SiteHeader />
         <Toolbar />
         {/* Reading progress — pinned to the bottom edge of the sticky header */}
         <div className={styles.progressTrack}>
@@ -78,8 +78,14 @@ function ReaderLayout() {
   );
 }
 
-function FullLayout({ children }) {
-  return <div className={styles.fullPage}>{children}</div>;
+function FullLayout({ children, footer = true }) {
+  return (
+    <>
+      <SiteHeader />
+      <main id="main" className={styles.fullPage}>{children}</main>
+      {footer && <SiteFooter />}
+    </>
+  );
 }
 
 // Shown in place of a page whose feature the admin switched off.
@@ -151,11 +157,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const saved = localStorage.getItem('nq_theme');
-    if (saved === 'light') {
-      document.body.classList.add('light');
-      setGlobal({ darkMode: false });
-    }
     const savedSize = localStorage.getItem('nq_fontSize');
     if (savedSize) {
       document.documentElement.style.setProperty('--font-size', savedSize + 'px');
@@ -191,6 +192,7 @@ export default function App() {
 
   return (
     <>
+      <OrnamentDefs />
       {!path.startsWith('/admin') && <AnnouncementBanner text={(settings.announcement || '').trim()} />}
       <ErrorBoundary>
       <Suspense fallback={
@@ -199,7 +201,7 @@ export default function App() {
         </div>
       }>
       <Routes>
-        <Route path="/"             element={<WelcomePage />} />
+        <Route path="/"             element={<FullLayout><WelcomePage /></FullLayout>} />
         <Route path="/reader"       element={<ReaderLayout />} />
         <Route path="/login"        element={<FullLayout><LoginPage /></FullLayout>} />
         <Route path="/signup"       element={<FullLayout><SignupPage /></FullLayout>} />
@@ -235,12 +237,12 @@ export default function App() {
       </Suspense>
       </ErrorBoundary>
 
+      {!path.startsWith('/admin') && path !== '/auth/callback' && <ExtraBoundary><SiteChrome /></ExtraBoundary>}
       {!hideExtras && (
         <>
           {featureOn(settings, 'ai_assistant') && <ExtraBoundary><AIAssistant /></ExtraBoundary>}
           <ExtraBoundary><QuickNoteWidget /></ExtraBoundary>
           <ExtraBoundary><ShareCard /></ExtraBoundary>
-          <ExtraBoundary><BottomNav /></ExtraBoundary>
           <ExtraBoundary><Toast /></ExtraBoundary>
         </>
       )}

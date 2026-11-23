@@ -42,7 +42,7 @@ function getDailyIndex() {
   const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
   return dayOfYear % FEATURED_AYAHS.length;
 }
-function getDailyAyah() {
+export function getDailyAyah() {
   return FEATURED_AYAHS[getDailyIndex()];
 }
 

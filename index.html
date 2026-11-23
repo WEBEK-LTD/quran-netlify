@@ -84,7 +84,23 @@
     <!-- ═══ Fonts ════════════════════════════════════════════════════════════ -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Amiri:wght@400;700&family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600&display=swap" rel="stylesheet" />
+    <script>
+      /* Apply the saved appearance before first paint (no flash). Mirrors src/appearance.js. */
+      (function () {
+        try {
+          var r = document.documentElement, a = {};
+          try { a = JSON.parse(localStorage.getItem("nq_appearance") || "{}") || {}; } catch (e) {}
+          var m = a.mode || (localStorage.getItem("nq_theme") === "light" ? "light" : "auto");
+          var dark = m === "dark" || m === "contrast" || (m === "auto" && !(window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches));
+          r.setAttribute("data-mode", m);
+          r.setAttribute("data-scheme", dark ? "dark" : "light");
+          r.setAttribute("data-cb", a.cb ? "on" : "off");
+          r.setAttribute("data-reduce", a.reduce ? "on" : "off");
+          if (a.size && a.size !== 100) r.style.fontSize = (16 * a.size / 100) + "px";
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -5,6 +5,7 @@ import { SURAHS_META } from '../data';
 import { useAuth } from '../hooks/useAuth';
 import { aiChat, errorMessage } from '../backend';
 import styles from './AIAssistant.module.css';
+import { Icon } from './ornaments/Ornaments';
 
 // ─── Suggested questions per context ─────────────────────────────────────────
 function getSuggestions(surahNum, ayahNum) {
@@ -22,7 +23,7 @@ function Bubble({ msg }) {
   const isUser = msg.role === 'user';
   return (
     <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.aiBubble}`}>
-      {!isUser && <div className={styles.aiAvatar}>✦</div>}
+      {!isUser && <div className={styles.aiAvatar}><Icon name="chat" /></div>}
       <div className={styles.bubbleContent}>
         {msg.streaming
           ? <span>{msg.content}<span className={styles.cursor} /></span>
@@ -37,9 +38,9 @@ function Bubble({ msg }) {
 // user/assistant turns (last 12) and the ayah being read.
 function aiErrorText(e) {
   const code = e && e.code;
-  if (code === 'unauthenticated') return '🔐 سجّل الدخول لاستخدام المساعد الذكي';
-  if (code === 'ai_not_configured') return '🛠️ المساعد الذكي غير مُفعّل حالياً — لم تُضبط إعداداته بعد من الإدارة';
-  if (code === 'feature_disabled') return '⏸️ المساعد الذكي متوقف مؤقتاً من الإدارة';
+  if (code === 'unauthenticated') return 'سجّل الدخول لاستخدام المساعد';
+  if (code === 'ai_not_configured') return 'المساعد غير مُفعّل حالياً — لم تُضبط إعداداته بعد من الإدارة';
+  if (code === 'feature_disabled') return 'المساعد متوقف مؤقتاً من الإدارة';
   if (code === 'rate_limited') return '⏳ وصلت للحد المسموح من الأسئلة هذه الساعة — حاول بعد قليل';
   return '⚠️ ' + errorMessage(e, 'تعذّر الحصول على إجابة، حاول مرة أخرى');
 }
@@ -157,9 +158,9 @@ export default function AIAssistant() {
       <button
         className={`${styles.fab} ${open ? styles.fabOpen : ''}`}
         onClick={() => setOpen(o => !o)}
-        title="المساعد الإسلامي"
+        title="المساعد" aria-label="المساعد"
       >
-        {open ? '✕' : '✦'}
+        {open ? <Icon name="x" /> : <Icon name="chat" />}
         {!open && <span className={styles.fabPulse} />}
       </button>
 
@@ -169,7 +170,7 @@ export default function AIAssistant() {
           {/* Header */}
           <div className={styles.panelHeader}>
             <div className={styles.headerInfo}>
-              <div className={styles.headerIcon}>✦</div>
+              <div className={styles.headerIcon}><Icon name="chat" /></div>
               <div>
                 <h3>المساعد الإسلامي</h3>
                 <p>سورة {surahName} — الآية {ayahNum}</p>
@@ -189,21 +190,21 @@ export default function AIAssistant() {
           <div className={styles.messages}>
             {isEmpty && !user && !authLoading && (
               <div className={styles.emptyState}>
-                <div className={styles.emptyIcon}>🔐</div>
+                <div className={styles.emptyIcon}><Icon name="lock" /></div>
                 <p className={styles.emptyTitle}>سجّل الدخول لاستخدام المساعد</p>
-                <p className={styles.emptySub}>المساعد الذكي متاح للمستخدمين المسجّلين فقط</p>
+                <p className={styles.emptySub}>المساعد متاح للمستخدمين المسجّلين فقط</p>
                 <div className={styles.suggestions}>
                   <Link to="/login" className={styles.suggestion} onClick={() => setOpen(false)}
-                    style={{ textAlign: 'center', textDecoration: 'none' }}>🔑 تسجيل الدخول</Link>
+                    style={{ textAlign: 'center', textDecoration: 'none' }}>تسجيل الدخول</Link>
                   <Link to="/signup" className={styles.suggestion} onClick={() => setOpen(false)}
-                    style={{ textAlign: 'center', textDecoration: 'none' }}>✨ إنشاء حساب</Link>
+                    style={{ textAlign: 'center', textDecoration: 'none' }}>إنشاء حساب</Link>
                 </div>
               </div>
             )}
 
             {isEmpty && (user || authLoading) && (
               <div className={styles.emptyState}>
-                <div className={styles.emptyIcon}>✦</div>
+                <div className={styles.emptyIcon}><Icon name="chat" /></div>
                 <p className={styles.emptyTitle}>اسألني عن القرآن الكريم</p>
                 <p className={styles.emptySub}>أنا هنا لمساعدتك في فهم الآيات والتفسير والفقه</p>
 

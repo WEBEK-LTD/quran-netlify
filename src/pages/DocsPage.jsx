@@ -59,9 +59,9 @@ const FEATURES = [
     desc:'سجّل ختماتك الشخصية والجماعية.',
     points:['ختمات شخصية مع التاريخ','ختمة جماعية مع الأهل','كود مشاركة','إحصائيات الختمات'],
   },
-  { icon:'✦', color:'#e879f9', title:'المساعد الذكي', path:'/reader', badge:'AI',
-    desc:'تفسير ذكي بتقنية الذكاء الاصطناعي.',
-    points:['اضغط على أي آية ثم "تفسير ذكي"','شرح مبسّط للمعنى','ربط بالسياق'],
+  { icon:'💬', color:'#e879f9', title:'المساعد', path:'/reader', badge:'سؤال',
+    desc:'اسأل عن معنى آية أو كلمة.',
+    points:['اضغط على أي آية ثم «اسأل المساعد»','شرح مبسّط للمعنى','ربط بالسياق'],
   },
   { icon:'🏆', color:'#fbbf24', title:'لوحة المتصدرين', path:'/leaderboard', badge:'منافسة',
     desc:'نافس في القراءة والحفظ.',
@@ -107,7 +107,6 @@ export default function DocsPage() {
         <div className={styles.heroSub}>
           <span className={styles.statBadge}>📖 {FEATURES.length} ميزة</span>
           <span className={styles.statBadge}>🆕 4 ميزات جديدة</span>
-          <span className={styles.statBadge}>🤖 ذكاء اصطناعي</span>
         </div>
       </div>
 
