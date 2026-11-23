@@ -338,6 +338,7 @@ export default function Reader() {
     <p className={`${styles.basm} ${basmalaPlaying ? styles.playing : ''}`}
       id={built.basmalaKufi ? `ayah-${built.basmalaKufi}` : undefined}
       data-kufi={built.basmalaKufi || undefined}
+      lang="ar" dir="rtl"
       style={{ fontFamily: quranFont }}>
       {BASMALA_TEXT}
     </p>
@@ -374,7 +375,7 @@ export default function Reader() {
             {ready && (
               <>
                 {basmalaLine}
-                <p className={styles.mtext} style={{ fontFamily: quranFont }}>
+                <p className={styles.mtext} lang="ar" dir="rtl" style={{ fontFamily: quranFont }}>
                   {built.items.map(item => (
                     <span key={item.uid}>
                       <span
@@ -430,7 +431,7 @@ export default function Reader() {
                   <span className={styles.cardRef}>{tr('{name} · الآية {n}', { name: sName, n: toAr(item.label) })}</span>
                   {playing && <span className={`nq-pill on ${styles.nowPill}`}><Icon name="head" />{state.isPlaying ? tr('يُتلى الآن') : tr('متوقف')}</span>}
                 </div>
-                <p className={styles.cardText} style={{ fontFamily: quranFont }}>
+                <p className={styles.cardText} lang="ar" dir="rtl" style={{ fontFamily: quranFont }}>
                   {item.text}{' '}<AyahMark n={item.label} />
                 </p>
                 {trans && <p className={styles.trans} dir={transDir}>{trans}</p>}

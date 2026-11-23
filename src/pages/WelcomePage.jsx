@@ -63,7 +63,7 @@ export default function WelcomePage() {
         <Frieze className={styles.heroFrieze} />
         <div className={`nq-wrap ${styles.heroWrap}`}>
           <div className={styles.heroIn}>
-            <h1 id="home-ayah" className={styles.qh} lang="ar">﴿قَدْ جَاءَكُم مِّنَ ٱللَّهِ نُورٌ وَكِتَٰبٌ مُّبِينٌ﴾</h1>
+            <h1 id="home-ayah" className={styles.qh} lang="ar" dir="rtl">﴿قَدْ جَاءَكُم مِّنَ ٱللَّهِ نُورٌ وَكِتَٰبٌ مُّبِينٌ﴾</h1>
             <p className={styles.qref}><span lang="ar">سورة المائدة · ١٥</span>{lang !== 'ar' && <> · {tr('{name} {s}:{a}', { name: surahName(5), s: num(5), a: num(15) })}</>}</p>
             <p className={`nq-lead ${styles.heroLead}`}>{tr('اقرأ المصحف بالرسم العثماني، واستمع لكبار القرّاء، واحفظ بخطة تناسبك. مواقيت الصلاة والقبلة والأذكار في مكان واحد.')}</p>
             <div className={styles.ctas}>
@@ -223,8 +223,8 @@ function DailyAyah() {
       <Corners />
       <span className="nq-eyebrow">{tr('آية اليوم')}</span>
       {text
-        ? <p className={`nq-q ${styles.dailyQ}`} lang="ar">{text.replace(/^﻿/, '')} <AyahMark n={d.ayah} /></p>
-        : <p className={`nq-q ${styles.dailyQ} ${styles.dailyWait}`} lang="ar">{failed ? d.reason : '…'}</p>}
+        ? <p className={`nq-q ${styles.dailyQ}`} lang="ar" dir="rtl">{text.replace(/^﻿/, '')} <AyahMark n={d.ayah} /></p>
+        : <p className={`nq-q ${styles.dailyQ} ${styles.dailyWait}`} lang="ar" dir="rtl">{failed ? d.reason : '…'}</p>}
       <p className={styles.dailyRef}>{tr('سورة {name} · الآية {n}', { name: surahName(d.surah), n: num(d.ayah) })}</p>
       <div className={styles.dailyActs}>
         <button type="button" className="nq-btn ghost sm" onClick={() => navigate(`/reader?surah=${d.surah}&ayah=${d.ayah}`)}><Icon name="book" />{tr('اقرأ في المصحف')}</button>

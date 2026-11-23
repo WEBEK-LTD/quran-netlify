@@ -2,8 +2,8 @@
 import { useAuth, displayNameOf, avatarOf } from '../hooks/useAuth';
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { updateProfile, changePassword, resendVerification, exportMyData, errorMessage } from '../backend';
-import { authErrorText } from '../authErrors';
+import { updateProfile, changePassword, resendVerification, exportMyData } from '../backend';
+import { authErrorText, apiErrorText } from '../authErrors';
 import { useStore, setGlobal, savePref } from '../store';
 import { READERS, TRANSLATIONS } from '../data';
 import { MODES, useAppearance, setAppearance } from '../appearance';
@@ -11,13 +11,13 @@ import { PageHero, Icon, Badge8, toAr } from '../components/ornaments/Ornaments'
 import LangSwitcher from '../components/LangSwitcher';
 import styles from './SettingsPage.module.css';
 import { useT } from '../i18n';
+import { useTr, isRtl } from '../l10n';
 
 const SECTIONS = [
   { id: 'appearance', icon: 'sun',  title: 'المظهر' },
   { id: 'reading',    icon: 'book', title: 'القراءة' },
   { id: 'account',    icon: 'user', title: 'الحساب' },
   { id: 'language',   icon: 'globe', title: 'اللغة' },
-  { id: 'about',      icon: 'star', title: 'عن الموقع' },
 ];
 
 function Switch({ checked, onChange, label, disabled }) {
@@ -71,6 +71,7 @@ function ModePreview({ id }) {
 
 export default function SettingsPage() {
   const t = useT();
+  const tr = useTr();
   const { user, signOut } = useAuth();
   const navigate  = useNavigate();
   const [state]   = useStore();
@@ -118,7 +119,7 @@ export default function SettingsPage() {
     try {
       await updateProfile({ name: newName.trim() });
       setEditingName(false);
-      flash('تم تحديث الاسم', true);
+      flash(tr('تم تحديث الاسم'), true);
     } catch (err) {
       flash(authErrorText(err), false);
     }
@@ -127,16 +128,16 @@ export default function SettingsPage() {
 
   async function handleUpdatePw(e) {
     e?.preventDefault();
-    if (newPw.length < 8) { flash('كلمة المرور الجديدة يجب ألا تقل عن 8 أحرف', false); return; }
-    if (hasPassword && !curPw) { flash('اكتب كلمة المرور الحالية', false); return; }
+    if (newPw.length < 8) { flash(tr('كلمة المرور الجديدة يجب ألا تقل عن 8 أحرف'), false); return; }
+    if (hasPassword && !curPw) { flash(tr('اكتب كلمة المرور الحالية'), false); return; }
     setProfileLoading(true); setProfileMsg(null);
     try {
       await changePassword(hasPassword ? curPw : null, newPw);
       setEditingPw(false); setNewPw(''); setCurPw('');
-      flash('تم تغيير كلمة المرور، وسُجّل خروجك من الأجهزة الأخرى', true);
+      flash(tr('تم تغيير كلمة المرور، وسُجّل خروجك من الأجهزة الأخرى'), true);
     } catch (err) {
       const f = err?.fields || {};
-      flash(f.current_password ? 'كلمة المرور الحالية غير صحيحة' : authErrorText(err), false);
+      flash(f.current_password ? tr('كلمة المرور الحالية غير صحيحة') : authErrorText(err), false);
     }
     setProfileLoading(false);
   }
@@ -145,9 +146,9 @@ export default function SettingsPage() {
     setLbLoading(true); setProfileMsg(null);
     try {
       await updateProfile({ show_on_leaderboard: !!next });
-      flash(next ? 'سيظهر اسمك في لوحة المتصدرين' : 'لن يظهر اسمك في لوحة المتصدرين', true);
+      flash(next ? tr('سيظهر اسمك في لوحة المتصدرين') : tr('لن يظهر اسمك في لوحة المتصدرين'), true);
     } catch (err) {
-      flash(errorMessage(err, 'تعذّر حفظ الإعداد'), false);
+      flash(apiErrorText(err, 'تعذّر حفظ الإعداد'), false);
     }
     setLbLoading(false);
   }
@@ -155,7 +156,7 @@ export default function SettingsPage() {
   async function handleResendVerify() {
     setVerifyState('sending');
     try { await resendVerification(); setVerifyState('sent'); }
-    catch (err) { setVerifyState(''); flash(errorMessage(err, 'تعذّر إرسال رسالة التأكيد'), false); }
+    catch (err) { setVerifyState(''); flash(apiErrorText(err, 'تعذّر إرسال رسالة التأكيد'), false); }
   }
 
   async function handleExport() {
@@ -171,9 +172,9 @@ export default function SettingsPage() {
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      flash('تم تنزيل نسخة من بياناتك', true);
+      flash(tr('تم تنزيل نسخة من بياناتك'), true);
     } catch (err) {
-      flash(errorMessage(err, 'تعذّر تنزيل البيانات، حاول مجدداً'), false);
+      flash(apiErrorText(err, 'تعذّر تنزيل البيانات، حاول مجدداً'), false);
     }
     setExporting(false);
   }
@@ -182,7 +183,7 @@ export default function SettingsPage() {
     if (!('Notification' in window)) return;
     const perm = await Notification.requestPermission();
     setNotifPerm(perm);
-    if (perm === 'granted') new Notification('تم تفعيل المنبّه', { body: 'ستصلك إشعارات يومية', icon: '/icons/icon-192.png' });
+    if (perm === 'granted') new Notification(tr('تم تفعيل المنبّه'), { body: tr('ستصلك إشعارات يومية'), icon: '/icons/icon-192.png' });
   }
 
   function saveSetting(key, val) {
@@ -202,59 +203,59 @@ export default function SettingsPage() {
 
   return (
     <div className={styles.page}>
-      <PageHero eyebrow="تفضيلاتك" title={t('settingsTitle') || 'الإعدادات'}
-        sub="اضبط المظهر وطريقة القراءة والتلاوة وحسابك. تُحفظ اختياراتك تلقائياً على هذا الجهاز." />
+      <PageHero eyebrow={tr('تفضيلاتك')} title={t('settingsTitle') || tr('الإعدادات')}
+        sub={tr('اضبط المظهر وطريقة القراءة والتلاوة وحسابك. تُحفظ اختياراتك تلقائياً على هذا الجهاز.')} />
 
       <div className={`nq-wrap ${styles.layout}`}>
-        <nav className={styles.toc} aria-label="أقسام الإعدادات">
+        <nav className={styles.toc} aria-label={tr('أقسام الإعدادات')}>
           {SECTIONS.map(s => (
-            <a key={s.id} href={`#${s.id}`} className={styles.tocLink}><Icon name={s.icon} />{s.title}</a>
+            <a key={s.id} href={`#${s.id}`} className={styles.tocLink}><Icon name={s.icon} />{tr(s.title)}</a>
           ))}
         </nav>
 
         <div className={styles.main}>
           {/* ── appearance ── */}
-          <Section id="appearance" icon="sun" title="المظهر" sub="اختر وضع العرض الذي يريح عينيك، وكل الصفحات تتبعه.">
-            <div className={styles.modes} role="group" aria-label="وضع العرض">
+          <Section id="appearance" icon="sun" title={tr('المظهر')} sub={tr('اختر وضع العرض الذي يريح عينيك، وكل الصفحات تتبعه.')}>
+            <div className={styles.modes} role="group" aria-label={tr('وضع العرض')}>
               {MODES.map(m => (
                 <button key={m.id} type="button" aria-pressed={look.mode === m.id}
                   className={styles.mode} onClick={() => look_({ mode: m.id })}>
                   <ModePreview id={m.id} />
                   <span className={styles.modeName}>
-                    {look.mode === m.id && <Icon name="check" />}{m.label}
+                    {look.mode === m.id && <Icon name="check" />}{tr(m.label)}
                   </span>
-                  <span className={styles.modeHint}>{m.hint}</span>
+                  <span className={styles.modeHint}>{tr(m.hint)}</span>
                 </button>
               ))}
             </div>
 
-            <Row icon="aa" title="حجم النص في الموقع" desc="يكبّر أو يصغّر كل نصوص الموقع والأزرار." stack>
+            <Row icon="aa" title={tr('حجم النص في الموقع')} desc={tr('يكبّر أو يصغّر كل نصوص الموقع والأزرار.')} stack>
               <div className={styles.sizeCtl}>
-                <span className={styles.aSmall} aria-hidden="true">أ</span>
+                <span className={styles.aSmall} aria-hidden="true">{tr('أ')}</span>
                 <input type="range" min="90" max="140" step="5" value={look.size} className={styles.range}
-                  aria-label="حجم النص" aria-valuetext={`${look.size}٪`}
+                  aria-label={tr('حجم النص')} aria-valuetext={tr('{n}٪', { n: look.size })}
                   onChange={e => look_({ size: Number(e.target.value) })} />
-                <span className={styles.aBig} aria-hidden="true">أ</span>
-                <output className={`nq-num ${styles.val}`}>{toAr(look.size)}٪</output>
+                <span className={styles.aBig} aria-hidden="true">{tr('أ')}</span>
+                <output className={`nq-num ${styles.val}`}>{tr('{n}٪', { n: toAr(look.size) })}</output>
                 {look.size !== 100 && (
-                  <button type="button" className="nq-btn ghost sm" onClick={() => look_({ size: 100 })}>الافتراضي</button>
+                  <button type="button" className="nq-btn ghost sm" onClick={() => look_({ size: 100 })}>{tr('الافتراضي')}</button>
                 )}
               </div>
             </Row>
 
-            <Row icon="chart" title="ألوان مناسبة لعمى الألوان"
-              desc="تستبدل ألوان الحالات (تمّ، قيد التنفيذ، تنبيه) بألوان يميّزها الجميع.">
+            <Row icon="chart" title={tr('ألوان مناسبة لعمى الألوان')}
+              desc={tr('تستبدل ألوان الحالات (تمّ، قيد التنفيذ، تنبيه) بألوان يميّزها الجميع.')}>
               <span className={styles.dots} aria-hidden="true"><i data-c="ok" /><i data-c="warn" /><i data-c="info" /><i data-c="danger" /></span>
-              <Switch checked={look.cb} label="ألوان مناسبة لعمى الألوان" onChange={v => look_({ cb: v })} />
+              <Switch checked={look.cb} label={tr('ألوان مناسبة لعمى الألوان')} onChange={v => look_({ cb: v })} />
             </Row>
 
-            <Row icon="pause" title="تقليل الحركة" desc="يوقف المؤثرات المتحركة والانتقالات في الصفحات.">
-              <Switch checked={look.reduce} label="تقليل الحركة" onChange={v => look_({ reduce: v })} />
+            <Row icon="pause" title={tr('تقليل الحركة')} desc={tr('يوقف المؤثرات المتحركة والانتقالات في الصفحات.')}>
+              <Switch checked={look.reduce} label={tr('تقليل الحركة')} onChange={v => look_({ reduce: v })} />
             </Row>
           </Section>
 
           {/* ── reading ── */}
-          <Section id="reading" icon="book" title="القراءة والتلاوة" sub="كيف يظهر لك المصحف، والترجمة، والقارئ الذي تستمع إليه.">
+          <Section id="reading" icon="book" title={tr('القراءة والتلاوة')} sub={tr('كيف يظهر لك المصحف، والترجمة، والقارئ الذي تستمع إليه.')}>
             <div className={styles.ayahPreview}>
               <p className={`nq-q ${styles.ayahText}`} data-style={state.fontStyle === 'uthmani' ? 'uthmani' : 'simple'}
                 style={{ fontSize: `${state.fontSize}px` }} lang="ar">
@@ -262,34 +263,34 @@ export default function SettingsPage() {
                   ? 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ'
                   : 'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ'}
               </p>
-              <span className={styles.pvCap}>معاينة حجم الخط ونوعه</span>
+              <span className={styles.pvCap}>{tr('معاينة حجم الخط ونوعه')}</span>
             </div>
 
-            <Row icon="pen" title={t('font_style') || 'نوع الخط'} desc="الرسم العثماني كما في المصحف، أو الإملاء الحديث.">
-              <div className="nq-seg" role="group" aria-label="نوع خط المصحف">
-                <button type="button" aria-pressed={state.fontStyle === 'uthmani'} onClick={() => saveSetting('fontStyle', 'uthmani')}>{t('uthmani') || 'عثماني'}</button>
-                <button type="button" aria-pressed={state.fontStyle !== 'uthmani'} onClick={() => saveSetting('fontStyle', 'simple')}>{t('simple') || 'مبسّط'}</button>
+            <Row icon="pen" title={t('font_style') || tr('نوع الخط')} desc={tr('الرسم العثماني كما في المصحف، أو الإملاء الحديث.')}>
+              <div className="nq-seg" role="group" aria-label={tr('نوع خط المصحف')}>
+                <button type="button" aria-pressed={state.fontStyle === 'uthmani'} onClick={() => saveSetting('fontStyle', 'uthmani')}>{t('uthmani') || tr('عثماني')}</button>
+                <button type="button" aria-pressed={state.fontStyle !== 'uthmani'} onClick={() => saveSetting('fontStyle', 'simple')}>{t('simple') || tr('مبسّط')}</button>
               </div>
             </Row>
 
-            <Row icon="aa" title="حجم خط المصحف" desc="حجم نص القرآن الكريم في صفحة القراءة." stack>
+            <Row icon="aa" title={tr('حجم خط المصحف')} desc={tr('حجم نص القرآن الكريم في صفحة القراءة.')} stack>
               <div className={styles.sizeCtl}>
-                <span className={styles.aSmall} aria-hidden="true">أ</span>
+                <span className={styles.aSmall} aria-hidden="true">{tr('أ')}</span>
                 <input type="range" min="16" max="48" step="2" value={state.fontSize} className={styles.range}
-                  aria-label="حجم خط المصحف" aria-valuetext={`${state.fontSize} بكسل`}
+                  aria-label={tr('حجم خط المصحف')} aria-valuetext={tr('{n} بكسل', { n: state.fontSize })}
                   onChange={e => saveSetting('fontSize', parseInt(e.target.value, 10))} />
-                <span className={styles.aBig} aria-hidden="true">أ</span>
+                <span className={styles.aBig} aria-hidden="true">{tr('أ')}</span>
                 <output className={`nq-num ${styles.val}`}>{toAr(state.fontSize)}</output>
               </div>
             </Row>
 
-            <Row icon="bookmark" title="تظليل الآية" desc="تظليل الآية عند الضغط عليها أثناء القراءة.">
-              <Switch checked={!!state.highlightMode} label="تظليل الآية" onChange={v => saveSetting('highlightMode', v)} />
+            <Row icon="bookmark" title={tr('تظليل الآية')} desc={tr('تظليل الآية عند الضغط عليها أثناء القراءة.')}>
+              <Switch checked={!!state.highlightMode} label={tr('تظليل الآية')} onChange={v => saveSetting('highlightMode', v)} />
             </Row>
 
-            <Row icon="head" title="القارئ" desc="يُستخدم عند الاستماع إلى التلاوة." stack>
+            <Row icon="head" title={tr('القارئ')} desc={tr('يُستخدم عند الاستماع إلى التلاوة.')} stack>
               <label className={styles.selectWrap}>
-                <span className="nq-sr">القارئ</span>
+                <span className="nq-sr">{tr('القارئ')}</span>
                 <select className={styles.select} value={state.reader} onChange={e => saveSetting('reader', e.target.value)}>
                   {READERS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
@@ -297,20 +298,20 @@ export default function SettingsPage() {
               </label>
             </Row>
 
-            <Row icon="bell" title="منبّه الورد اليومي" desc="إشعار يذكّرك بوردك كل يوم على هذا الجهاز.">
+            <Row icon="bell" title={tr('منبّه الورد اليومي')} desc={tr('إشعار يذكّرك بوردك كل يوم على هذا الجهاز.')}>
               {notifPerm === 'granted'
-                ? <span className={`nq-pill on ${styles.okPill}`}><Icon name="check" />مفعّل</span>
+                ? <span className={`nq-pill on ${styles.okPill}`}><Icon name="check" />{tr('مفعّل')}</span>
                 : notifPerm === 'unsupported'
-                  ? <span className="nq-pill">غير مدعوم في هذا المتصفح</span>
-                  : <button type="button" className="nq-btn ghost sm" onClick={enableReminder}><Icon name="bell" />تفعيل</button>}
+                  ? <span className="nq-pill">{tr('غير مدعوم في هذا المتصفح')}</span>
+                  : <button type="button" className="nq-btn ghost sm" onClick={enableReminder}><Icon name="bell" />{tr('تفعيل')}</button>}
             </Row>
 
             <div className={styles.block}>
               <div className={styles.rowText}>
-                <span className={styles.rowTitle}><Icon name="globe" />الترجمة الافتراضية</span>
-                <span className={styles.rowDesc}>تظهر الترجمة تحت كل آية أثناء القراءة.</span>
+                <span className={styles.rowTitle}><Icon name="globe" />{tr('الترجمة الافتراضية')}</span>
+                <span className={styles.rowDesc}>{tr('تظهر الترجمة تحت كل آية أثناء القراءة.')}</span>
               </div>
-              <div className={styles.trans} role="group" aria-label="الترجمة">
+              <div className={styles.trans} role="group" aria-label={tr('الترجمة')}>
                 {TRANSLATIONS.map(tk => (
                   <button key={tk.id} type="button" aria-pressed={curTrans === tk.id}
                     className={styles.transBtn} onClick={() => saveSetting('translation', tk.id)}>
@@ -324,13 +325,13 @@ export default function SettingsPage() {
           </Section>
 
           {/* ── account ── */}
-          <Section id="account" icon="user" title="الحساب" sub={user ? 'بياناتك الشخصية وكلمة المرور وخصوصيتك.' : 'سجّل دخولك لمزامنة قراءتك وحفظك وختماتك على كل أجهزتك.'}>
+          <Section id="account" icon="user" title={tr('الحساب')} sub={user ? tr('بياناتك الشخصية وكلمة المرور وخصوصيتك.') : tr('سجّل دخولك لمزامنة قراءتك وحفظك وختماتك على كل أجهزتك.')}>
             {!user ? (
               <div className={styles.guest}>
-                <p>أنت تستخدم الموقع بدون حساب، وبياناتك محفوظة على هذا الجهاز فقط.</p>
+                <p>{tr('أنت تستخدم الموقع بدون حساب، وبياناتك محفوظة على هذا الجهاز فقط.')}</p>
                 <div className={styles.btns}>
-                  <Link to="/login" className="nq-btn gold"><Icon name="user" />تسجيل الدخول</Link>
-                  <Link to="/signup" className="nq-btn ghost"><Icon name="plus" />إنشاء حساب</Link>
+                  <Link to="/login" className="nq-btn gold"><Icon name="user" />{tr('تسجيل الدخول')}</Link>
+                  <Link to="/signup" className="nq-btn ghost"><Icon name="plus" />{tr('إنشاء حساب')}</Link>
                 </div>
               </div>
             ) : (<>
@@ -338,82 +339,82 @@ export default function SettingsPage() {
                 <span className={styles.avatar}>
                   {avatarOf(user)
                     ? <img src={avatarOf(user)} alt="" />
-                    : (displayNameOf(user, '؟')[0] || '؟').toUpperCase()}
+                    : (displayNameOf(user, isRtl() ? '؟' : '?')[0] || '?').toUpperCase()}
                 </span>
                 <div className={styles.who}>
                   <b>{name}</b>
                   <span dir="ltr">{user.email}</span>
                 </div>
                 {user.email_verified === false
-                  ? <span className={`nq-pill ${styles.warnPill}`}><Icon name="bell" />البريد غير مؤكَّد</span>
-                  : <span className={`nq-pill ${styles.okPill}`}><Icon name="check" />البريد مؤكَّد</span>}
+                  ? <span className={`nq-pill ${styles.warnPill}`}><Icon name="bell" />{tr('البريد غير مؤكَّد')}</span>
+                  : <span className={`nq-pill ${styles.okPill}`}><Icon name="check" />{tr('البريد مؤكَّد')}</span>}
               </div>
 
               {user.email_verified === false && (
                 <div className={styles.verify}>
-                  <span>أكّد بريدك لتتمكن من استعادة حسابك إن نسيت كلمة المرور.</span>
+                  <span>{tr('أكّد بريدك لتتمكن من استعادة حسابك إن نسيت كلمة المرور.')}</span>
                   {verifyState === 'sent'
-                    ? <span className={`nq-pill ${styles.okPill}`}><Icon name="check" />أُرسلت رسالة التأكيد</span>
+                    ? <span className={`nq-pill ${styles.okPill}`}><Icon name="check" />{tr('أُرسلت رسالة التأكيد')}</span>
                     : <button type="button" className="nq-btn ghost sm" onClick={handleResendVerify} disabled={verifyState === 'sending'}>
-                        {verifyState === 'sending' ? 'جارٍ الإرسال…' : 'إعادة إرسال رسالة التأكيد'}
+                        {verifyState === 'sending' ? tr('جارٍ الإرسال…') : tr('إعادة إرسال رسالة التأكيد')}
                       </button>}
                 </div>
               )}
 
               {/* name */}
-              <Row icon="pen" title="الاسم" desc={editingName ? null : name} stack={editingName}>
+              <Row icon="pen" title={tr('الاسم')} desc={editingName ? null : name} stack={editingName}>
                 {editingName ? (
                   <form className={styles.inline} onSubmit={handleUpdateName}>
                     <label className={`nq-input ${styles.grow}`}>
-                      <span className="nq-sr">الاسم الجديد</span>
-                      <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('edit_name_ph') || 'اسمك'} autoFocus />
+                      <span className="nq-sr">{tr('الاسم الجديد')}</span>
+                      <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('edit_name_ph') || tr('اسمك')} autoFocus />
                     </label>
-                    <button type="submit" className="nq-btn gold sm" disabled={profileLoading || !newName.trim()}>{profileLoading ? '…' : 'حفظ'}</button>
-                    <button type="button" className="nq-btn ghost sm" onClick={() => setEditingName(false)}>{t('cancel') || 'إلغاء'}</button>
+                    <button type="submit" className="nq-btn gold sm" disabled={profileLoading || !newName.trim()}>{profileLoading ? '…' : tr('حفظ')}</button>
+                    <button type="button" className="nq-btn ghost sm" onClick={() => setEditingName(false)}>{t('cancel') || tr('إلغاء')}</button>
                   </form>
                 ) : (
-                  <button type="button" className="nq-btn ghost sm" onClick={() => { setEditingName(true); setNewName(user.name || ''); }}>تعديل</button>
+                  <button type="button" className="nq-btn ghost sm" onClick={() => { setEditingName(true); setNewName(user.name || ''); }}>{tr('تعديل')}</button>
                 )}
               </Row>
 
               {/* password */}
-              <Row icon="lock" title="كلمة المرور"
-                desc={editingPw ? null : hasPassword ? 'غيّرها متى شئت؛ سيُسجَّل خروجك من الأجهزة الأخرى.' : 'دخلت بحساب Google. يمكنك تعيين كلمة مرور للدخول بالبريد أيضاً.'}
+              <Row icon="lock" title={tr('كلمة المرور')}
+                desc={editingPw ? null : hasPassword ? tr('غيّرها متى شئت؛ سيُسجَّل خروجك من الأجهزة الأخرى.') : tr('دخلت بحساب Google. يمكنك تعيين كلمة مرور للدخول بالبريد أيضاً.')}
                 stack={editingPw}>
                 {editingPw ? (
                   <form className={styles.pwForm} onSubmit={handleUpdatePw}>
                     {hasPassword && (
                       <label className={styles.lbl}>
-                        <span>كلمة المرور الحالية</span>
+                        <span>{tr('كلمة المرور الحالية')}</span>
                         <span className="nq-input"><input type="password" dir="ltr" value={curPw} onChange={e => setCurPw(e.target.value)} autoComplete="current-password" /></span>
                       </label>
                     )}
                     <label className={styles.lbl}>
-                      <span>كلمة المرور الجديدة <small>(٨ أحرف على الأقل)</small></span>
+                      <span>{tr('كلمة المرور الجديدة')} <small>({tr('{n} أحرف على الأقل', { n: toAr(8) })})</small></span>
                       <span className="nq-input"><input type="password" dir="ltr" value={newPw} onChange={e => setNewPw(e.target.value)} autoComplete="new-password" /></span>
                     </label>
                     <div className={styles.btns}>
                       <button type="submit" className="nq-btn gold sm" disabled={profileLoading || newPw.length < 8 || (hasPassword && !curPw)}>
-                        {profileLoading ? '…' : hasPassword ? 'تغيير كلمة المرور' : 'تعيين كلمة المرور'}
+                        {profileLoading ? '…' : hasPassword ? tr('تغيير كلمة المرور') : tr('تعيين كلمة المرور')}
                       </button>
-                      <button type="button" className="nq-btn ghost sm" onClick={() => { setEditingPw(false); setCurPw(''); setNewPw(''); }}>{t('cancel') || 'إلغاء'}</button>
+                      <button type="button" className="nq-btn ghost sm" onClick={() => { setEditingPw(false); setCurPw(''); setNewPw(''); }}>{t('cancel') || tr('إلغاء')}</button>
                     </div>
                   </form>
                 ) : (
                   <button type="button" className="nq-btn ghost sm" onClick={() => { setEditingPw(true); setNewPw(''); setCurPw(''); }}>
-                    {hasPassword ? 'تغيير' : 'تعيين كلمة مرور'}
+                    {hasPassword ? tr('تغيير') : tr('تعيين كلمة مرور')}
                   </button>
                 )}
               </Row>
 
-              <Row icon="trophy" title="إظهار اسمي في لوحة المتصدرين"
-                desc={user.show_on_leaderboard ? 'يظهر اسمك ونقاطك في لوحة المتصدرين العامة.' : 'اسمك مخفي، ولن تظهر في لوحة المتصدرين.'}>
-                <Switch checked={!!user.show_on_leaderboard} disabled={lbLoading} label="إظهار اسمي في لوحة المتصدرين" onChange={toggleLeaderboard} />
+              <Row icon="trophy" title={tr('إظهار اسمي في لوحة المتصدرين')}
+                desc={user.show_on_leaderboard ? tr('يظهر اسمك ونقاطك في لوحة المتصدرين العامة.') : tr('اسمك مخفي، ولن تظهر في لوحة المتصدرين.')}>
+                <Switch checked={!!user.show_on_leaderboard} disabled={lbLoading} label={tr('إظهار اسمي في لوحة المتصدرين')} onChange={toggleLeaderboard} />
               </Row>
 
-              <Row icon="download" title="نسخة من بياناتك" desc="نزّل كل بياناتك المحفوظة في حسابك في ملف واحد.">
+              <Row icon="download" title={tr('نسخة من بياناتك')} desc={tr('نزّل كل بياناتك المحفوظة في حسابك في ملف واحد.')}>
                 <button type="button" className="nq-btn ghost sm" onClick={handleExport} disabled={exporting}>
-                  <Icon name="download" />{exporting ? 'جارٍ التحضير…' : 'تنزيل'}
+                  <Icon name="download" />{exporting ? tr('جارٍ التحضير…') : tr('تنزيل')}
                 </button>
               </Row>
 
@@ -424,39 +425,23 @@ export default function SettingsPage() {
               )}
 
               <div className={styles.accFoot}>
-                <button type="button" className="nq-btn ghost" onClick={handleSignOut}><Icon name="logout" />{t('logout') || 'تسجيل الخروج'}</button>
-                <Link to="/delete-data" className={styles.dangerLink}><Icon name="x" />حذف الحساب والبيانات</Link>
+                <button type="button" className="nq-btn ghost" onClick={handleSignOut}><Icon name="logout" />{t('logout') || tr('تسجيل الخروج')}</button>
+                <Link to="/delete-data" className={styles.dangerLink}><Icon name="x" />{tr('حذف الحساب والبيانات')}</Link>
               </div>
             </>)}
           </Section>
 
           {/* ── language ── */}
-          <Section id="language" icon="globe" title="اللغة" sub="لغة واجهة الموقع. نص القرآن الكريم يبقى بالعربية دائماً.">
-            <Row icon="globe" title="لغة الواجهة" desc="تتغيّر القوائم والعناوين فوراً.">
+          <Section id="language" icon="globe" title={tr('اللغة')} sub={tr('لغة واجهة الموقع. نص القرآن الكريم يبقى بالعربية دائماً.')}>
+            <Row icon="globe" title={tr('لغة الواجهة')} desc={tr('تتغيّر القوائم والعناوين فوراً.')}>
               <div className={styles.lang}><LangSwitcher /></div>
             </Row>
-          </Section>
-
-          {/* ── about ── */}
-          <Section id="about" icon="star" title="عن نور القرآن" sub="مجاني لوجه الله، بلا إعلانات.">
-            <dl className={styles.about}>
-              <div><dt>نص القرآن والترجمات</dt><dd dir="ltr">alquran.cloud</dd></div>
-              <div><dt>التلاوات</dt><dd dir="ltr">everyayah.com</dd></div>
-              <div><dt>الإصدار</dt><dd className="nq-num">٢٫٠</dd></div>
-              <div><dt>تم الإنشاء بواسطة</dt><dd dir="ltr">ABDELRAHMAN HAMDY</dd></div>
-            </dl>
-            <div className={styles.aboutLinks}>
-              <Link to="/help" className="nq-btn ghost sm"><Icon name="doc" />شرح الاستخدام</Link>
-              <Link to="/support" className="nq-btn ghost sm"><Icon name="chat" />الدعم</Link>
-              <Link to="/privacy" className="nq-btn ghost sm"><Icon name="shield" />الخصوصية</Link>
-              <Link to="/terms" className="nq-btn ghost sm"><Icon name="scroll" />الشروط</Link>
-            </div>
           </Section>
         </div>
       </div>
 
       <div className={`${styles.saved} ${saved ? styles.savedOn : ''}`} role="status" aria-live="polite">
-        {saved && <><Icon name="check" />تم الحفظ</>}
+        {saved && <><Icon name="check" />{tr('تم الحفظ')}</>}
       </div>
     </div>
   );
