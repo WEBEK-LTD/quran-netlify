@@ -122,6 +122,9 @@ $W2 = $mk('w2', 'مريم', 'female', $adult, '10.70.0.5');
 $LEG = $mk('leg', 'حساب قديم', null, null, '10.70.0.6');
 $KID = $mk('kid', 'طفل', null, null, '10.70.0.7');
 check('community actors created', $M1['id'] > 0 && $M2['id'] > 0 && $M3['id'] > 0 && $W1['id'] > 0 && $W2['id'] > 0 && $LEG['id'] > 0 && $KID['id'] > 0);
+$srch = static fn (string $q, array $who): array => array_map(static fn ($u) => (int) $u['id'], (array) (data(req('GET', '/people?q=' . rawurlencode($q), null, $who))['items'] ?? []));
+check('people search: same gender only (a man searching «فاطمة» finds nobody, a woman finds her)',
+    !in_array($W1['id'], $srch('فاطمة', $M1), true) && in_array($W1['id'], $srch('فاطمة', $W2), true) && in_array($M2['id'], $srch('بلال', $M1), true));
 
 // ── Gender / age gating
 $g0 = req('GET', '/rooms', null, $LEG);

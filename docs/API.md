@@ -292,7 +292,7 @@ Notification types: `room_opened`, `room_scheduled` (followed person/friend), `g
 |---|---|---|---|
 | GET | `/me/community-profile` | | `{joined, eligible, missing[], gender, birthdate, age, is_minor, underage, locked:{gender,birthdate}, user: Brief, profile: {bio, facebook_url, instagram_url, is_private, private_forced, dm_policy: "everyone"\|"same_gender"\|"friends"\|"none", counters:{friends, followers, following, claps_sent, claps_received}}\|null, suspension: {scope, source, reason, until, permanent}\|null, muted_types[]}` |
 | PATCH | `/me/community-profile` | `{gender?, birthdate?, bio? (≤ 300), facebook_url?, instagram_url?, is_private?, dm_policy?}` | same. gender/birthdate only until joined; social links: https `facebook.com`/`fb.com` or `instagram.com` profile URLs only (`null` clears). Photo = the existing `POST /me/avatar` |
-| GET | `/people?q=` | ≥ 2 chars | `{items:[Brief & {is_friend, i_follow}]}` (community members, minus blocked; 60/min) |
+| GET | `/people?q=` | ≥ 2 chars | `{items:[Brief & {is_friend, i_follow}]}` (community members of the searcher's own gender only, minus blocked; 60/min) |
 | GET | `/people/{id}` | | `Brief & {is_private, is_me, relation:{is_friend, i_follow, follows_me, request_sent, request_received}, can_friend, can_message, lists_visible}` + when public or friend: `{bio, facebook_url, instagram_url, counters, in_room: {id,title,gender_scope}\|null, joined_at}`. 404 when blocked either way or not a member |
 | GET | `/people/{id}/{kind}` | kind = `friends`\|`followers`\|`following`\|`clappers`, `?page` | paginated `Brief[]` (`clappers`: + `claps`) — **friends of that person only** (403) |
 | GET | `/me/social/{kind}` | same kinds | my own lists |

@@ -280,10 +280,11 @@ final class CommunityController
             'SELECT ' . Community::briefCols() . ", EXISTS(SELECT 1 FROM friendships f WHERE f.user_id = ? AND f.friend_id = u.id) AS is_friend,
                 EXISTS(SELECT 1 FROM follows fo WHERE fo.follower_id = ? AND fo.followee_id = u.id) AS i_follow
              FROM users u JOIN community_profiles cp ON cp.user_id = u.id
-             WHERE u.id <> ? AND u.name LIKE ? AND {$nb}
+             WHERE u.id <> ? AND u.gender = ? AND u.name LIKE ? AND {$nb}
                AND NOT EXISTS (SELECT 1 FROM bans ab WHERE ab.user_id = u.id AND ab.scope = 'app' AND (ab.until IS NULL OR ab.until > ?))
              ORDER BY u.name = ? DESC, u.name LIMIT 30",
-            array_merge([$me, $me, $me, '%' . Db::likeEscape($q) . '%'], $nbp, [Db::now(), $q])
+            // Owner decision 12: people search lists only members of the searcher's own gender.
+            array_merge([$me, $me, $me, (string) $ctx['gender'], '%' . Db::likeEscape($q) . '%'], $nbp, [Db::now(), $q])
         );
         return ['items' => array_map(static fn (array $u): array => Community::brief($u) + [
             'is_friend' => (int) $u['is_friend'] === 1, 'i_follow' => (int) $u['i_follow'] === 1,

@@ -32,3 +32,7 @@ design canvas (20 screens). Decided by the owner on 2026-11-23.
 11. **Public groups stay:** anyone can create a public group (listed in search, join
     directly) so people who don't know each other can gather and open rooms anyone of the
     allowed type can see. The rooms hub gets an «اكتشف الجروبات» section.
+12. **People search:** lists only members of the searcher's own gender (decided 2026-11-23).
+13. **Adhan muezzins:** Ahmed Khalaf (CC BY 4.0) is the default Fajr muezzin; add the four
+    candidate recordings listed in `src/native/adhan/recordings.json` once they are fetched and
+    checked by ear.
