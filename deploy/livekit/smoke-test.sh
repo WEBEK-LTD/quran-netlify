@@ -14,6 +14,8 @@ for s in livekit caddy-rtc; do systemctl is-active --quiet "$s" && pass "$s is r
 systemctl show livekit -p CPUQuotaPerSecUSec -p MemoryMax | tr '\n' ' '; echo
 
 echo "== signal"
+# right after a restart (e.g. a new certificate) LiveKit needs a few seconds
+for i in $(seq 1 20); do [ "$(curl -s -m 2 http://127.0.0.1:7880/)" = "OK" ] && break; sleep 1; done
 [ "$(curl -s -m 5 http://127.0.0.1:7880/)" = "OK" ] && pass "LiveKit answers on 127.0.0.1:7880" || fail "no answer on 127.0.0.1:7880"
 [ "$(curl -s -m 10 "https://$DOMAIN:7443/")" = "OK" ] && pass "https://$DOMAIN:7443/ → OK (valid certificate)" || fail "https://$DOMAIN:7443/ failed (DNS? firewall? certificate?)"
 end=$(echo | openssl s_client -connect "$DOMAIN:7443" -servername "$DOMAIN" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null)
