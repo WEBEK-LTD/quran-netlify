@@ -1,6 +1,8 @@
 /* ── Floating player dock ──────────────────────────────────────────────── */
 .dock {
-  --dw: min(860px, calc(var(--cw, 100vw) - 32px));
+  /* centred over the centre column, keeping ≥88px clear at the physical left edge for the
+     assistant's floating button (that edge is the tafsir column when it is open) */
+  --dw: min(860px, calc(var(--cw, 100vw) - 2 * max(16px, 88px - var(--taf-w, 0px))));
   container: dock / inline-size;
   position: fixed; z-index: 44;
   bottom: var(--dock-bottom, 16px);

@@ -103,7 +103,7 @@ export default function Sidebar() {
         {tab === 'surahs' && (
           <label className={`nq-input ${styles.search}`}>
             <Icon name="search" />
-            <input type="search" placeholder="ابحث عن سورة بالاسم أو الرقم" value={filter}
+            <input type="search" placeholder="اسم السورة أو رقمها" value={filter}
               onChange={e => setFilter(e.target.value)} dir="rtl" aria-label="ابحث عن سورة" />
             {filter && (
               <button type="button" className={styles.clear} onClick={() => setFilter('')} aria-label="مسح البحث"><Icon name="x" /></button>

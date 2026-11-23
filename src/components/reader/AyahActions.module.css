@@ -3,7 +3,7 @@
   position: fixed; z-index: 42;
   bottom: var(--abar-bottom, 16px);
   inset-inline-start: calc(var(--side-w, 0px) + (var(--cw, 100vw) - var(--abar-w)) / 2);
-  --abar-w: min(900px, calc(var(--cw, 100vw) - 32px));
+  --abar-w: min(900px, calc(var(--cw, 100vw) - 2 * max(16px, 88px - var(--taf-w, 0px)))); /* see AudioPlayer .dock */
   container: abar / inline-size;
   width: var(--abar-w);
   display: flex; align-items: center; gap: 10px;

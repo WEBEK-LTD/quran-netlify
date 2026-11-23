@@ -94,7 +94,7 @@
 
 .compose { display: flex; gap: 8px; padding: 14px 16px; border-top: 1px solid var(--line); background: var(--surface); }
 .compose :global(.nq-input) { height: 50px; }
-.send { min-height: 50px; }
+.compose .send { min-height: 50px; }
 .closed { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; padding: 16px; border-top: 1px solid var(--line); color: var(--muted); background: color-mix(in srgb, var(--ok) 7%, transparent); }
 .closed > :global(.nq-ico) { color: var(--ok); }
 .linkBtn { background: none; border: 0; color: var(--gold); font-weight: 600; min-height: 44px; padding: 0 4px; }
@@ -131,6 +131,6 @@
   .chatHead { padding: 12px; }
   .compose { padding: 10px; }
   .sendTxt { display: none; }
-  .send { width: 50px; padding: 0; }
+  .compose .send { width: 50px; padding: 0; }
   .sideHead { flex-wrap: wrap; }
 }

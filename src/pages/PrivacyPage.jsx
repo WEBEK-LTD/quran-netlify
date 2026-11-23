@@ -1,90 +1,77 @@
 import { Link } from 'react-router-dom';
+import { LegalDoc, Checks } from './legal/LegalDoc';
 import styles from './LegalPage.module.css';
-import { useT, useLang, useDir } from '../i18n';
-import LangSwitcher from '../components/LangSwitcher';
+import { useT } from '../i18n';
 
 export default function PrivacyPage() {
   const t = useT();
-  const dir = useDir();
+  const sections = [
+    { id: 'intro', title: 'مقدمة', body: (
+      <p>نور القرآن («الموقع») خدمة مجانية تماماً تُقدَّم لوجه الله تعالى، ولا نسعى من خلالها إلى أي ربح مادي. نلتزم بحماية خصوصيتك وبيانات زوّار الموقع ومستخدميه، ونشرح في هذه الصفحة ما نحفظه ولماذا، وكيف تتحكّم فيه.</p>
+    ) },
+    { id: 'collect', title: 'البيانات التي نجمعها', body: (<>
+      <p>عند إنشاء حساب نحفظ:</p>
+      <ul className={styles.list}>
+        <li>البريد الإلكتروني والاسم، لتسجيل دخولك وحفظ تقدّمك على أجهزتك. وعند الدخول بحساب Google نستلم منه اسمك وبريدك وصورتك فقط.</li>
+        <li>بيانات القراءة (الآيات المقروءة وآخر موضع قراءة والختمات)، لعرض إحصائياتك الشخصية.</li>
+        <li>بيانات الحفظ (حالة كل سورة والوِرد اليومي)، لمتابعة تقدّمك في الحفظ.</li>
+        <li>المفضلة والملاحظات التي تكتبها على الآيات، وهي خاصة بك وحدك.</li>
+        <li>الختمات الجماعية التي تنشئها أو تشارك فيها، والاسم الذي تختاره عند حجز جزء.</li>
+        <li>رسائلك إلى الدعم، لنتمكّن من الرد عليك.</li>
+      </ul>
+      <p>ولقياس عدد الزوار المتصلين نحفظ معرّفاً عشوائياً لا يدلّ على هويتك، مع الصفحة التي تتصفحها.</p>
+      <p>ويمكنك استخدام الموقع كاملاً <strong>بدون تسجيل</strong>، فتُحفظ بياناتك محلياً على جهازك فقط.</p>
+    </>) },
+    { id: 'never', title: 'ما لا نفعله أبداً', body: (
+      <Checks tone="no" items={[
+        'لا نجمع بيانات دفع، فالموقع مجاني ولا يوجد فيه أي نظام دفع.',
+        'لا نبيع بياناتك ولا نشاركها مع أي طرف لأغراض تجارية.',
+        'لا نعرض إعلانات، ولا نشارك بياناتك مع شركات الإعلانات.',
+        'لا نحفظ موقعك الجغرافي على خادمنا، ولا نصل إلى جهات اتصالك أو الكاميرا أو الميكروفون.',
+      ]} />
+    ) },
+    { id: 'use', title: 'كيف نستخدم البيانات', body: (
+      <ul className={styles.list}>
+        <li>مزامنة تقدّمك في القراءة والحفظ والختمات بين أجهزتك.</li>
+        <li>عرض إحصائياتك الشخصية في «لوحتي» و«التقرير الشهري».</li>
+        <li>لوحة المتصدرين، فقط إن فعّلت «إظهار اسمي في لوحة المتصدرين» من الإعدادات، وهو معطّل افتراضياً.</li>
+        <li>إرسال رسائل تأكيد البريد واستعادة كلمة المرور، والرد على استفساراتك.</li>
+      </ul>
+    ) },
+    { id: 'services', title: 'خدمات خارجية يستخدمها الموقع', body: (<>
+      <p>يعرض الموقع محتوى من مصادر عامة موثوقة، فيتصل متصفحك بها مباشرة عند الحاجة، دون أن نرسل إليها بيانات حسابك:</p>
+      <ul className={styles.list}>
+        <li>نص القرآن الكريم والترجمات والتفاسير: <span dir="ltr">alquran.cloud</span> و<span dir="ltr">quran.com</span>.</li>
+        <li>التلاوات الصوتية: <span dir="ltr">everyayah.com</span>، والإذاعات: دليل <span dir="ltr">Radio Browser</span>.</li>
+        <li>مواقيت الصلاة: <span dir="ltr">aladhan.com</span>. إن سمحت بتحديد موقعك تُرسل الإحداثيات إليها لحساب المواقيت، ويُستخدم <span dir="ltr">OpenStreetMap</span> لمعرفة اسم المدينة. ويُحفظ موقعك على جهازك فقط.</li>
+        <li>المساعد: عند طرح سؤال تُرسل رسالتك والآية المعنية عبر خادمنا إلى مزوّد خارجي لصياغة الإجابة، ولا نرسل معها اسمك ولا بريدك.</li>
+      </ul>
+    </>) },
+    { id: 'storage', title: 'تخزين البيانات وأمانها', body: (<>
+      <p>بيانات الحسابات محفوظة على خادم الموقع الخاص (<span dir="ltr">api.nuralquran.net</span>) في قاعدة بيانات نديرها بأنفسنا. كلمات المرور تُحفظ مجزّأة (hash) فلا يمكن لأحد قراءتها، وجلسات الدخول تُحفظ مجزّأة كذلك، ومفاتيح الخدمات الخارجية مشفّرة.</p>
+      <p>لا يصل إلى البيانات إلا مشرفو الموقع لأغراض الدعم والإدارة، وكل الاتصالات بين جهازك والخادم مشفّرة عبر HTTPS.</p>
+      <p>أما تفضيلاتك (المظهر، حجم الخط، القارئ، اللغة) وبيانات الزائر غير المسجّل فتُحفظ في متصفحك على جهازك.</p>
+    </>) },
+    { id: 'rights', title: 'حقوقك', body: (
+      <ul className={styles.list}>
+        <li>الاطلاع على بياناتك في أي وقت من حسابك.</li>
+        <li>تصحيح بياناتك، كاسمك، من <Link to="/settings#account" className={styles.inlineLink}>الإعدادات</Link>.</li>
+        <li>تنزيل نسخة كاملة من بياناتك: زر «تنزيل نسخة من بياناتي» في <Link to="/delete-data" className={styles.inlineLink}>صفحة حذف البيانات</Link> أو في الإعدادات.</li>
+        <li>حذف حسابك وكل بياناتك نهائياً: <Link to="/delete-data" className={styles.inlineLink}>طلب حذف البيانات</Link>.</li>
+      </ul>
+    ) },
+    { id: 'changes', title: 'تحديث هذه السياسة', body: (
+      <p>قد نحدّث هذه الصفحة عند إضافة ميزات جديدة أو تغيير طريقة عمل الموقع، ونذكر تاريخ آخر تحديث في أعلاها. استمرارك في استخدام الموقع بعد التحديث يعني موافقتك على السياسة المحدّثة.</p>
+    ) },
+  ];
+
   return (
-    <div className={styles.page}>
-      <div className={styles.topBar}>
-        <Link to="/" className={styles.backBtn}>{t('back')}</Link>
-        <h1>{t('privacyTitle')}</h1>
-        <LangSwitcher compact={true} />
-        <div style={{ width: 60 }} />
-      </div>
-
-      <div className={styles.freeNote}>
-        <span className={styles.freeIcon}>🌙</span>
-        <p>نور القرآن تطبيق مجاني بالكامل، لوجه الله تعالى، بلا إعلانات ولا رسوم ولا مدفوعات من أي نوع.</p>
-      </div>
-
-      <div className={styles.lastUpdate}>آخر تحديث: فبراير 2025</div>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>١. مقدمة</h2>
-        <p>نور القرآن ("التطبيق") خدمة مجانية تماماً تُقدَّم لوجه الله تعالى، لا نسعى من خلالها لأي ربح مادي. نلتزم بحماية خصوصيتك وبيانات المستخدمين الكرام.</p>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>٢. البيانات التي نجمعها</h2>
-        <p>عند التسجيل نجمع:</p>
-        <ul className={styles.list}>
-          <li>البريد الإلكتروني واسم المستخدم — لحفظ تقدمك عبر أجهزتك</li>
-          <li>بيانات القراءة (الآيات المقروءة، الختمات) — لعرض إحصائياتك الشخصية</li>
-          <li>بيانات الحفظ (حالة السور) — لتتبع تقدمك في الحفظ</li>
-          <li>الملاحظات التي تكتبها على الآيات — تبقى خاصة بك</li>
-        </ul>
-        <p>يمكنك استخدام التطبيق بالكامل <strong>بدون تسجيل</strong>، وتُحفَظ بياناتك محلياً فقط على جهازك.</p>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>٣. ما لا نجمعه أبداً</h2>
-        <ul className={styles.list}>
-          <li>❌ لا نجمع بيانات الدفع — التطبيق مجاني ولا يوجد أي نظام دفع</li>
-          <li>❌ لا نبيع بياناتك لأي طرف ثالث</li>
-          <li>❌ لا نعرض إعلانات ولا نشارك بياناتك مع شركات الإعلانات</li>
-          <li>❌ لا نتتبع موقعك الجغرافي</li>
-          <li>❌ لا نصل إلى جهات اتصالك أو كاميراك أو ميكروفونك</li>
-        </ul>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>٤. كيف نستخدم البيانات</h2>
-        <ul className={styles.list}>
-          <li>مزامنة تقدمك في القراءة والحفظ بين أجهزتك</li>
-          <li>عرض إحصائياتك الشخصية في لوحة التحكم</li>
-          <li>لوحة المتصدرين (فقط إن فعّلت «إظهار اسمي في لوحة المتصدرين» من الإعدادات — مُعطّل افتراضياً)</li>
-        </ul>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>٥. تخزين البيانات وأمانها</h2>
-        <p>بياناتك مخزّنة على خادمنا الخاص (api.nuralquran.net) في قاعدة بيانات MySQL. كلمات المرور تُحفظ مُجزّأة (hash) ولا يمكن لأحد قراءتها، وجلسات الدخول تُحفظ مُجزّأة أيضاً، ومفاتيح الخدمات الخارجية مشفّرة. يصل إلى البيانات مشرفو التطبيق فقط لأغراض الدعم والإدارة. نستخدم HTTPS لتشفير كل الاتصالات.</p>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>٦. حقوقك</h2>
-        <ul className={styles.list}>
-          <li>حق الوصول لبياناتك في أي وقت</li>
-          <li>حق تصحيح بياناتك</li>
-          <li>حق حذف حسابك وكل بياناتك نهائياً — <Link to="/delete-data" className={styles.inlineLink}>طلب حذف البيانات</Link></li>
-          <li>حق تصدير بياناتك — زر «تنزيل نسخة من بياناتي» في <Link to="/delete-data" className={styles.inlineLink}>صفحة حذف البيانات</Link></li>
-        </ul>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>٧. التواصل</h2>
-        <p>لأي استفسار حول خصوصيتك:</p>
-        <a href="mailto:support@webek.org" className={styles.emailLink}>support@webek.org</a>
-      </section>
-
-      <div className={styles.legalFooter}>
-        <Link to="/terms" className={styles.legalLink}>شروط الاستخدام</Link>
-        <span>·</span>
-        <Link to="/delete-data" className={styles.legalLink}>حذف البيانات</Link>
-      </div>
-    </div>
+    <LegalDoc eyebrow="بياناتك أمانة" title={t('privacyTitle') || 'سياسة الخصوصية'}
+      sub="ما نحفظه من بياناتك، ولماذا، وكيف تطّلع عليه أو تنزّله أو تحذفه."
+      updated="نوفمبر ٢٠٢٦" sections={sections}
+      related={[
+        { to: '/terms', icon: 'scroll', label: 'شروط الاستخدام' },
+        { to: '/delete-data', icon: 'x', label: 'حذف الحساب والبيانات' },
+      ]} />
   );
 }

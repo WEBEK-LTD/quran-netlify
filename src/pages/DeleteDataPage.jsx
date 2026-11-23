@@ -1,18 +1,29 @@
+// ─── Delete account & data (and download a copy first) ──────────────────────
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth, signOutAuth } from '../hooks/useAuth';
 import { deleteAccount, exportMyData, errorMessage } from '../backend';
-import { signOutAuth } from '../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { PageHero, Icon, Badge8, toAr } from '../components/ornaments/Ornaments';
 import styles from './LegalPage.module.css';
+import { useT } from '../i18n';
 
-import { useT, useLang, useDir } from '../i18n';
-import LangSwitcher from '../components/LangSwitcher';
+const WILL_DELETE = [
+  'حسابك نفسه: البريد الإلكتروني والاسم',
+  'سجل قراءتك وإحصائياتك',
+  'تقدّمك في الحفظ والوِرد اليومي',
+  'المفضلة وملاحظاتك على الآيات',
+  'ختماتك الشخصية، والختمات الجماعية التي أنشأتها',
+  'ظهورك في لوحة المتصدرين',
+  'بيانات الموقع المحفوظة على هذا الجهاز (الحفظ، الختمات، الإحصائيات)',
+];
+const WILL_KEEP = [
+  'القرآن الكريم والتفسير والتلاوات، فهي لا تحتاج إلى حساب',
+  'إعدادات العرض على هذا الجهاز: المظهر، والخط، والقارئ، والترجمة، واللغة',
+];
+
 export default function DeleteDataPage() {
   const t = useT();
-  const dir = useDir();
   const { user } = useAuth();
-  const navigate  = useNavigate();
   const [step,    setStep]    = useState(1); // 1=info, 2=confirm, 3=done
   const [loading, setLoading] = useState(false);
   const [reason,  setReason]  = useState('');
@@ -24,10 +35,10 @@ export default function DeleteDataPage() {
   const [useConfirm, setUseConfirm] = useState(false);
   const googleOnly = user?.has_password === false || useConfirm;
   const [exporting, setExporting] = useState(false);
-  const [exportMsg, setExportMsg] = useState('');
+  const [exportMsg, setExportMsg] = useState(null); // { text, ok }
 
   async function handleExport() {
-    setExporting(true); setExportMsg('');
+    setExporting(true); setExportMsg(null);
     try {
       const data = await exportMyData();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -39,16 +50,16 @@ export default function DeleteDataPage() {
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setExportMsg('✅ تم تنزيل نسخة من بياناتك');
+      setExportMsg({ text: 'تم تنزيل نسخة من بياناتك', ok: true });
     } catch (e) {
-      setExportMsg('⚠️ ' + errorMessage(e, 'تعذّر تنزيل البيانات، حاول مجدداً'));
+      setExportMsg({ text: errorMessage(e, 'تعذّر تنزيل البيانات، حاول مجدداً'), ok: false });
     }
     setExporting(false);
   }
 
   function clearLocalData() {
-    // مسح بيانات التطبيق من هذا الجهاز (مع إبقاء إعدادات العرض فقط)
-    const keysToKeep = ['nq_theme', 'nq_fontSize', 'nq_fontStyle', 'nq_reader', 'nq_translation', 'nq_visitor_id'];
+    // مسح بيانات الموقع من هذا الجهاز (مع إبقاء إعدادات العرض فقط)
+    const keysToKeep = ['nq_theme', 'nq_appearance', 'nq_ui_lang', 'nq_fontSize', 'nq_fontStyle', 'nq_reader', 'nq_translation', 'nq_highlight', 'nq_visitor_id'];
     try {
       Object.keys(localStorage).forEach(k => {
         if (!keysToKeep.includes(k)) localStorage.removeItem(k);
@@ -57,7 +68,8 @@ export default function DeleteDataPage() {
     } catch {}
   }
 
-  async function handleDelete() {
+  async function handleDelete(e) {
+    e?.preventDefault();
     if (!user) return;
     if (googleOnly ? confirmText.trim() !== 'DELETE' : !password) {
       setError(googleOnly ? 'اكتب DELETE بالأحرف الإنجليزية الكبيرة للتأكيد' : 'اكتب كلمة المرور للتأكيد');
@@ -70,159 +82,161 @@ export default function DeleteDataPage() {
       clearLocalData();
       await signOutAuth();
       setStep(3);
-    } catch (e) {
-      const f = e?.fields || {};
-      if (!googleOnly && e?.code === 'validation' && (f.confirm || (!f.password && user?.has_password === undefined))) {
+    } catch (err) {
+      const f = err?.fields || {};
+      if (!googleOnly && err?.code === 'validation' && (f.confirm || (!f.password && user?.has_password === undefined))) {
         // Probably a Google-only account: switch to the DELETE confirmation
         setUseConfirm(true);
-        setError('هذا الحساب مرتبط بحساب Google بدون كلمة مرور — اكتب DELETE للتأكيد');
-      } else if (!googleOnly && (e?.code === 'invalid_credentials' || f.password)) {
+        setError('هذا الحساب مرتبط بحساب Google بدون كلمة مرور، اكتب DELETE للتأكيد');
+      } else if (!googleOnly && (err?.code === 'invalid_credentials' || f.password)) {
         setError('كلمة المرور غير صحيحة');
       } else {
-        setError('تعذّر حذف الحساب: ' + errorMessage(e) + ' — لم يُحذف شيء، حاول مجدداً.');
+        setError('تعذّر حذف الحساب: ' + errorMessage(err) + '. لم يُحذف شيء، حاول مجدداً.');
       }
     }
     setLoading(false);
   }
 
+  const STEPS = ['ما سيُحذف', 'التأكيد', 'تم'];
+
   return (
     <div className={styles.page}>
-      <div className={styles.topBar}>
-        <Link to="/" className={styles.backBtn}>{t('back')}</Link>
-        <h1>{t('deleteAccount')}</h1>
-        <div style={{ width: 60 }} />
-      </div>
+      <PageHero eyebrow="حسابك ملكك" title="حذف الحساب والبيانات"
+        sub="احذف حسابك وكل بياناتك نهائياً، وننصحك بتنزيل نسخة منها أولاً." />
 
-      {step === 1 && (
-        <>
-          <div className={styles.deleteHero}>
-            <div className={styles.deleteIcon}>🗑️</div>
-            <h2>{t('delete_data_desc')}</h2>
-            <p>{t('delete_warning')}</p>
-          </div>
+      <div className={`nq-wrap ${styles.narrow}`}>
+        <ol className={styles.steps} aria-label="خطوات الحذف">
+          {STEPS.map((s, i) => (
+            <li key={s} data-state={step > i + 1 ? 'done' : step === i + 1 ? 'now' : 'next'} aria-current={step === i + 1 ? 'step' : undefined}>
+              <span className={`nq-num ${styles.stepN}`}>{step > i + 1 ? <Icon name="check" /> : toAr(i + 1)}</span>{s}
+            </li>
+          ))}
+        </ol>
 
-          <div className={styles.deleteList}>
-            <h3 className={styles.deleteListTitle}>{t('will_delete')}</h3>
-            <div className={styles.deleteItem}><span className={styles.deleteX}>✗</span> بياناتك المحفوظة في حسابك</div>
-            <div className={styles.deleteItem}><span className={styles.deleteX}>✗</span> سجل قراءتك وإحصائياتك</div>
-            <div className={styles.deleteItem}><span className={styles.deleteX}>✗</span> تقدمك في الحفظ والورد اليومي</div>
-            <div className={styles.deleteItem}><span className={styles.deleteX}>✗</span> ملاحظاتك على الآيات</div>
-            <div className={styles.deleteItem}><span className={styles.deleteX}>✗</span> ختماتك الشخصية والجماعية</div>
-            <div className={styles.deleteItem}><span className={styles.deleteX}>✗</span> مشاركتك في لوحة المتصدرين</div>
-            <div className={styles.deleteItem}><span className={styles.deleteX}>✗</span> بيانات التطبيق المحفوظة على هذا الجهاز (الحفظ، الختمات، الإحصائيات)</div>
-          </div>
+        {step === 1 && (<>
+          <p className={styles.lead}>نأسف لمغادرتك. حذف الحساب يزيل كل ما يرتبط به من خادم الموقع نهائياً، ولا يمكن استرجاعه بعد ذلك.</p>
 
-          <div className={styles.deleteKeep}>
-            <h3 className={styles.deleteListTitle}>سيبقى متاحاً:</h3>
-            <div className={styles.keepItem}><span className={styles.keepCheck}>✓</span> القرآن الكريم والتفسير (لا يحتاج حساباً)</div>
-            <div className={styles.keepItem}><span className={styles.keepCheck}>✓</span> إعدادات العرض على هذا الجهاز (الخط، المظهر، القارئ، الترجمة)</div>
-          </div>
-          <div className={styles.notLoggedIn}>
-            <p style={{ fontSize: 13 }}>
-              ملاحظة: يحذف هذا الإجراء حسابك نفسه (البريد الإلكتروني والاسم) وكل البيانات المرتبطة به من خوادمنا،
-              وتُحذف الختمات الجماعية التي أنشأتها. لا يمكن استرجاع الحساب بعد الحذف.
-              ننصحك بتنزيل نسخة من بياناتك أولاً.
-            </p>
+          <div className={styles.twoCols}>
+            <section className={`nq-card ${styles.listCard}`} data-tone="danger" aria-labelledby="dd-del">
+              <h2 id="dd-del" className={styles.cardTitle}><Icon name="x" />سيُحذف</h2>
+              <ul className={styles.marks}>
+                {WILL_DELETE.map(x => <li key={x}><Icon name="x" /><span>{x}</span></li>)}
+              </ul>
+            </section>
+            <section className={`nq-card ${styles.listCard}`} data-tone="ok" aria-labelledby="dd-keep">
+              <h2 id="dd-keep" className={styles.cardTitle}><Icon name="check" />سيبقى متاحاً</h2>
+              <ul className={styles.marks}>
+                {WILL_KEEP.map(x => <li key={x}><Icon name="check" /><span>{x}</span></li>)}
+              </ul>
+              <p className={styles.small}>تُحذف أيضاً الختمات الجماعية التي أنشأتها، فيفقد المشاركون فيها الوصول إليها.</p>
+            </section>
           </div>
 
           {user && (
-            <div className={styles.notLoggedIn}>
-              <button className={styles.cancelBtn} onClick={handleExport} disabled={exporting} style={{ width: '100%' }}>
-                {exporting ? 'جارٍ التحضير...' : '⬇️ تنزيل نسخة من بياناتي'}
+            <section className={`nq-card ${styles.export}`} aria-labelledby="dd-exp">
+              <Badge8 icon="download" size={56} />
+              <div className={styles.exportText}>
+                <h2 id="dd-exp" className={styles.cardTitle}>قبل أن تحذف: نزّل نسخة من بياناتك</h2>
+                <p>ملف واحد فيه قراءتك وحفظك وختماتك وملاحظاتك.</p>
+                {exportMsg && (
+                  <p className={styles.msg} data-ok={exportMsg.ok ? '1' : '0'} role={exportMsg.ok ? 'status' : 'alert'}>
+                    <Icon name={exportMsg.ok ? 'check' : 'x'} />{exportMsg.text}
+                  </p>
+                )}
+              </div>
+              <button type="button" className="nq-btn ghost" onClick={handleExport} disabled={exporting}>
+                <Icon name="download" />{exporting ? 'جارٍ التحضير…' : 'تنزيل نسخة من بياناتي'}
               </button>
-              {exportMsg && <p style={{ fontSize: 13, marginTop: 8 }}>{exportMsg}</p>}
-            </div>
+            </section>
           )}
 
           {!user ? (
-            <div className={styles.notLoggedIn}>
-              <p>أنت غير مسجّل الدخول حالياً.</p>
-              <p>إذا كان لديك حساب وتريد حذف بياناته، سجّل الدخول أولاً أو تواصل معنا مباشرة:</p>
-              <a href="mailto:support@webek.org?subject=طلب حذف بيانات" className={styles.emailLink}>
-                support@webek.org
-              </a>
-            </div>
+            <section className={`nq-card ${styles.guest}`}>
+              <Badge8 icon="lock" size={56} />
+              <h2 className={styles.cardTitle}>أنت غير مسجّل الدخول</h2>
+              <p>إن كان لديك حساب وتريد حذف بياناته، سجّل الدخول أولاً، أو راسلنا مباشرة وسنتولّى ذلك.</p>
+              <div className={styles.btnRow}>
+                <Link to="/login" className="nq-btn gold"><Icon name="user" />تسجيل الدخول</Link>
+                <a href="mailto:support@webek.org?subject=طلب حذف بيانات" className="nq-btn ghost" dir="ltr">support@webek.org</a>
+              </div>
+            </section>
           ) : (
-            <button className={styles.deleteBtn} onClick={() => setStep(2)}>
-              متابعة لحذف الحساب ←
-            </button>
-          )}
-        </>
-      )}
-
-      {step === 2 && (
-        <>
-          <div className={styles.confirmBox}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-            <h2>{t('confirm_delete')}</h2>
-            <p>هذا الإجراء <strong>لا يمكن التراجع عنه</strong>. ستُحذف كل بياناتك المرتبطة بـ:</p>
-            <div className={styles.emailBadge}>{user?.email}</div>
-          </div>
-
-          <div className={styles.reasonBox}>
-            {googleOnly ? (
-              <>
-                <label className={styles.reasonLabel}>للتأكيد اكتب <strong dir="ltr">DELETE</strong></label>
-                <input className={styles.reasonSelect} value={confirmText} dir="ltr" autoComplete="off"
-                  onChange={e => setConfirmText(e.target.value)} placeholder="DELETE" />
-              </>
-            ) : (
-              <>
-                <label className={styles.reasonLabel}>اكتب كلمة المرور للتأكيد</label>
-                <input className={styles.reasonSelect} type="password" value={password} dir="ltr"
-                  autoComplete="current-password"
-                  onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
-                <button type="button" onClick={() => { setUseConfirm(true); setError(''); }}
-                  style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', marginTop: 6, padding: 0 }}>
-                  دخلت بحساب Google وليس لدي كلمة مرور
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className={styles.reasonBox}>
-            <label className={styles.reasonLabel}>سبب المغادرة (اختياري — يساعدنا في التحسين)</label>
-            <select className={styles.reasonSelect} value={reason} onChange={e => setReason(e.target.value)}>
-              <option value="">اختر سبباً...</option>
-              <option value="privacy">قلق بشأن الخصوصية</option>
-              <option value="not_using">لا أستخدمه بعد الآن</option>
-              <option value="issues">مشاكل تقنية</option>
-              <option value="alternative">وجدت بديلاً أفضل</option>
-              <option value="other">سبب آخر</option>
-            </select>
-          </div>
-
-          {error && (
-            <div role="alert" style={{ color: '#ef4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 14px', margin: '0 0 14px', fontSize: 13 }}>
-              ⚠️ {error}
+            <div className={styles.btnRow} style={{ justifyContent: 'center' }}>
+              <Link to="/settings" className="nq-btn ghost">العودة إلى الإعدادات</Link>
+              <button type="button" className={`nq-btn ${styles.dangerBtn}`} onClick={() => setStep(2)}>
+                متابعة لحذف الحساب<Icon name="back" style={{ transform: 'scaleX(-1)' }} />
+              </button>
             </div>
           )}
+        </>)}
 
-          <div className={styles.confirmBtns}>
-            <button className={styles.cancelBtn} onClick={() => { setStep(1); setError(''); }}>{t('cancel')}</button>
-            <button className={styles.confirmDeleteBtn} onClick={handleDelete} disabled={loading}>
-              {loading ? 'جارٍ الحذف...' : '🗑️ حذف نهائياً'}
-            </button>
-          </div>
-        </>
-      )}
+        {step === 2 && (
+          <form className={`nq-card ${styles.confirm}`} onSubmit={handleDelete}>
+            <div className={styles.warnIcon} aria-hidden="true"><Icon name="shield" /></div>
+            <h2 className={styles.confirmTitle}>تأكيد الحذف النهائي</h2>
+            <p>هذا الإجراء <strong>لا يمكن التراجع عنه</strong>. ستُحذف كل البيانات المرتبطة بالحساب:</p>
+            <div className={styles.emailBadge} dir="ltr">{user?.email}</div>
 
-      {step === 3 && (
-        <div className={styles.doneBox}>
-          <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
-          <h2>تم حذف حسابك</h2>
-          <p>حُذف حسابك وكل البيانات المرتبطة به من خوادمنا، ومُسحت بيانات التطبيق من هذا الجهاز، وتم تسجيل خروجك.</p>
-          <p style={{ marginTop: 12, fontSize: 13 }}>
-            لأي استفسار: <a href="mailto:support@webek.org" className={styles.inlineLink}>support@webek.org</a>
-          </p>
-          <Link to="/" className={styles.homeBtn}>العودة للرئيسية</Link>
-        </div>
-      )}
+            <div className={styles.fields}>
+              {googleOnly ? (
+                <label className={styles.field}>
+                  <span>للتأكيد اكتب <strong dir="ltr">DELETE</strong> بالأحرف الإنجليزية الكبيرة</span>
+                  <span className="nq-input"><input value={confirmText} dir="ltr" autoComplete="off" autoCapitalize="characters"
+                    onChange={e => setConfirmText(e.target.value)} placeholder="DELETE" /></span>
+                </label>
+              ) : (
+                <div className={styles.field}>
+                  <label htmlFor="dd-pw">اكتب كلمة المرور للتأكيد</label>
+                  <span className="nq-input"><Icon name="lock" /><input id="dd-pw" type="password" value={password} dir="ltr"
+                    autoComplete="current-password" onChange={e => setPassword(e.target.value)} placeholder="••••••••" /></span>
+                  <button type="button" className={styles.textBtn} onClick={() => { setUseConfirm(true); setError(''); }}>
+                    دخلت بحساب Google وليس لدي كلمة مرور
+                  </button>
+                </div>
+              )}
 
-      <div className={styles.legalFooter}>
-        <Link to="/privacy" className={styles.legalLink}>سياسة الخصوصية</Link>
-        <span>·</span>
-        <Link to="/terms" className={styles.legalLink}>شروط الاستخدام</Link>
+              <label className={styles.field}>
+                <span>سبب المغادرة <small>(اختياري، يساعدنا على التحسين)</small></span>
+                <span className={styles.selectWrap}>
+                  <select value={reason} onChange={e => setReason(e.target.value)}>
+                    <option value="">اختر سبباً…</option>
+                    <option value="privacy">قلق بشأن الخصوصية</option>
+                    <option value="not_using">لا أستخدمه بعد الآن</option>
+                    <option value="issues">مشكلات تقنية</option>
+                    <option value="alternative">وجدت بديلاً أفضل</option>
+                    <option value="other">سبب آخر</option>
+                  </select>
+                  <Icon name="chev" />
+                </span>
+              </label>
+            </div>
+
+            {error && <p role="alert" className={styles.msg} data-ok="0"><Icon name="x" />{error}</p>}
+
+            <div className={styles.btnRow}>
+              <button type="button" className="nq-btn ghost" onClick={() => { setStep(1); setError(''); }}>{t('cancel') || 'إلغاء'}</button>
+              <button type="submit" className={`nq-btn ${styles.dangerSolid}`} disabled={loading}>
+                <Icon name="x" />{loading ? 'جارٍ الحذف…' : 'حذف نهائياً'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 3 && (
+          <section className={`nq-card ${styles.done}`} aria-live="polite">
+            <Badge8 icon="check" size={72} />
+            <h2 className={styles.confirmTitle}>تم حذف حسابك</h2>
+            <p>حُذف حسابك وكل البيانات المرتبطة به من خادم الموقع، ومُسحت بيانات الموقع من هذا الجهاز، وسُجّل خروجك.</p>
+            <p className={styles.small}>لأي استفسار: <a href="mailto:support@webek.org" className={styles.inlineLink} dir="ltr">support@webek.org</a></p>
+            <Link to="/" className="nq-btn gold"><Icon name="home" />العودة إلى الرئيسية</Link>
+          </section>
+        )}
+
+        <nav className={styles.footLinks} aria-label="صفحات ذات صلة">
+          <Link to="/privacy">سياسة الخصوصية</Link>
+          <span aria-hidden="true">·</span>
+          <Link to="/terms">شروط الاستخدام</Link>
+        </nav>
       </div>
     </div>
   );

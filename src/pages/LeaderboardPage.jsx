@@ -1,41 +1,35 @@
+// ─── Leaderboard ─────────────────────────────────────────────────────────────
+// GET /leaderboard?type=reading|hifz|khatma&period=week|month|all → top 50 of
+// the users who opted in (show_on_leaderboard). Podium for the top three, then
+// a ranked list with a bar relative to the leader.
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getLeaderboard, errorMessage } from '../backend';
+import { PageHero, Icon, Badge8, toAr } from '../components/ornaments/Ornaments';
 import styles from './LeaderboardPage.module.css';
-import { useT, useLang, useDir } from '../i18n';
-import LangSwitcher from '../components/LangSwitcher';
 
 const PERIODS = [
-  { id: 'week',  label: 'أسبوع' },
-  { id: 'month', label: 'شهر' },
-  { id: 'all',   label: 'الكل' },
+  { id: 'week',  label: 'هذا الأسبوع' },
+  { id: 'month', label: 'هذا الشهر' },
+  { id: 'all',   label: 'كل الأوقات' },
 ];
 
-// TABS defined inside component (uses t() hook)
+const TABS = [
+  { id: 'reading', label: 'الأكثر قراءة', icon: 'book',   unit: 'آية' },
+  { id: 'hifz',    label: 'الأكثر حفظاً', icon: 'star',   unit: 'سورة' },
+  { id: 'khatma',  label: 'أكثر الختمات', icon: 'beads',  unit: 'ختمة' },
+];
 
-const MEDALS = ['🥇','🥈','🥉'];
+const fmt = n => toAr((n || 0).toLocaleString('en-US').replace(/,/g, '٬'));
 
-function Avatar({ name, rank }) {
-  const initials = name ? name.trim().split(' ').map(w => w[0]).join('').slice(0,2) : '؟';
-  const colors = ['#52b788','#c9a84c','#60a5fa','#f97316','#fb7185','#a78bfa','#34d399','#38bdf8'];
-  const bg = colors[(name || '').length % colors.length];
-  return (
-    <div className={styles.avatar} style={{ background: bg + '22', border: `2px solid ${bg}44` }}>
-      <span style={{ color: bg }}>{rank <= 3 ? MEDALS[rank-1] : initials}</span>
-    </div>
-  );
+function initials(name) {
+  const w = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (!w.length) return '؟';
+  return (w[0][0] + (w[1]?.[0] || '')).slice(0, 2);
 }
 
 export default function LeaderboardPage() {
-  const t = useT();
-  const dir = useDir();
-
-  const TABS = [
-    { id: 'reading', label: t('mostReading'), icon: '📖', unit: t('ayahs'),  color: '#52b788' },
-    { id: 'hifz',    label: t('mostHifz'),    icon: '📚', unit: t('surahs'), color: '#c9a84c' },
-    { id: 'khatma',  label: t('mostKhatma'),  icon: '📿', unit: t('khatmas'),color: '#f97316' },
-  ];
   const { user } = useAuth();
   const [tab, setTab]       = useState('reading');
   const [period, setPeriod] = useState('week');
@@ -52,7 +46,7 @@ export default function LeaderboardPage() {
     setData([]);
     getLeaderboard(tab, period)
       .then(rows => { if (alive) setData(rows || []); })
-      .catch(e => { if (alive) setLoadErr(errorMessage(e, 'حدث خطأ أثناء الاتصال بالخادم — حاول مجدداً لاحقاً.')); })
+      .catch(e => { if (alive) setLoadErr(errorMessage(e, 'حدث خطأ أثناء الاتصال بالخادم، حاول مجدداً لاحقاً.')); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [tab, period, user?.id]);
@@ -60,144 +54,129 @@ export default function LeaderboardPage() {
   const myRow  = data.find(r => r.is_me);
   const myRank = myRow ? (myRow.rank || data.indexOf(myRow) + 1) : null;
   const hasPodium = data.length >= 3;
+  const top = Math.max(1, ...data.map(r => r.score || 0));
+
+  // podium order on screen (RTL): 1st in the middle, 2nd to its right, 3rd to its left
+  const podium = hasPodium ? [
+    { row: data[1], rank: 2, cls: styles.p2 },
+    { row: data[0], rank: 1, cls: styles.p1 },
+    { row: data[2], rank: 3, cls: styles.p3 },
+  ] : [];
 
   return (
     <div className={styles.page}>
-      <div className={styles.topBar}>
-        <Link to="/" className={styles.backBtn}>{t('back')}</Link>
-        <h1>{t('leaderboardTitle')}</h1>
-        <LangSwitcher compact={true} />
-        <div style={{ width: 60 }} />
-      </div>
+      <PageHero
+        eyebrow="المتصدرون"
+        title="لوحة المتصدرين"
+        ayah="وَفِى ذَٰلِكَ فَلْيَتَنَافَسِ ٱلْمُتَنَٰفِسُونَ"
+        ayahRef="سورة المطففين · ٢٦"
+        sub="أبرز القرّاء والحفّاظ في مجتمع نور القرآن، تنافسٌ في الخير."
+      />
 
-      <p className={styles.subtitle}>أبرز القراء والحفّاظ في مجتمع نور القرآن</p>
-
-      {/* Tabs */}
-      <div className={styles.tabs}>
-        {TABS.map(tk => (
-          <button key={tk.id}
-            className={`${styles.tabBtn} ${tab === tk.id ? styles.tabActive : ''}`}
-            style={{ '--c': tk.color }}
-            onClick={() => setTab(tk.id)}>
-            {tk.icon} {tk.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Period */}
-      <div className={styles.tabs} style={{ marginTop: -4 }}>
-        {PERIODS.map(p => (
-          <button key={p.id}
-            className={`${styles.tabBtn} ${period === p.id ? styles.tabActive : ''}`}
-            style={{ '--c': 'var(--gold)' }}
-            onClick={() => setPeriod(p.id)}>
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      <p className={styles.note} style={{ marginTop: 0 }}>
-        🔒 تظهر هنا فقط أسماء من اختاروا الظهور في لوحة المتصدرين.{' '}
-        {user
-          ? (user.show_on_leaderboard
-              ? <>اسمك ظاهر — يمكنك إخفاؤه من <Link to="/settings" style={{ color: 'var(--gold)' }}>الإعدادات</Link>.</>
-              : <>اسمك مخفي — يمكنك إظهاره من <Link to="/settings" style={{ color: 'var(--gold)' }}>الإعدادات</Link>.</>)
-          : <><Link to="/login" style={{ color: 'var(--gold)' }}>سجّل الدخول</Link> ثم فعّل الظهور من الإعدادات لتنافس.</>}
-      </p>
-
-      {/* My rank banner */}
-      {myRank && (
-        <div className={styles.myRankBanner}>
-          <span className={styles.myRankIcon}>👤</span>
-          <span>{t('yourRank')}: <strong>#{myRank}</strong> </span>
+      <div className="nq-wrap">
+        {/* ── filters ── */}
+        <div className={styles.filters}>
+          <div className={styles.typeTabs} role="group" aria-label="نوع الترتيب">
+            {TABS.map(tk => (
+              <button key={tk.id} type="button" className={styles.typeTab} aria-pressed={tab === tk.id} onClick={() => setTab(tk.id)}>
+                <Icon name={tk.icon} />{tk.label}
+              </button>
+            ))}
+          </div>
+          <div className="nq-seg" role="group" aria-label="الفترة">
+            {PERIODS.map(p => (
+              <button key={p.id} type="button" aria-pressed={period === p.id} onClick={() => setPeriod(p.id)}>{p.label}</button>
+            ))}
+          </div>
         </div>
-      )}
 
-      {/* Loading */}
-      {loading && (
-        <div className={styles.loadingBox}>
-          {[...Array(5)].map((_,i) => (
-            <div key={i} className={styles.skeleton} style={{ animationDelay: `${i*80}ms` }} />
-          ))}
-        </div>
-      )}
+        <p className={styles.optin}>
+          <Icon name="shield" />
+          <span>
+            تظهر هنا أسماء من اختاروا الظهور في لوحة المتصدرين فقط.{' '}
+            {user
+              ? (user.show_on_leaderboard
+                  ? <>اسمك ظاهر، ويمكنك إخفاؤه من <Link to="/settings">الإعدادات</Link>.</>
+                  : <>اسمك مخفي، ويمكنك إظهاره من <Link to="/settings">الإعدادات</Link>.</>)
+              : <><Link to="/login">سجّل الدخول</Link> ثم فعّل الظهور من الإعدادات لتشارك.</>}
+          </span>
+        </p>
 
-      {/* Error */}
-      {!loading && loadErr && (
-        <div className={styles.emptyBox}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
-          <p style={{ fontWeight: 700, marginBottom: 8 }}>تعذّر تحميل قائمة المتصدرين</p>
-          <p style={{ fontSize: 13, color: 'var(--text3)', lineHeight: 1.8 }}>
-            {loadErr}
-          </p>
-        </div>
-      )}
-
-      {/* Empty */}
-      {!loading && !loadErr && data.length === 0 && (
-        <div className={styles.emptyBox}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
-          <p style={{ fontWeight: 700, marginBottom: 8 }}>لا توجد بيانات بعد</p>
-          <p style={{ fontSize: 13, color: 'var(--text3)', lineHeight: 1.8 }}>
-            {t('beFirst')} 🌟<br/>
-            {t('startReadingLB')} <a href="/reader" style={{ color: 'var(--gold)' }}>صفحة القارئ</a> وستظهر هنا تلقائياً.
-          </p>
-        </div>
-      )}
-
-      {/* Leaderboard list */}
-      {!loading && data.length > 0 && (
-        <div className={styles.list}>
-          {/* Top 3 podium */}
-          {hasPodium && (
-            <div className={styles.podium}>
-              {/* 2nd */}
-              <div className={styles.podiumItem} style={{ '--c': '#94a3b8' }}>
-                <Avatar name={data[1]?.name} rank={2} />
-                <div className={styles.podiumName}>{data[1]?.name || 'مجهول'}</div>
-                <div className={styles.podiumScore}>{(data[1]?.score||0).toLocaleString('ar')} {activeTab.unit}</div>
-                <div className={styles.podiumBase} style={{ height: 60 }}>🥈</div>
-              </div>
-              {/* 1st */}
-              <div className={`${styles.podiumItem} ${styles.podiumFirst}`} style={{ '--c': '#c9a84c' }}>
-                <div className={styles.crownAnim}>👑</div>
-                <Avatar name={data[0]?.name} rank={1} />
-                <div className={styles.podiumName}>{data[0]?.name || 'مجهول'}</div>
-                <div className={styles.podiumScore}>{(data[0]?.score||0).toLocaleString('ar')} {activeTab.unit}</div>
-                <div className={styles.podiumBase} style={{ height: 80 }}>🥇</div>
-              </div>
-              {/* 3rd */}
-              <div className={styles.podiumItem} style={{ '--c': '#c97c3a' }}>
-                <Avatar name={data[2]?.name} rank={3} />
-                <div className={styles.podiumName}>{data[2]?.name || 'مجهول'}</div>
-                <div className={styles.podiumScore}>{(data[2]?.score||0).toLocaleString('ar')} {activeTab.unit}</div>
-                <div className={styles.podiumBase} style={{ height: 45 }}>🥉</div>
-              </div>
+        {myRank && (
+          <div className={`nq-card ${styles.mine}`}>
+            <Badge8 size={52}>{toAr(myRank)}</Badge8>
+            <div>
+              <span className={styles.mineLbl}>ترتيبك الحالي</span>
+              <b className={styles.mineName}>{myRow.name || 'أنت'}</b>
             </div>
-          )}
+            <span className={styles.mineScore}><b className="nq-num">{fmt(myRow.score)}</b> {activeTab.unit}</span>
+          </div>
+        )}
 
-          {/* Rest of the list (4th onwards — or everyone when fewer than 3) */}
-          {data.slice(hasPodium ? 3 : 0).map((row, i) => {
-            const rank = row.rank || i + (hasPodium ? 4 : 1);
-            const isMe = !!row.is_me;
-            return (
-              <div key={rank} className={`${styles.row} ${isMe ? styles.rowMe : ''}`}>
-                <div className={styles.rowRank}>#{rank}</div>
-                <Avatar name={row.name} rank={rank} />
-                <div className={styles.rowInfo}>
-                  <span className={styles.rowName}>{row.name || 'مجهول'}{isMe ? ' (أنت)' : ''}</span>
-                  <span className={styles.rowSub}>{activeTab.icon} {(row.score||0).toLocaleString('ar')} {activeTab.unit}</span>
-                </div>
-                <div className={styles.rowScore} style={{ color: activeTab.color }}>
-                  {(row.score||0).toLocaleString('ar')}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+        {loading && (
+          <div className={styles.loading} aria-busy="true" aria-label="جارٍ التحميل">
+            {[...Array(5)].map((_, i) => <div key={i} className={styles.skeleton} style={{ animationDelay: `${i * 80}ms` }} />)}
+          </div>
+        )}
 
-      <p className={styles.note}>* الترتيب مبني على نشاط المستخدمين المسجّلين خلال الفترة المختارة (أفضل ٥٠)</p>
+        {!loading && loadErr && (
+          <div className={`nq-card ${styles.empty}`}>
+            <Badge8 icon="x" size={58} />
+            <p className={styles.emptyT}>تعذّر تحميل قائمة المتصدرين</p>
+            <p className={styles.muted}>{loadErr}</p>
+          </div>
+        )}
+
+        {!loading && !loadErr && data.length === 0 && (
+          <div className={`nq-card ${styles.empty}`}>
+            <Badge8 icon="trophy" size={58} />
+            <p className={styles.emptyT}>لا توجد بيانات بعد</p>
+            <p className={styles.muted}>كن أول المتصدرين. ابدأ القراءة في المصحف، وستظهر هنا تلقائياً.</p>
+            <Link className="nq-btn gold sm" to="/reader"><Icon name="book" />افتح المصحف</Link>
+          </div>
+        )}
+
+        {!loading && data.length > 0 && (
+          <>
+            {hasPodium && (
+              <ol className={styles.podium} aria-label="المراكز الثلاثة الأولى">
+                {podium.map(({ row, rank, cls }) => (
+                  <li key={rank} className={`${styles.pItem} ${cls} ${row?.is_me ? styles.pMe : ''}`}>
+                    <span className="nq-sr">المركز {toAr(rank)}: </span>
+                    <span className={styles.avatar} aria-hidden="true">{initials(row?.name)}</span>
+                    <b className={styles.pName}>{row?.name || 'مجهول'}{row?.is_me ? ' (أنت)' : ''}</b>
+                    <span className={styles.pScore}><b className="nq-num">{fmt(row?.score)}</b> {activeTab.unit}</span>
+                    <div className={styles.plinth}>
+                      <Badge8 size={rank === 1 ? 64 : 52}>{toAr(rank)}</Badge8>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            <ol className={`nq-card ${styles.list}`} start={hasPodium ? 4 : 1}>
+              {data.slice(hasPodium ? 3 : 0).map((row, i) => {
+                const rank = row.rank || i + (hasPodium ? 4 : 1);
+                const isMe = !!row.is_me;
+                return (
+                  <li key={rank} className={`${styles.row} ${isMe ? styles.rowMe : ''}`}>
+                    <Badge8 size={42}>{toAr(rank)}</Badge8>
+                    <span className={styles.avatarSm} aria-hidden="true">{initials(row.name)}</span>
+                    <span className={styles.rowInfo}>
+                      <span className={styles.rowName}>{row.name || 'مجهول'}{isMe ? ' (أنت)' : ''}</span>
+                      <span className={styles.rowBar} aria-hidden="true"><i style={{ width: `${Math.max(3, ((row.score || 0) / top) * 100)}%` }} /></span>
+                    </span>
+                    <span className={styles.rowScore}><b className="nq-num">{fmt(row.score)}</b><small>{activeTab.unit}</small></span>
+                  </li>
+                );
+              })}
+              {hasPodium && data.length === 3 && <li className={styles.rowNone}>لا أحد بعد المراكز الثلاثة الأولى.</li>}
+            </ol>
+          </>
+        )}
+
+        <p className={styles.foot}>الترتيب مبنيّ على نشاط المستخدمين المسجّلين خلال الفترة المختارة، ويعرض أفضل ٥٠.</p>
+      </div>
     </div>
   );
 }

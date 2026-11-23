@@ -8,7 +8,7 @@ namespace NQ\Core;
  *
  * Every message is built from one layout (render()) so all emails look the same: the gold-framed
  * card, the header banner, the ayah box and the footer. Images are PNGs served by the frontend
- * at <site_url>/brand/email/ (rendered by api/tools/render-email-assets.js).
+ * at <api_url>/email/ (copies of public/brand/email/, rendered by api/tools/render-email-assets.js).
  */
 final class Mailer
 {
@@ -566,7 +566,9 @@ final class Mailer
         if (self::$assetBase !== null) {
             return self::$assetBase . '/' . $file;
         }
-        return Config::siteUrl() . '/brand/email/' . $file . '?v=' . self::ASSET_VERSION;
+        // Served by the API host itself (api/public/email/), so emails show their images
+        // as soon as the API is deployed, independent of the frontend.
+        return Config::apiUrl() . '/email/' . $file . '?v=' . self::ASSET_VERSION;
     }
 
     /** Integration setting; previews run without a database. */

@@ -1,83 +1,66 @@
 import { Link } from 'react-router-dom';
+import { LegalDoc, Checks } from './legal/LegalDoc';
 import styles from './LegalPage.module.css';
-import { useT, useLang, useDir } from '../i18n';
-import LangSwitcher from '../components/LangSwitcher';
+import { useT } from '../i18n';
 
 export default function TermsPage() {
   const t = useT();
-  const dir = useDir();
+  const sections = [
+    { id: 'accept', title: 'قبول الشروط', body: (
+      <p>باستخدامك موقع نور القرآن فإنك توافق على هذه الشروط. وإن كنت لا توافق عليها فنرجو ألا تستخدم الموقع.</p>
+    ) },
+    { id: 'nature', title: 'طبيعة الخدمة', body: (
+      <Checks items={[
+        <>الموقع <strong>مجاني بالكامل</strong> ولوجه الله تعالى، ولا توجد فيه ميزات مدفوعة ولا اشتراكات.</>,
+        'لا إعلانات من أي نوع.',
+        'لا مشتريات داخل الموقع أو التطبيق.',
+        'القرآن الكريم والتفسير والترجمة والتلاوات متاحة مجاناً للجميع.',
+      ]} />
+    ) },
+    { id: 'use', title: 'الاستخدام المقبول', body: (<>
+      <p>يمكنك استخدام الموقع في:</p>
+      <ul className={styles.list}>
+        <li>قراءة القرآن الكريم والاستماع إليه وتدبّره.</li>
+        <li>حفظ القرآن ومتابعة تقدّمك ومراجعتك.</li>
+        <li>تدوين ملاحظاتك الشخصية على الآيات.</li>
+        <li>تنظيم ختمات جماعية مع أهلك وأحبابك، وإهدائها لأرواح من تحب.</li>
+      </ul>
+      <p>ونرجو ألا تستخدم الموقع فيما يسيء إلى القرآن الكريم أو إلى الآخرين، كوضع أسماء أو عبارات مسيئة في الختمات الجماعية العامة أو في لوحة المتصدرين، أو محاولة تعطيل الخدمة أو الوصول إلى بيانات غيرك. ويحق للإدارة إيقاف أي حساب يخالف ذلك.</p>
+    </>) },
+    { id: 'account', title: 'حسابك', body: (
+      <ul className={styles.list}>
+        <li>أنت مسؤول عن الحفاظ على سرية كلمة مرورك، وعمّا يجري في حسابك.</li>
+        <li>يمكنك تعديل اسمك أو كلمة مرورك في أي وقت من <Link to="/settings#account" className={styles.inlineLink}>الإعدادات</Link>.</li>
+        <li>بياناتك محفوظة على خادم الموقع (<span dir="ltr">api.nuralquran.net</span>) كما توضّح <Link to="/privacy" className={styles.inlineLink}>سياسة الخصوصية</Link>.</li>
+      </ul>
+    ) },
+    { id: 'content', title: 'المحتوى والملكية الفكرية', body: (
+      <ul className={styles.list}>
+        <li>نص القرآن الكريم والترجمات والتفاسير مصدرها <span dir="ltr">alquran.cloud</span> و<span dir="ltr">quran.com</span>، وهي متاحة للاستخدام العام.</li>
+        <li>التسجيلات الصوتية من <span dir="ltr">everyayah.com</span>، وحقوقها لأصحابها.</li>
+        <li>تصميم الموقع وشيفرته البرمجية مملوكان لـ <span dir="ltr">ABDELRAHMAN HAMDY</span>.</li>
+        <li>ملاحظاتك الشخصية ملكك أنت وحدك.</li>
+      </ul>
+    ) },
+    { id: 'disclaimer', title: 'إخلاء المسؤولية', body: (<>
+      <p>نبذل جهدنا لضمان دقة المحتوى، لكن الموقع يُقدَّم «كما هو». مواقيت الصلاة واتجاه القبلة محسوبة رياضياً وقد تختلف قليلاً عن تقويم مسجدك، فاعتمد التقويم الرسمي في بلدك عند الاختلاف.</p>
+      <p>وإجابات المساعد للتوضيح والتقريب فقط، ولا تُغني عن الرجوع إلى أهل العلم والمصادر الموثوقة في الفتاوى والأحكام الشرعية.</p>
+    </>) },
+    { id: 'stop', title: 'التوقف عن الاستخدام', body: (
+      <p>يمكنك التوقف عن استخدام الموقع في أي وقت. ولحذف حسابك وكل بياناتك نهائياً انتقل إلى <Link to="/delete-data" className={styles.inlineLink}>صفحة حذف البيانات</Link>.</p>
+    ) },
+    { id: 'changes', title: 'تعديل الشروط', body: (
+      <p>قد نعدّل هذه الشروط عند الحاجة، ونذكر تاريخ آخر تحديث في أعلى الصفحة. استمرارك في استخدام الموقع بعد التعديل يعني قبولك للشروط المعدّلة.</p>
+    ) },
+  ];
+
   return (
-    <div className={styles.page}>
-      <div className={styles.topBar}>
-        <Link to="/" className={styles.backBtn}>{t('back')}</Link>
-        <h1>{t('termsTitle')}</h1>
-        <LangSwitcher compact={true} />
-        <div style={{ width: 60 }} />
-      </div>
-
-      <div className={styles.freeNote}>
-        <span className={styles.freeIcon}>🌙</span>
-        <p>نور القرآن تطبيق مجاني بالكامل، لوجه الله تعالى، بلا إعلانات ولا رسوم ولا مدفوعات من أي نوع.</p>
-      </div>
-
-      <div className={styles.lastUpdate}>آخر تحديث: فبراير 2025</div>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>١. قبول الشروط</h2>
-        <p>باستخدام تطبيق نور القرآن توافق على هذه الشروط. إذا كنت لا توافق، يرجى عدم استخدام التطبيق.</p>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>٢. طبيعة الخدمة</h2>
-        <ul className={styles.list}>
-          <li>✅ التطبيق <strong>مجاني بالكامل</strong> ولوجه الله تعالى — لا توجد ميزات مدفوعة أو اشتراكات</li>
-          <li>✅ لا إعلانات من أي نوع</li>
-          <li>✅ لا مشتريات داخل التطبيق</li>
-          <li>✅ القرآن الكريم والتفسير والترجمة كلها مجانية للجميع</li>
-        </ul>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>٣. الاستخدام المقبول</h2>
-        <p>يمكنك استخدام التطبيق لـ:</p>
-        <ul className={styles.list}>
-          <li>قراءة القرآن الكريم والاستماع إليه</li>
-          <li>حفظ القرآن وتتبع التقدم</li>
-          <li>تدوين الملاحظات الشخصية على الآيات</li>
-          <li>تنظيم ختمات جماعية لأرواح المتوفين</li>
-        </ul>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>٤. المحتوى والملكية الفكرية</h2>
-        <ul className={styles.list}>
-          <li>نص القرآن الكريم مصدره alquran.cloud وهو مفتوح المصدر</li>
-          <li>التسجيلات الصوتية من everyayah.com بإذن أصحابها</li>
-          <li>كود التطبيق مملوك لـ ABDELRAHMAN HAMDY</li>
-          <li>ملاحظاتك الشخصية ملكك أنت وحدك</li>
-        </ul>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>٥. إخلاء المسؤولية</h2>
-        <p>نبذل أقصى جهدنا لضمان دقة المحتوى، لكن التطبيق يُقدَّم "كما هو". نوصي دائماً بمراجعة المصادر الموثوقة للفتاوى والأحكام الشرعية.</p>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>٦. التوقف عن الاستخدام</h2>
-        <p>يمكنك التوقف عن استخدام التطبيق في أي وقت. لحذف حسابك وبياناتك نهائياً: <Link to="/delete-data" className={styles.inlineLink}>اضغط هنا</Link>.</p>
-      </section>
-
-      <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>٧. التواصل</h2>
-        <a href="mailto:support@webek.org" className={styles.emailLink}>support@webek.org</a>
-      </section>
-
-      <div className={styles.legalFooter}>
-        <Link to="/privacy" className={styles.legalLink}>سياسة الخصوصية</Link>
-        <span>·</span>
-        <Link to="/delete-data" className={styles.legalLink}>حذف البيانات</Link>
-      </div>
-    </div>
+    <LegalDoc eyebrow="بوضوح وإيجاز" title={t('termsTitle') || 'شروط الاستخدام'}
+      sub="ما يقدّمه لك نور القرآن، وما نرجوه منك عند استخدامه."
+      updated="نوفمبر ٢٠٢٦" sections={sections}
+      related={[
+        { to: '/privacy', icon: 'shield', label: 'سياسة الخصوصية' },
+        { to: '/delete-data', icon: 'x', label: 'حذف الحساب والبيانات' },
+      ]} />
   );
 }

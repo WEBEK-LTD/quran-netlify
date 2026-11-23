@@ -48,6 +48,8 @@
 .qSub { color:var(--muted); font-size:.9rem; }
 .qGo { display:inline-flex; align-items:center; gap:4px; color:var(--gold); font-weight:600; font-size:.9rem; min-height:32px; }
 .qGo :global(.nq-ico) { width:18px; height:18px; }
+:global(:root[data-mode="contrast"]) main a.qibla { text-decoration:none; }
+:global(:root[data-mode="contrast"]) .qGo { text-decoration:underline; }
 
 /* ── five prayers as mihrab windows ── */
 .fiveHead { display:flex; justify-content:space-between; align-items:end; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
@@ -80,7 +82,7 @@
 .tog::after { content:""; position:absolute; top:3px; inset-inline-start:3px; width:22px; height:22px; border-radius:50%; background:var(--muted); transition:inset-inline-start .2s, background .2s; }
 .tog[aria-checked="true"] { background:var(--hl); border-color:var(--gold); }
 .tog[aria-checked="true"]::after { inset-inline-start:25px; background:var(--gold); }
-:global(:root[data-mode="contrast"]) .win { background:#000; outline:2px solid #fff; outline-offset:-2px; -webkit-mask:none; mask:none; border-radius:999px 999px 12px 12px / 120px 120px 12px 12px; }
+:global(:root[data-mode="contrast"]) .win { background:#000; outline:2px solid #fff; outline-offset:-2px; -webkit-mask:none; mask:none; border-radius:50% 50% 12px 12px / 26% 26% 12px 12px; }
 :global(:root[data-mode="contrast"]) .win.now { outline-color:var(--gold); outline-width:3px; }
 :global(:root[data-mode="contrast"]) .wl { display:none; }
 

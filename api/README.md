@@ -48,8 +48,13 @@
 - **التكاملات**: أضف مفاتيح الذكاء الاصطناعي (Anthropic أو OpenAI) ومفاتيح Google وعنوان مرسل البريد. تُحفظ المفاتيح السرية مشفّرة ولا تُعرض مرة أخرى.
 - **تسجيل الدخول بـ Google**: في Google Cloud Console أنشئ «OAuth client ID» من نوع *Web application*، وأضف في
   *Authorized redirect URIs*: `https://api.nuralquran.net/v1/auth/google/callback` ثم انسخ Client ID و Client Secret إلى التكاملات، واضغط «اختبار».
-- **البريد**: يُرسل عبر `mail()` الخاص بالاستضافة. يُفضّل أن يكون عنوان المرسل على نفس النطاق (مثل `no-reply@nuralquran.net`)،
+- **البريد**: يُرسل افتراضياً عبر `mail()` الخاص بالاستضافة، أو عبر **SMTP** إن اخترت ذلك في التكاملات («طريقة الإرسال»).
+  لصندوق بريد من cPanel (*Email Accounts*): الخادم `mail.nuralquran.net`، المنفذ `465` مع `SSL` (أو `587` مع `TLS`)،
+  واسم المستخدم هو عنوان البريد كاملاً، واجعل «عنوان المرسل» هو نفس العنوان. اضغط «اختبار» فتصلك رسالة تجريبية بالتصميم الكامل،
+  وإن فشل الإرسال يظهر رد الخادم (مثل `535` عند خطأ كلمة المرور).
+  يُفضّل أن يكون عنوان المرسل على نفس النطاق (مثل `no-reply@nuralquran.net`)،
   وتأكد من تفعيل *Email Deliverability* (SPF/DKIM) في cPanel حتى لا تذهب الرسائل إلى «الرسائل المزعجة».
+- **صور الرسائل**: تُحمَّل من `https://nuralquran.net/brand/email/` (ترويسة، فاصل، شعار صغير)، فهي تُنشر مع الموقع (مجلد `public/brand/email/`).
 
 ## التحديث لاحقاً
 
@@ -57,7 +62,8 @@
 2. ارفع المجلد `app` الجديد إلى `/home/nuralqur/nuralquran-api/` (استبدل القديم)، وكذلك `schema.sql`، ومحتويات `api/public/` إلى `public_html/api.nuralquran.net/`.
    **لا تحذف ولا تستبدل `config.php`** — فيه بيانات قاعدة البيانات ومفتاح التشفير (إن فُقد المفتاح يجب إعادة إدخال مفاتيح التكاملات).
 3. إن احتوى التحديث على جداول جديدة: افتح phpMyAdmin ← اختر القاعدة ← *Import* ← اختر `schema.sql`.
-   الملف آمن للتشغيل أكثر من مرة (يُنشئ الجداول الناقصة فقط ولا يمسّ البيانات).
+   الملف آمن للتشغيل أكثر من مرة (يُنشئ الجداول والأعمدة الناقصة فقط ولا يمسّ البيانات).
+   الأعمدة الجديدة تُضاف أيضاً تلقائياً عند أول طلب بعد التحديث (`app/Core/Migrations.php`)، فهذه الخطوة اختيارية لها.
 
 ## حل المشكلات
 
@@ -81,3 +87,19 @@ DB_NAME=nq_test DB_USER=nq DB_PASS=nqpass123 api/tests/run-local.sh
 
   يُنشئ قاعدة بيانات جديدة، ويشغّل `php -S`، وينفّذ التثبيت عبر HTTP، ثم يشغّل `api/tests/smoke.php` (اختبار شامل لكل المسارات) ويحذف `config.php` المحلي في النهاية.
   يمكن أيضاً تشغيل `php api/tests/smoke.php --base=https://api.example.com` على خادم قائم (بدون `--local`).
+
+- **تصميم الرسائل**: كل الرسائل تُبنى من قالب واحد في `app/Core/Mailer.php` (`Mailer::render()`). لمعاينتها دون إرسال:
+
+```bash
+php api/tests/email-preview.php                           # يكتب api/storage/mail/preview/*.html و *.txt
+php api/tests/email-preview.php --shots=/tmp/email-shots  # ولقطات شاشة بعرض 600 و 375، فاتح وداكن (يحتاج Playwright)
+```
+
+- **صور الرسائل** (`public/brand/email/*.png`) مولّدة من ملفات الشعار SVG. لإعادة توليدها بعد تعديل الشعار
+  (يحتاج Node و Playwright مع Chromium، و ImageMagick اختيارياً لتصغير حجم الترويسة):
+
+```bash
+node api/tools/render-email-assets.js
+```
+
+  إن غيّرت الصور فارفع قيمة `ASSET_VERSION` في `Mailer.php` حتى لا تعرض برامج البريد النسخة القديمة من ذاكرتها.

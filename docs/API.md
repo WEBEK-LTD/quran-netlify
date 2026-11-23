@@ -149,7 +149,7 @@ The site polls messages every 5 s while a ticket is open.
 | GET | `/admin/unread` | | `{count}` |
 | GET | `/admin/log` | `?page` | paginated `[{id, admin_email, action, target, created_at}]` |
 
-Integration keys: `google_client_id`, `google_client_secret`*, `ai_provider` (`openai`\|`anthropic`), `ai_model`, `openai_api_key`*, `anthropic_api_key`*, `mail_from_address`, `mail_from_name`. (* = secret, encrypted at rest with AES-256-GCM using `app_key` from config.)
+Integration keys: `google_client_id`, `google_client_secret`*, `ai_provider` (`openai`\|`anthropic`), `ai_model`, `openai_api_key`*, `anthropic_api_key`*, `mail_from_address`, `mail_from_name`, `mail_transport` (`server`\|`smtp`, default `server` = PHP `mail()`), `smtp_host`, `smtp_port` (1–65535), `smtp_username`, `smtp_password`*, `smtp_encryption` (`tls` = STARTTLS\|`ssl` = implicit TLS\|`none`). (* = secret, encrypted at rest with AES-256-GCM using `app_key` from config.)
 
 ## Install
 

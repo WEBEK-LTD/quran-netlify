@@ -27,7 +27,8 @@
 :global([dir="ltr"]) .card:hover .arrow { transform: translateX(3px); }
 
 .install { position: relative; overflow: hidden; display: grid; grid-template-columns: auto 1fr auto; gap: 22px; align-items: center; padding: 30px 32px; }
-.install > :not(svg.nq-pattern) { position: relative; }
+.install > :not(:global(.nq-pattern)) { position: relative; }
+.install > :global(.nq-pattern) { position: absolute; }
 .install :global(.nq-badge8) { filter: drop-shadow(0 8px 18px var(--glow)); }
 .installText h2 { font-family: var(--f-title); font-size: 1.6rem; font-weight: 700; line-height: 1.3; }
 .installText p { color: var(--muted); max-width: 70ch; }

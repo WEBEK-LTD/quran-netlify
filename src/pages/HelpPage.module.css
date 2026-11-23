@@ -54,7 +54,7 @@
 @media (max-width: 600px) {
   .main { gap: 44px; }
   .secTitle::after { display: none; }
-  .open { padding: 0 10px; }
+  .secHead .open { padding: 0 10px; }
   .q { padding: 10px 16px; }
   .a { padding: 0 16px 16px; }
   .contact { padding: 24px 18px; }

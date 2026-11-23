@@ -83,8 +83,8 @@
 }
 .textBtn:hover { text-decoration: underline; text-underline-offset: 4px; }
 
-.submit { width: 100%; min-height: 52px; font-size: 1.02rem; }
-.google { width: 100%; min-height: 52px; }
+.cardIn .submit { width: 100%; min-height: 52px; font-size: 1.02rem; }
+.cardIn .google { width: 100%; min-height: 52px; }
 .google svg { flex: none; }
 :global(:root[data-mode="contrast"]) .google { border-color: #fff; }
 
