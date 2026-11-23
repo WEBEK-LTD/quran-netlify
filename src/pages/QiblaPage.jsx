@@ -22,6 +22,19 @@ function savedPlace() {
   } catch { return null; }
 }
 
+// figure-8 calibration gesture: a phone travelling along a lemniscate
+function Figure8() {
+  return (
+    <svg className={styles.fig8} viewBox="-60 -30 120 60" aria-hidden="true">
+      <path id="nq-fig8" d="M0 0 C 18 -26 52 -26 52 0 C 52 26 18 26 0 0 C -18 -26 -52 -26 -52 0 C -52 26 -18 26 0 0 Z" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="3 5" strokeLinecap="round" />
+      <g className={styles.fig8Phone}>
+        <rect x="-6" y="-10" width="12" height="20" rx="3" fill="var(--surface)" stroke="currentColor" strokeWidth="2" />
+        <animateMotion dur="3.2s" repeatCount="indefinite" rotate="auto"><mpath href="#nq-fig8" /></animateMotion>
+      </g>
+    </svg>
+  );
+}
+
 const DUA = 'اللهمّ بلّغنا الكعبة المشرّفة، وارزقنا زيارة بيتك الحرام';
 
 export default function QiblaPage() {
@@ -113,7 +126,7 @@ export default function QiblaPage() {
           {loading ? <span className={styles.spinner} aria-hidden="true" /> : <Icon name="pin" />}
           {loading ? tr('جارٍ تحديد الموقع…') : location ? tr('تحديث موقعي') : tr('تحديد موقعي')}
         </button>
-        {compassStatus !== 'active' && (
+        {(compassStatus === 'needs-permission' || compassStatus === 'denied') && (
           <button type="button" className="nq-btn ghost sm" onClick={handleRequestCompassPermission}>
             <Icon name="compass" />{tr('تفعيل البوصلة')}
           </button>
@@ -127,6 +140,7 @@ export default function QiblaPage() {
           <section className={`nq-card ${styles.roseCard} ${aligned ? styles.isAligned : ''}`} aria-label={tr('بوصلة القبلة')}>
             <Corners />
             <div className={styles.roseWrap}>
+              {aligned && <span key={pulse} className={styles.pulse} aria-hidden="true" />}
               <QiblaRose bearing={qibla} heading={heading} large aligned={aligned} className={styles.rose}
                 label={qibla != null
                   ? (heading != null
@@ -147,10 +161,29 @@ export default function QiblaPage() {
               )}
             </div>
 
+            {compassStatus === 'active' && calibrate && (
+              <div className={styles.calib} role="status">
+                <Figure8 />
+                <span>
+                  <b>{tr('البوصلة تحتاج إلى معايرة')}</b>
+                  <small>{tr('حرّك الهاتف في الهواء على شكل الرقم ٨ مرتين أو ثلاثاً، وابتعد عن المعادن والمغناطيس والأجهزة الكهربائية.')}</small>
+                </span>
+              </div>
+            )}
+            {compassStatus === 'active' && !calibrate && place && Math.abs(decl) >= 0.5 && (
+              <p className={styles.note}>{tr('الاتجاه مُصحَّح بالانحراف المغناطيسي لموقعك ({d}°).', { d: toAr(Math.abs(decl).toFixed(1)).replace('.', '٫') })}</p>
+            )}
             {compassStatus === 'unavailable' && (
-              <p className={styles.note}>{qibla !== null
-                ? tr('لا يوجد مستشعر بوصلة في هذا الجهاز أو المتصفح، لذا يبقى القرص ثابتاً والشمال إلى الأعلى. استخدم زاوية القبلة ({deg}° من الشمال) مع بوصلة حقيقية.', { deg })
-                : tr('لا يوجد مستشعر بوصلة في هذا الجهاز أو المتصفح، لذا يبقى القرص ثابتاً والشمال إلى الأعلى. استخدم زاوية القبلة مع بوصلة حقيقية.')}</p>
+              <div className={styles.nosensor} role="status">
+                <Badge8 icon="compass" size={48} />
+                <span>
+                  <b>{tr('لا يوجد حسّاس بوصلة')}</b>
+                  <small>{qibla !== null
+                    ? tr('لا يوجد مستشعر بوصلة في هذا الجهاز أو المتصفح، لذا يبقى القرص ثابتاً والشمال إلى الأعلى. استخدم زاوية القبلة ({deg}° من الشمال) مع بوصلة حقيقية.', { deg })
+                    : tr('لا يوجد مستشعر بوصلة في هذا الجهاز أو المتصفح، لذا يبقى القرص ثابتاً والشمال إلى الأعلى. استخدم زاوية القبلة مع بوصلة حقيقية.')}</small>
+                  <button type="button" className={styles.linkBtn} onClick={handleRequestCompassPermission}>{tr('إعادة المحاولة')}</button>
+                </span>
+              </div>
             )}
             {compassStatus === 'denied' && (
               <p className={styles.note}>{tr('رُفض إذن البوصلة. اسمح به من إعدادات المتصفح ثم اضغط «تفعيل البوصلة».')}</p>
