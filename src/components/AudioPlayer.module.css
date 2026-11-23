@@ -1,201 +1,99 @@
-/* ── Player container ──────────────────────────────────────────────────── */
-.player {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  z-index: 310;
-  background: var(--bg2);
-  border-top: 1px solid var(--border);
-  animation: fadeUp 0.3s ease both;
+/* ── Floating player dock ──────────────────────────────────────────────── */
+.dock {
+  --dw: min(780px, calc(var(--cw, 100vw) - 32px));
+  position: fixed; z-index: 44;
+  bottom: var(--dock-bottom, 16px);
+  inset-inline-start: calc(var(--side-w, 0px) + (var(--cw, 100vw) - var(--dw)) / 2);
+  width: var(--dw); min-height: var(--dock-h, 76px);
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 14px;
+  border-radius: 22px;
+  background: linear-gradient(color-mix(in srgb, var(--surface) 94%, transparent), color-mix(in srgb, var(--surface) 94%, transparent)) padding-box,
+              linear-gradient(150deg, var(--gold), var(--line2) 30%, var(--line2) 70%, var(--gold)) border-box;
+  border: var(--bw) solid transparent;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--shadow);
+  animation: dockIn .25s ease both;
 }
-@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } }
+:root[data-mode="contrast"] .dock { background: #000; border-color: var(--gold); }
+@keyframes dockIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
-/* ── Progress bar ──────────────────────────────────────────────────────── */
-.progressWrap {
-  height: 4px; background: var(--border);
-  cursor: pointer; position: relative; transition: height 0.15s;
-}
-.progressWrap:hover { height: 6px; }
-.progressTrack { position: relative; height: 100%; }
-.progressFill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--green2), var(--gold));
-  transition: width 0.1s linear;
-}
-.progressThumb {
-  position: absolute; top: 50%;
-  transform: translate(-50%, -50%);
-  width: 12px; height: 12px; border-radius: 50%;
-  background: var(--gold); opacity: 0; transition: opacity 0.15s;
-  pointer-events: none;
-}
-.progressWrap:hover .progressThumb { opacity: 1; }
+/* reciter initial inside an eight-point star */
+.rc { position: relative; width: 50px; height: 50px; border-radius: 14px; display: grid; place-items: center; background: var(--hl); color: var(--gold); flex: none; }
+.rcStar { position: absolute; inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); opacity: .75; }
+.rc b { position: relative; font-family: var(--f-brand); font-size: 1.15rem; font-weight: 600; line-height: 1; }
 
-/* ── Main row ──────────────────────────────────────────────────────────── */
-.mainRow {
-  display: flex; align-items: center;
-  gap: 8px; padding: 8px 14px;
-  flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
-}
-.mainRow::-webkit-scrollbar { display: none; }
+.meta { min-width: 0; flex: 1; display: grid; gap: 5px; }
+.meta b { font-size: .9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ayahNo { color: var(--gold); }
+.meta small { color: var(--muted); font-size: .74rem; line-height: 1; }
 
-/* ── Info ──────────────────────────────────────────────────────────────── */
-.info { flex: 1; min-width: 0; }
-.info h4 {
-  font-size: 13px; color: var(--text); font-weight: 600;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  display: flex; align-items: center; gap: 6px;
-}
-.info p { font-size: 10px; color: var(--text3); margin-top: 2px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track { position: relative; height: 6px; border-radius: 6px; background: var(--raise); cursor: pointer; overflow: visible; }
+.track::before { content: ""; position: absolute; inset: -8px 0; } /* bigger hit area */
+.track i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--gold2), var(--gold)); transition: width .25s linear; position: relative; }
+.track i::after { content: ""; position: absolute; inset-inline-end: -6px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: var(--gold2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 30%, transparent); }
+.track:focus-visible { outline: 2px solid var(--gold); outline-offset: 6px; }
+:root[data-mode="contrast"] .track { outline: 1px solid #fff; }
 
-.ayahPill {
-  font-size: 10px; background: var(--gold-dim); color: var(--gold);
-  border: 1px solid rgba(201,168,76,0.2); border-radius: 10px;
-  padding: 1px 7px; font-weight: 700; flex-shrink: 0;
-}
+.chips { display: flex; gap: 6px; flex: none; }
+.chip { cursor: pointer; min-height: 32px; font-weight: 500; color: var(--text); }
+.chip :global(.nq-ico) { width: 15px; height: 15px; }
+.chip:hover { border-color: var(--line2); }
 
-/* ── Controls ──────────────────────────────────────────────────────────── */
-.controls { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.ctl { display: flex; gap: 4px; align-items: center; direction: ltr; flex: none; }
+.play { width: 54px; height: 54px; border-radius: 50%; border: 0; display: grid; place-items: center; color: var(--on-gold); padding: 0;
+  background: linear-gradient(180deg, var(--gold2), var(--gold)); box-shadow: 0 10px 26px -12px var(--gold); }
+.play :global(.nq-ico) { width: 24px; height: 24px; }
+:root[data-mode="contrast"] .play { background: var(--gold); box-shadow: none; }
+.sm { width: 42px; height: 42px; display: grid; place-items: center; border: 0; background: transparent; border-radius: 12px; color: var(--text); padding: 0; flex: none; }
+.sm:hover, .smOn { background: var(--hl); color: var(--gold); }
+.sm :global(.nq-ico) { width: 20px; height: 20px; }
+.close { color: var(--muted); }
 
-.ctrlBtn {
-  width: 32px; height: 32px; border-radius: 50%;
-  border: 1px solid var(--border); background: var(--surface);
-  color: var(--text2); font-size: 12px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+/* more menu */
+.moreWrap { position: relative; flex: none; }
+.menu {
+  position: absolute; bottom: calc(100% + 14px); inset-inline-end: -60px; z-index: 5;
+  width: min(340px, calc(100vw - 32px)); max-height: min(70vh, 560px); overflow: auto;
+  display: grid; gap: 14px; padding: 14px 16px 16px;
+  background: linear-gradient(var(--surface), var(--surface)) padding-box,
+              linear-gradient(150deg, var(--gold), var(--line2) 30%, var(--line) 60%, var(--line2)) border-box;
+  border: var(--bw) solid transparent; border-radius: 20px; box-shadow: var(--shadow);
+  animation: dockIn .18s ease both;
 }
-.ctrlBtn:hover { border-color: var(--green2); color: var(--green3); }
+:root[data-mode="contrast"] .menu { background: #000; border-color: #fff; }
+.menuSec { display: grid; gap: 8px; }
+.menuLbl { font-size: .8rem; font-weight: 600; color: var(--gold); }
+.menuSec :global(.nq-seg button) { padding: 6px 6px; font-size: .82rem; min-height: 34px; }
+.volRow { display: flex; align-items: center; gap: 10px; font-size: .8rem; color: var(--muted); }
+.volRow :global(.nq-ico) { color: var(--gold); width: 18px; height: 18px; }
+.range { -webkit-appearance: none; appearance: none; flex: 1; height: 6px; border-radius: 6px; background: var(--raise);
+  background-image: linear-gradient(var(--gold), var(--gold)); background-size: var(--p, 50%) 100%; background-repeat: no-repeat; }
+:global([dir="rtl"]) .range { background-position: right; }
+.range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--gold2); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--gold); cursor: pointer; }
+.range::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--gold2); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--gold); cursor: pointer; }
+.fromStart { justify-self: start; }
+.fromStart :global(.nq-ico) { width: 16px; height: 16px; color: var(--gold); fill: currentColor; stroke: none; }
+.readers { display: grid; gap: 2px; max-height: 220px; overflow: auto; margin-inline: -6px; }
+.readerItem { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 0; background: transparent; text-align: start; font-size: .88rem; }
+.readerItem:hover { background: var(--raise); }
+.readerItem[aria-pressed="true"] { background: var(--hl); color: var(--gold); font-weight: 600; }
+.readerItem :global(.nq-ico) { width: 18px; height: 18px; }
 
-.playBtn {
-  border-color: var(--gold) !important;
-  color: var(--gold) !important;
-  background: var(--gold-dim) !important;
-  width: 40px !important; height: 40px !important; font-size: 15px !important;
+/* ── responsive ────────────────────────────────────────────────────────── */
+@media (max-width: 1000px) {
+  .chips { display: none; }
 }
-
-/* ── Time ──────────────────────────────────────────────────────────────── */
-.timeDisplay {
-  display: flex; align-items: center; gap: 3px;
-  font-size: 10px; color: var(--text3); flex-shrink: 0;
-  font-variant-numeric: tabular-nums; direction: ltr;
+@media (max-width: 760px) {
+  .dock { gap: 8px; padding: 7px 8px 7px 10px; border-radius: 18px; --dw: calc(100vw - 20px); inset-inline-start: 10px; }
+  .rc { display: none; }
+  .meta b { font-size: .82rem; }
+  .meta small { display: none; }
+  .play { width: 46px; height: 46px; }
+  .play :global(.nq-ico) { width: 21px; height: 21px; }
+  .sm { width: 36px; height: 38px; }
+  .menu { position: fixed; bottom: calc(var(--dock-bottom, 78px) + var(--dock-h, 64px) + 10px); inset-inline: 10px; width: auto; }
 }
-.timeSep { color: var(--border); }
-
-/* ── Mode button ───────────────────────────────────────────────────────── */
-.modeBtn {
-  padding: 4px 8px; border-radius: 6px; flex-shrink: 0;
-  border: 1px solid var(--border); background: none;
-  color: var(--text3); font-size: 10px; font-family: var(--font-ui);
-  cursor: pointer; transition: all 0.15s; white-space: nowrap;
-}
-.modeBtn:hover     { border-color: var(--gold); color: var(--gold); }
-.modeBtnActive     { border-color: var(--gold) !important; color: var(--gold) !important; background: var(--gold-dim) !important; }
-
-/* ── Surah play button ─────────────────────────────────────────────────── */
-.surahBtn {
-  padding: 5px 10px; border-radius: 8px; flex-shrink: 0;
-  border: 1px solid var(--green2); background: rgba(64,145,108,0.1);
-  color: var(--green3); font-size: 11px; font-family: var(--font-ui);
-  cursor: pointer; transition: all 0.15s; white-space: nowrap; font-weight: 600;
-}
-.surahBtn:hover { background: rgba(64,145,108,0.2); }
-
-/* ── Reader picker ─────────────────────────────────────────────────────── */
-.readerWrap { position: relative; flex-shrink: 0; }
-
-.readerBtn {
-  width: 32px; height: 32px; border-radius: 8px;
-  border: 1px solid var(--border); background: var(--surface);
-  font-size: 15px; cursor: pointer; transition: all 0.15s;
-  display: flex; align-items: center; justify-content: center;
-}
-.readerBtn:hover { border-color: var(--gold); }
-
-.readerMenu {
-  position: absolute; bottom: calc(100% + 8px); left: 50%;
-  transform: translateX(-50%);
-  width: 240px; background: var(--surface);
-  border: 1px solid var(--border); border-radius: 14px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  overflow: hidden; z-index: 400;
-  animation: popUp 0.18s ease;
-  max-height: 300px; overflow-y: auto;
-}
-@keyframes popUp { from { opacity:0; transform: translateX(-50%) translateY(6px); } }
-
-/* make sure menu appears above bottom nav on mobile */
-@media (max-width: 768px) {
-  .readerMenu { bottom: calc(100% + 4px); left: auto; right: 0; transform: none; }
-}
-
-.readerMenuTitle {
-  padding: 10px 14px 8px;
-  font-size: 11px; font-weight: 700; color: var(--text3);
-  border-bottom: 1px solid var(--border); text-align: center;
-}
-
-.readerItem {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%; padding: 9px 14px;
-  border: none; background: none; cursor: pointer;
-  transition: background 0.12s; text-align: right;
-  border-bottom: 1px solid var(--border);
-}
-.readerItem:last-child { border-bottom: none; }
-.readerItem:hover { background: var(--surface2); }
-.readerActive { background: var(--gold-dim) !important; }
-
-.readerItemName {
-  flex: 1; font-size: 12px; color: var(--text2);
-  text-align: right; white-space: nowrap; overflow: hidden;
-  text-overflow: ellipsis;
-}
-.readerActive .readerItemName { color: var(--text); font-weight: 600; }
-.readerTick { color: var(--gold); font-size: 13px; flex-shrink: 0; }
-
-/* ── Volume ────────────────────────────────────────────────────────────── */
-.volumeWrap { position: relative; flex-shrink: 0; }
-.volumeSlider {
-  position: absolute; bottom: calc(100% + 8px); left: 50%;
-  transform: translateX(-50%);
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 10px; padding: 10px 8px; box-shadow: var(--shadow); z-index: 400;
-}
-.rangeInput { width: 80px; accent-color: var(--gold); }
-
-/* ── Close ─────────────────────────────────────────────────────────────── */
-.closeBtn {
-  width: 26px; height: 26px; border-radius: 50%;
-  border: 1px solid var(--border); background: none;
-  color: var(--text3); font-size: 11px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; transition: all 0.15s;
-}
-.closeBtn:hover { color: var(--text); border-color: var(--text3); }
-
-/* ── Mode bar (below main row) ─────────────────────────────────────────── */
-.modeBar {
-  display: flex; gap: 4px; padding: 0 14px 8px;
-  justify-content: center;
-}
-.modePill {
-  padding: 3px 10px; border-radius: 10px; font-size: 10px;
-  border: 1px solid var(--border); background: none;
-  color: var(--text3); font-family: var(--font-ui);
-  cursor: pointer; transition: all 0.13s; white-space: nowrap;
-}
-.modePill:hover { color: var(--text); }
-.modePillActive {
-  border-color: var(--gold) !important;
-  color: var(--gold) !important;
-  background: var(--gold-dim) !important;
-}
-
-/* ── Mobile ────────────────────────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .timeDisplay { display: none; }
-  .surahBtn span { display: none; }
-  .mainRow { gap: 6px; padding: 8px 10px; }
-  .info h4 { font-size: 12px; }
-  .modeBar { padding-bottom: 6px; }
+@media (max-width: 380px) {
+  .close { display: none; }
 }

@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore, setGlobal } from '../store';
-import { SURAHS_META, toArabicNum } from '../data';
-import { fetchAyahWithTafsir, fetchSurahTafsir, TAFSIR_EDITIONS } from '../api';
+import { SURAHS_META } from '../data';
+import { fetchAyahWithTafsir } from '../api';
+import { Icon, Badge8, Divider, toAr } from './ornaments/Ornaments';
+import { displayNumber, juzRange } from './reader/ayahItems';
 import styles from './TafsirPanel.module.css';
 
 // ─── Word Explainer (static map for common Quranic words) ────────────────────
@@ -33,6 +35,19 @@ const ASBAB_NUZUL = {
   '96:1': 'أول ما نزل من القرآن الكريم، نزلت على النبي ﷺ في غار حراء على يد جبريل عليه السلام.',
 };
 
+const EDITIONS = [
+  { id: 'ar.muyassar', name: 'التفسير الميسّر', short: 'الميسّر' },
+  { id: 'ar.jalalayn', name: 'تفسير الجلالين', short: 'الجلالين' },
+];
+const edName = id => (EDITIONS.find(e => e.id === id) || EDITIONS[0]).name;
+
+// tafsirAyah is the Kufi number; Al-Fatiha is labelled with the Madani number.
+function ayahTitle(surah, kufi) {
+  const n = displayNumber(surah, kufi);
+  if (n === null) return 'البسملة';
+  return typeof n === 'string' ? `الآيتان ${toAr(n)}` : `الآية ${toAr(n)}`;
+}
+
 export default function TafsirPanel() {
   const [state] = useStore();
   const { tafsirSurah, tafsirAyah } = state;
@@ -44,16 +59,18 @@ export default function TafsirPanel() {
   const [data2, setData2]     = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('tafsir'); // tafsir | words | asbab
-  const [allTafsir, setAllTafsir]   = useState(null);
-  const [allTafsir2, setAllTafsir2] = useState(null);
   const panelRef = useRef(null);
 
-  const meta = SURAHS_META[tafsirSurah - 1];
+  const meta = SURAHS_META[tafsirSurah - 1] || SURAHS_META[0];
   const ayahKey = `${tafsirSurah}:${tafsirAyah}`;
+  const title = ayahTitle(tafsirSurah, tafsirAyah);
+  const shown = displayNumber(tafsirSurah, tafsirAyah);
+  const [j1] = juzRange(tafsirSurah || 1);
 
   // Load tafsir when ayah/edition changes
   useEffect(() => {
     if (!tafsirSurah || !tafsirAyah) return;
+    let cancelled = false;
     setLoading(true);
     setData(null); setData2(null);
 
@@ -61,11 +78,12 @@ export default function TafsirPanel() {
     if (compareMode) promises.push(fetchAyahWithTafsir(tafsirSurah, tafsirAyah, compareEdition));
 
     Promise.all(promises)
-      .then(([d1, d2]) => { setData(d1); if (d2) setData2(d2); setLoading(false); })
-      .catch(() => { setLoading(false); setGlobal({ toast: '⚠️ تعذّر تحميل التفسير' }); });
+      .then(([d1, d2]) => { if (cancelled) return; setData(d1); if (d2) setData2(d2); setLoading(false); })
+      .catch(() => { if (cancelled) return; setLoading(false); setGlobal({ toast: 'تعذّر تحميل التفسير' }); });
+    return () => { cancelled = true; };
   }, [tafsirSurah, tafsirAyah, activeEdition, compareMode, compareEdition]);
 
-  // Navigate between ayahs
+  // Navigate between (Kufi) ayahs
   function navigate(delta) {
     const max = meta[2];
     const next = Math.max(1, Math.min(max, tafsirAyah + delta));
@@ -73,13 +91,12 @@ export default function TafsirPanel() {
   }
 
   // Detect Quranic words in text. API text is rendered as React text nodes
-  // (auto-escaped), so third-party HTML can never run. The CSS class is
-  // :global(.wordHint), so the plain class name is used here.
+  // (auto-escaped), so third-party HTML can never run.
   function highlightWords(text) {
     if (!text) return text;
     return String(text).split(HINT_RE).map((part, i) =>
       Object.prototype.hasOwnProperty.call(WORD_HINTS, part)
-        ? <span key={i} className="wordHint" title={WORD_HINTS[part]}>{part}</span>
+        ? <span key={i} className={styles.wordHint} title={WORD_HINTS[part]}>{part}</span>
         : part
     );
   }
@@ -88,234 +105,194 @@ export default function TafsirPanel() {
     setGlobal({ showTafsir: false });
   }
 
-  // Close on Escape
+  // Close on Escape; move focus into the panel when it opens
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') close(); }
     window.addEventListener('keydown', onKey);
+    panelRef.current?.focus({ preventScroll: true });
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const words = Object.entries(WORD_HINTS).filter(([word]) => data?.text?.includes(word));
+  const refText = `${meta[0]} · ${title}`;
+
   return (
     <>
-      {/* Backdrop */}
-      <div className={styles.backdrop} onClick={close} />
+      {/* Backdrop (only when the panel overlays the page, ≤1240px) */}
+      <div className={styles.backdrop} onClick={close} aria-hidden="true" />
 
-      {/* Panel */}
-      <div className={styles.panel} ref={panelRef}>
-        {/* Header */}
-        <div className={styles.panelHeader}>
-          <div className={styles.panelTitle}>
-            <span className={styles.panelIcon}>📖</span>
-            <div>
-              <h2>التفسير</h2>
-              <p>{meta[0]} — الآية {tafsirAyah} من {meta[2]}</p>
-            </div>
+      <aside className={styles.panel} ref={panelRef} tabIndex={-1} aria-label={`التفسير — ${refText}`}>
+        {/* Reference */}
+        <div className={styles.ref}>
+          {shown === null ? <Badge8 icon="star" size={46} /> : <Badge8 size={46}>{toAr(shown)}</Badge8>}
+          <div className={styles.refTxt}>
+            <h2>{refText}</h2>
+            <small>التفسير · الجزء {toAr(j1)} · {meta[3]}</small>
           </div>
-          <div className={styles.panelNav}>
-            <button className={styles.navBtn} onClick={() => navigate(-1)} disabled={tafsirAyah <= 1}>
-              ▶ السابقة
-            </button>
-            <span className={styles.ayahBadge}>{tafsirAyah}</span>
-            <button className={styles.navBtn} onClick={() => navigate(1)} disabled={tafsirAyah >= meta[2]}>
-              التالية ◀
-            </button>
-          </div>
-          <button className={styles.closeBtn} onClick={close}>✕</button>
+          <button type="button" className={styles.iconBtn} onClick={close} aria-label="إغلاق التفسير" title="إغلاق">
+            <Icon name="x" />
+          </button>
+        </div>
+
+        <div className={styles.nav}>
+          <button type="button" className="nq-btn ghost sm" onClick={() => navigate(-1)} disabled={tafsirAyah <= 1} aria-label="الآية السابقة">
+            <Icon name="back" />السابقة
+          </button>
+          <span className={styles.navPos}>{tafsirSurah === 1 ? title : `${toAr(tafsirAyah)} من ${toAr(meta[2])}`}</span>
+          <button type="button" className="nq-btn ghost sm" onClick={() => navigate(1)} disabled={tafsirAyah >= meta[2]} aria-label="الآية التالية">
+            التالية<Icon name="back" className={styles.flip} />
+          </button>
         </div>
 
         {/* Ayah Text */}
-        <div className={styles.ayahBox}>
+        <div className={styles.ayq}>
+          <svg className={`${styles.qc} ${styles.qcA}`} aria-hidden="true"><use href="#nq-corner" /></svg>
+          <svg className={`${styles.qc} ${styles.qcB}`} aria-hidden="true"><use href="#nq-corner" /></svg>
           {loading ? (
             <div className={styles.textShimmer} />
           ) : (
-            <p className={styles.ayahText}>
-              {highlightWords(data?.text || '')}
-            </p>
+            <p className={styles.ayahText}>{highlightWords(data?.text || '')}</p>
           )}
-          <div className={styles.ayahRef}>{ayahKey}</div>
         </div>
 
         {/* Tabs */}
-        <div className={styles.tabs}>
+        <div className={styles.tabs} role="tablist" aria-label="أقسام التفسير">
           {[
-            { id: 'tafsir', label: '📚 التفسير' },
-            { id: 'words',  label: '🔤 الكلمات' },
-            { id: 'asbab',  label: '📝 سبب النزول' },
+            { id: 'tafsir', label: 'التفسير' },
+            { id: 'words',  label: 'معاني الكلمات' },
+            { id: 'asbab',  label: 'سبب النزول' },
           ].map(t => (
-            <button
-              key={t.id}
-              className={`${styles.tab} ${activeTab === t.id ? styles.activeTab : ''}`}
-              onClick={() => setActiveTab(t.id)}
-            >
+            <button key={t.id} type="button" role="tab" aria-selected={activeTab === t.id}
+              className={styles.tab} onClick={() => setActiveTab(t.id)}>
               {t.label}
             </button>
           ))}
         </div>
 
-        {/* Tab Content */}
-        <div className={styles.tabContent}>
-
-          {/* ── TAFSIR TAB ── */}
-          {activeTab === 'tafsir' && (
-            <>
-              {/* Edition & Compare controls */}
-              <div className={styles.controls}>
-                <div className={styles.controlGroup}>
-                  <label className={styles.controlLabel}>التفسير:</label>
-                  <select
-                    className={styles.select}
-                    value={activeEdition}
-                    onChange={e => setActiveEdition(e.target.value)}
-                  >
-                    <option value="ar.muyassar">التفسير الميسر</option>
-                    <option value="ar.jalalayn">تفسير الجلالين</option>
-                  </select>
-                </div>
-                <button
-                  className={`${styles.compareBtn} ${compareMode ? styles.compareBtnActive : ''}`}
-                  onClick={() => setCompareMode(!compareMode)}
-                >
-                  {compareMode ? '✕ إغلاق المقارنة' : '⇄ مقارنة التفاسير'}
-                </button>
+        {/* ── TAFSIR TAB ── */}
+        {activeTab === 'tafsir' && (
+          <div className={styles.section} role="tabpanel">
+            <div className={styles.srcRow}>
+              <div className="nq-seg" role="group" aria-label="مصدر التفسير">
+                {EDITIONS.map(e => (
+                  <button key={e.id} type="button" aria-pressed={activeEdition === e.id} onClick={() => setActiveEdition(e.id)}>{e.short}</button>
+                ))}
               </div>
-
-              {compareMode && (
-                <div className={styles.controlGroup} style={{ marginBottom: 12 }}>
-                  <label className={styles.controlLabel}>تفسير ثانٍ:</label>
-                  <select
-                    className={styles.select}
-                    value={compareEdition}
-                    onChange={e => setCompareEdition(e.target.value)}
-                  >
-                    <option value="ar.jalalayn">تفسير الجلالين</option>
-                    <option value="ar.muyassar">التفسير الميسر</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Tafsir content */}
-              {loading ? (
-                <div className={styles.loadingState}>
-                  <div className={styles.spinner} />
-                  <span>جاري تحميل التفسير...</span>
-                </div>
-              ) : compareMode ? (
-                <div className={styles.compareGrid}>
-                  <div className={styles.compareCol}>
-                    <div className={styles.colHeader}>
-                      {activeEdition === 'ar.muyassar' ? 'التفسير الميسر' : 'تفسير الجلالين'}
-                    </div>
-                    <p className={styles.tafsirText}>{data?.tafsir}</p>
-                  </div>
-                  <div className={styles.compareDivider} />
-                  <div className={styles.compareCol}>
-                    <div className={styles.colHeader}>
-                      {compareEdition === 'ar.jalalayn' ? 'تفسير الجلالين' : 'التفسير الميسر'}
-                    </div>
-                    <p className={styles.tafsirText}>{data2?.tafsir || 'جاري التحميل...'}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className={styles.tafsirBox}>
-                  <div className={styles.tafsirSource}>
-                    {activeEdition === 'ar.muyassar' ? '📗 التفسير الميسر' : '📘 تفسير الجلالين'}
-                  </div>
-                  <p className={styles.tafsirText}>{data?.tafsir}</p>
-                </div>
-              )}
-
-              {/* AI Notice */}
-              <div className={styles.aiNotice}>
-                التفسير المعروض منقول من مصادره العلمية المعتمدة.
-              </div>
-            </>
-          )}
-
-          {/* ── WORDS TAB ── */}
-          {activeTab === 'words' && (
-            <div className={styles.wordsTab}>
-              {loading ? (
-                <div className={styles.loadingState}><div className={styles.spinner} /><span>جاري التحميل...</span></div>
-              ) : (
-                <>
-                  <p className={styles.wordsIntro}>
-                    الكلمات المميزة باللون القابلة للضغط في نص الآية أعلاه تحتوي على شرح. إليك شرح الكلمات الواردة في هذه الآية:
-                  </p>
-                  {Object.entries(WORD_HINTS)
-                    .filter(([word]) => data?.text?.includes(word))
-                    .length > 0 ? (
-                      Object.entries(WORD_HINTS)
-                        .filter(([word]) => data?.text?.includes(word))
-                        .map(([word, hint]) => (
-                          <div key={word} className={styles.wordCard}>
-                            <span className={styles.wordAr}>{word}</span>
-                            <span className={styles.wordExplain}>{hint}</span>
-                          </div>
-                        ))
-                    ) : (
-                      <div className={styles.emptyState}>
-                        <span>🔤</span>
-                        <p>لا توجد كلمات مشروحة محفوظة لهذه الآية بعد.</p>
-                        <p style={{ fontSize: 11, marginTop: 6 }}>سيتم توسيع قاعدة الكلمات في التحديثات القادمة.</p>
-                      </div>
-                    )
-                  }
-                </>
-              )}
+              <button type="button" className={`nq-pill ${compareMode ? 'on' : ''} ${styles.cmp}`} aria-pressed={compareMode}
+                onClick={() => setCompareMode(!compareMode)}>
+                <Icon name="grid" />مقارنة
+              </button>
             </div>
-          )}
 
-          {/* ── ASBAB AL-NUZUL TAB ── */}
-          {activeTab === 'asbab' && (
-            <div className={styles.asbabTab}>
-              {ASBAB_NUZUL[ayahKey] ? (
-                <div className={styles.asbabCard}>
-                  <div className={styles.asbabIcon}>📜</div>
-                  <div className={styles.asbabText}>{ASBAB_NUZUL[ayahKey]}</div>
+            {compareMode && (
+              <div className={styles.srcRow}>
+                <span className={styles.lbl}>مع:</span>
+                <div className="nq-seg" role="group" aria-label="التفسير الثاني">
+                  {EDITIONS.map(e => (
+                    <button key={e.id} type="button" aria-pressed={compareEdition === e.id} onClick={() => setCompareEdition(e.id)}>{e.short}</button>
+                  ))}
                 </div>
-              ) : (
-                <div className={styles.emptyState}>
-                  <span>📜</span>
-                  <p>لم يُذكر سبب نزول خاص لهذه الآية في المصادر المتاحة حاليًا.</p>
-                  <p style={{ fontSize: 11, marginTop: 6 }}>قد تكون الآية ضمن سياق سورتها العام دون سبب نزول مستقل.</p>
-                </div>
-              )}
-
-              <div className={styles.asbabNote}>
-                💡 <strong>ملاحظة:</strong> أسباب النزول علم شريف يُعنى بمعرفة الأحداث التي اقترنت بنزول الآيات. لا تشترط الآية أن يكون لها سبب نزول.
               </div>
-            </div>
-          )}
-        </div>
+            )}
+
+            {loading ? (
+              <div className={styles.loadingState}>
+                <div className={styles.spinner} />
+                <span>جاري تحميل التفسير…</span>
+              </div>
+            ) : compareMode ? (
+              <div className={styles.compare}>
+                <div className={styles.col}>
+                  <b className={styles.colHead}>{edName(activeEdition)}</b>
+                  <p className={styles.body}>{data?.tafsir}</p>
+                </div>
+                <div className={styles.col}>
+                  <b className={styles.colHead}>{edName(compareEdition)}</b>
+                  <p className={styles.body}>{data2?.tafsir || 'جاري التحميل…'}</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <b className={styles.colHead}>{edName(activeEdition)}</b>
+                <p className={styles.body}>{data?.tafsir}</p>
+              </>
+            )}
+
+            <p className={styles.note}>التفسير المعروض منقول من مصادره العلمية المعتمدة.</p>
+          </div>
+        )}
+
+        {/* ── WORDS TAB ── */}
+        {activeTab === 'words' && (
+          <div className={styles.section} role="tabpanel">
+            {loading ? (
+              <div className={styles.loadingState}><div className={styles.spinner} /><span>جاري التحميل…</span></div>
+            ) : words.length > 0 ? (
+              <>
+                <p className={styles.note}>الكلمات المميّزة في نص الآية أعلاه لها شرح:</p>
+                <div className={styles.words}>
+                  {words.map(([word, hint]) => {
+                    const [, explain] = hint.split(/:\s*/);
+                    return <div key={word}><b>{word}</b><span>{explain || hint}</span></div>;
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className={styles.empty}>
+                <Badge8 icon="doc" />
+                <p>لا توجد كلمات مشروحة محفوظة لهذه الآية بعد.</p>
+                <small>سيتم توسيع قاعدة الكلمات في التحديثات القادمة.</small>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── ASBAB AL-NUZUL TAB ── */}
+        {activeTab === 'asbab' && (
+          <div className={styles.section} role="tabpanel">
+            {ASBAB_NUZUL[ayahKey] ? (
+              <p className={styles.body}>{ASBAB_NUZUL[ayahKey]}</p>
+            ) : (
+              <div className={styles.empty}>
+                <Badge8 icon="scroll" />
+                <p>لم يُذكر سبب نزول خاص لهذه الآية في المصادر المتاحة حاليًا.</p>
+                <small>قد تكون الآية ضمن سياق سورتها العام دون سبب نزول مستقل.</small>
+              </div>
+            )}
+            <Divider />
+            <p className={styles.note}>أسباب النزول علم شريف يُعنى بمعرفة الأحداث التي اقترنت بنزول الآيات، وليس لكل آية سبب نزول.</p>
+          </div>
+        )}
 
         {/* Footer actions */}
-        <div className={styles.panelFooter}>
-          <button
-            className={styles.footerBtn}
+        <div className={styles.footer}>
+          <button type="button" className="nq-btn ghost sm"
             onClick={() => {
               if (!data) return;
-              const text = `${data.text}\n\n📖 التفسير (${activeEdition === 'ar.muyassar' ? 'الميسر' : 'الجلالين'}):\n${data.tafsir}\n\n— ${meta[0]} ${tafsirAyah}`;
-              navigator.clipboard.writeText(text);
-              setGlobal({ toast: '✅ تم نسخ الآية والتفسير' });
-            }}
-          >
-            📋 نسخ الآية والتفسير
+              const text = `${data.text}\n\nالتفسير (${edName(activeEdition)}):\n${data.tafsir}\n\n— سورة ${meta[0]}، ${title}`;
+              navigator.clipboard.writeText(text)
+                .then(() => setGlobal({ toast: 'تم نسخ الآية والتفسير' }))
+                .catch(() => setGlobal({ toast: 'تعذّر النسخ' }));
+            }}>
+            <Icon name="copy" />نسخ
           </button>
-          <button
-            className={styles.footerBtn}
+          <button type="button" className="nq-btn ghost sm"
+            onClick={() => setGlobal({ audioAyah: tafsirAyah, showAudio: true, playTrigger: Date.now() })}>
+            <Icon name="head" />استماع
+          </button>
+          <button type="button" className="nq-btn ghost sm"
+            onClick={() => window.dispatchEvent(new CustomEvent('shareAyah', { detail: { surah: tafsirSurah, ayah: tafsirAyah, text: data?.text || '' } }))}>
+            <Icon name="share" />مشاركة
+          </button>
+          <button type="button" className="nq-btn ghost sm"
             onClick={() => {
-              setGlobal({
-                showTafsir: false,
-                audioAyah: tafsirAyah,
-                showAudio: true,
-                playTrigger: Date.now()
-              });
-            }}
-          >
-            🎧 استماع للآية
+              setGlobal({ currentAyah: tafsirAyah });
+              window.dispatchEvent(new CustomEvent('openAI', { detail: { surah: tafsirSurah, ayah: tafsirAyah, text: data?.text || '' } }));
+            }}>
+            <Icon name="chat" />اسأل المساعد
           </button>
         </div>
-      </div>
+      </aside>
     </>
   );
 }
