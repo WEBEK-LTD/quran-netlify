@@ -27,7 +27,4 @@
 .tog[aria-checked="true"]::after { inset-inline-start: 25px; background: var(--gold); }
 .foot { display: grid; gap: 8px; }
 .status { margin: 0; display: flex; gap: 8px; align-items: flex-start; color: var(--muted); font-size: .9rem; line-height: 1.7; }
-.credits { font-size: .85rem; color: var(--muted); line-height: 1.8; }
-.credits summary { cursor: pointer; color: var(--text); }
-.credits ul { margin: 6px 0 0; padding-inline-start: 18px; }
 .link { background: none; border: 0; padding: 0; color: var(--gold); text-decoration: underline; font: inherit; cursor: pointer; }

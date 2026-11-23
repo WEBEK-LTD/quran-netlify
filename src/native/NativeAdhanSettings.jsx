@@ -1,8 +1,8 @@
 // ─── App-only adhan settings (mounted in the prayer page's «تنبيه الأذان» row) ─
 // The page keeps its per-prayer on/off toggles (nq_pray_alarms); this adds the
 // style per prayer (adhan / notification / silent), muezzins, the reminder, the
-// daily ayah, Do-Not-Disturb opt-in, the OS permissions and the recordings'
-// credits. Every change re-plans the notifications (adhan/notifications.js).
+// daily ayah, Do-Not-Disturb opt-in, the OS permissions and the OS permissions.
+// Recording sources are listed on the privacy page. Every change re-plans the notifications (adhan/notifications.js).
 import { useEffect, useState, useCallback } from 'react';
 import { useTr, num } from '../l10n';
 import { Icon } from '../components/ornaments/Ornaments';
@@ -12,13 +12,11 @@ import { PRAYERS, REMINDER_CHOICES } from './adhan/schedule';
 import {
   reschedule, notificationPermission, requestNotificationPermission, exactAlarmStatus, openExactAlarmSettings,
 } from './adhan/notifications';
-import manifest from './adhan/recordings.json';
 import { regularRecordings, fajrRecordings, recordingName, recordingFor, channelIdFor } from './adhan/muezzins';
 import { playAdhan, stopAdhan } from './adhan/player';
 import { showAdhanMoment } from './adhan/moment';
 import { fmtPrayerTime } from './adhan/format';
 import { NQNative } from './nqNative';
-import { openExternal } from './browser';
 import { confirmDialog } from './ui';
 import styles from './NativeAdhanSettings.module.css';
 
@@ -217,19 +215,6 @@ export default function NativeAdhanSettings({ alarms, onToggle, coords, method, 
         </div>
       </div>
 
-      <details className={styles.credits}>
-        <summary>{tr('مصادر تسجيلات الأذان')}</summary>
-        <p>{tr('نستخدم تسجيلات مرخّصة ترخيصاً حراً فقط، مع ذكر أصحابها. قُصّت التسجيلات وعُدّلت شدة صوتها، ونسخة الإشعار على iOS أول ٣٠ ثانية منها.')}</p>
-        <ul>
-          {manifest.recordings.filter(r => r.licenseUrl && regular.concat(fajr).some(x => x.id === r.id)).map(r => (
-            <li key={r.id}>
-              <b>{recordingName(r, tr.lang)}</b> — {r.author} · <bdi dir="ltr">{r.license}</bdi>{' '}
-              <button type="button" className={styles.link} onClick={() => openExternal(r.licenseUrl)}>{tr('الترخيص')}</button>{' · '}
-              <button type="button" className={styles.link} onClick={() => openExternal(r.source)}>{tr('المصدر')}</button>
-            </li>
-          ))}
-        </ul>
-      </details>
     </div>
   );
 }

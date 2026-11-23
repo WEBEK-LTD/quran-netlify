@@ -2,6 +2,7 @@
 // Keyed by the exact Arabic source string (see src/l10n.js).
 export default {
   en: {
+    'أصوات الأذان في تطبيق الهاتف: أحمد خلف (بترخيص {lic})، وأذان الفجر للمؤذن إبراهيم المدني.': 'Adhan recordings in the phone app: Ahmed Khalaf (licensed {lic}), and the Fajr adhan by the muezzin Ibrahim Al-Madani.',
     "مقدمة": "Introduction",
     "نور القرآن («الموقع») خدمة مجانية تماماً تُقدَّم لوجه الله تعالى، ولا نسعى من خلالها إلى أي ربح مادي. نلتزم بحماية خصوصيتك وبيانات زوّار الموقع ومستخدميه، ونشرح في هذه الصفحة ما نحفظه ولماذا، وكيف تتحكّم فيه.": "Nur Al-Quran (“the Site”) is an entirely free service offered for the sake of Allah the Exalted, and we seek no material profit from it. We are committed to protecting your privacy and the data of the Site's visitors and users, and on this page we explain what we store and why, and how you control it.",
     "البيانات التي نجمعها": "Data we collect",
@@ -89,6 +90,7 @@ export default {
     "صفحات ذات صلة": "Related pages",
   },
   tr: {
+    'أصوات الأذان في تطبيق الهاتف: أحمد خلف (بترخيص {lic})، وأذان الفجر للمؤذن إبراهيم المدني.': 'Telefon uygulamasındaki ezan kayıtları: Ahmed Halef ({lic} lisanslı) ve müezzin İbrahim el-Medenî’nin sabah ezanı.',
     "مقدمة": "Giriş",
     "نور القرآن («الموقع») خدمة مجانية تماماً تُقدَّم لوجه الله تعالى، ولا نسعى من خلالها إلى أي ربح مادي. نلتزم بحماية خصوصيتك وبيانات زوّار الموقع ومستخدميه، ونشرح في هذه الصفحة ما نحفظه ولماذا، وكيف تتحكّم فيه.": "Nur Al-Kuran (“Site”), yalnızca Allah Teâlâ rızası için sunulan tamamen ücretsiz bir hizmettir ve bununla hiçbir maddi kazanç amaçlamıyoruz. Gizliliğinizi ve sitenin ziyaretçileri ile kullanıcılarının verilerini korumayı taahhüt ediyoruz; bu sayfada neleri neden sakladığımızı ve bunları nasıl kontrol edebileceğinizi açıklıyoruz.",
     "البيانات التي نجمعها": "Topladığımız veriler",
@@ -176,6 +178,7 @@ export default {
     "صفحات ذات صلة": "İlgili sayfalar",
   },
   fr: {
+    'أصوات الأذان في تطبيق الهاتف: أحمد خلف (بترخيص {lic})، وأذان الفجر للمؤذن إبراهيم المدني.': 'Enregistrements de l’adhan dans l’application mobile : Ahmed Khalaf (sous licence {lic}), et l’adhan du Fajr par le muezzin Ibrahim Al-Madani.',
     "مقدمة": "Introduction",
     "نور القرآن («الموقع») خدمة مجانية تماماً تُقدَّم لوجه الله تعالى، ولا نسعى من خلالها إلى أي ربح مادي. نلتزم بحماية خصوصيتك وبيانات زوّار الموقع ومستخدميه، ونشرح في هذه الصفحة ما نحفظه ولماذا، وكيف تتحكّم فيه.": "Nur Al-Coran (« le Site ») est un service entièrement gratuit, proposé pour l'amour d'Allah le Très-Haut, dont nous ne cherchons à tirer aucun profit matériel. Nous nous engageons à protéger votre vie privée ainsi que les données des visiteurs et des utilisateurs du Site, et nous expliquons sur cette page ce que nous conservons, pourquoi, et comment vous en gardez le contrôle.",
     "البيانات التي نجمعها": "Données que nous collectons",
@@ -263,6 +266,7 @@ export default {
     "صفحات ذات صلة": "Pages associées",
   },
   ur: {
+    'أصوات الأذان في تطبيق الهاتف: أحمد خلف (بترخيص {lic})، وأذان الفجر للمؤذن إبراهيم المدني.': 'فون ایپ میں اذان کی ریکارڈنگز: احمد خلف ({lic} لائسنس کے تحت)، اور فجر کی اذان مؤذن ابراہیم المدنی کی آواز میں۔',
     "مقدمة": "تعارف",
     "نور القرآن («الموقع») خدمة مجانية تماماً تُقدَّم لوجه الله تعالى، ولا نسعى من خلالها إلى أي ربح مادي. نلتزم بحماية خصوصيتك وبيانات زوّار الموقع ومستخدميه، ونشرح في هذه الصفحة ما نحفظه ولماذا، وكيف تتحكّم فيه.": "نور القرآن («سائٹ») ایک مکمل طور پر مفت خدمت ہے جو اللہ تعالیٰ کی رضا کے لیے پیش کی جاتی ہے، اور ہم اس سے کوئی مادی منافع نہیں چاہتے۔ ہم آپ کی رازداری اور سائٹ کے زائرین و صارفین کے ڈیٹا کی حفاظت کے پابند ہیں، اور اس صفحے پر وضاحت کرتے ہیں کہ ہم کیا محفوظ کرتے ہیں، کیوں، اور آپ اس پر کیسے اختیار رکھتے ہیں۔",
     "البيانات التي نجمعها": "ہم کون سا ڈیٹا جمع کرتے ہیں",
@@ -350,6 +354,7 @@ export default {
     "صفحات ذات صلة": "متعلقہ صفحات",
   },
   id: {
+    'أصوات الأذان في تطبيق الهاتف: أحمد خلف (بترخيص {lic})، وأذان الفجر للمؤذن إبراهيم المدني.': 'Rekaman azan di aplikasi ponsel: Ahmed Khalaf (berlisensi {lic}), dan azan Subuh oleh muazin Ibrahim Al-Madani.',
     "مقدمة": "Pendahuluan",
     "نور القرآن («الموقع») خدمة مجانية تماماً تُقدَّم لوجه الله تعالى، ولا نسعى من خلالها إلى أي ربح مادي. نلتزم بحماية خصوصيتك وبيانات زوّار الموقع ومستخدميه، ونشرح في هذه الصفحة ما نحفظه ولماذا، وكيف تتحكّم فيه.": "Nur Al-Quran (“Situs”) adalah layanan yang sepenuhnya gratis dan dipersembahkan semata-mata karena Allah Ta'ala, dan kami tidak mencari keuntungan materi apa pun darinya. Kami berkomitmen melindungi privasi Anda serta data pengunjung dan pengguna Situs, dan di halaman ini kami menjelaskan apa yang kami simpan, alasannya, dan bagaimana Anda mengendalikannya.",
     "البيانات التي نجمعها": "Data yang kami kumpulkan",
