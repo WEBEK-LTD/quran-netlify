@@ -25,16 +25,18 @@ const keyOf = (p) => (p ? `${p.surah}:${p.ayah}` : '');
 
 // surah → buildItems() result, from the shared text cache (memory + localStorage)
 function useSurahItems(surahs) {
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
   const want = surahs.join(',');
   useEffect(() => {
     let alive = true;
     surahs.forEach(x => { if (!cachedSurahAyahs(x)) fetchSurahAyahs(x).then(() => alive && setTick(v => v + 1)).catch(() => alive && setTick(v => v + 1)); });
     return () => { alive = false; };
   }, [want]); // eslint-disable-line react-hooks/exhaustive-deps
-  const out = {};
-  surahs.forEach(x => { const list = cachedSurahAyahs(x); out[x] = list ? buildItems(x, list) : null; });
-  return out;
+  return useMemo(() => {
+    const out = {};
+    surahs.forEach(x => { const list = cachedSurahAyahs(x); out[x] = list ? buildItems(x, list) : null; });
+    return out;
+  }, [want, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 export function refText(t, pos) {
@@ -66,14 +68,18 @@ export default function SharedMushaf({ shared, canSet, onMove }) {
     [page - 1, page + 1].filter(p => p >= 1 && p <= PAGES).forEach(p => pageSegments(p).forEach(x => prefetchSurahAyahs(x.surah)));
   }, [page, ready]);
 
-  // keep the highlighted ayah in view inside the card (never scrolls the room itself)
+  // keep the highlighted ayah in view inside the card (never scrolls the room itself);
+  // a page I turned myself starts at its top, and a host move never scrolls a page I'm reading
+  const shownPage = useRef(0);
   useEffect(() => {
     const box = scrollRef.current;
     if (!box || !ready) return;
+    const turned = shownPage.current !== page;
+    shownPage.current = page;
     const el = follow && shared ? box.querySelector('[data-cur="1"]') : null;
-    if (!el) { if (!follow) box.scrollTop = 0; return; }
+    if (!el) { if (turned) box.scrollTop = 0; return; }
     const top = el.offsetTop - box.clientHeight / 2 + el.offsetHeight / 2;
-    box.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    box.scrollTo({ top: Math.max(0, top), behavior: turned ? 'auto' : 'smooth' });
   }, [page, ready, follow, shared && shared.surah, shared && shared.ayah]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!shared) {
@@ -181,23 +187,23 @@ export default function SharedMushaf({ shared, canSet, onMove }) {
         {/* page arrows (the row follows the mushaf: next page on the left) */}
         <div className={s.mNav} dir="rtl">
           <button type="button" className={s.mNavBtn} disabled={page <= 1} onClick={() => browse(page - 1)} aria-label={t('الصفحة السابقة')}>
-            <RIcon name="back" size={20} /><span>{t('السابقة')}</span>
+            <RIcon name="back" size={20} /><span dir="auto">{t('السابقة')}</span>
           </button>
           <button type="button" className={s.mPageBtn} onClick={() => setPick(true)} aria-haspopup="dialog" aria-label={`${t('ص {n}', { n: n(page, t.lang) })} — ${t('اختر سورة وآية')}`}>
-            <b>{t('ص {n}', { n: n(page, t.lang) })}</b><small>{t('اختر سورة وآية')}</small>
+            <b dir="auto">{t('ص {n}', { n: n(page, t.lang) })}</b><RIcon name="chevD" size={16} />
           </button>
           <button type="button" className={s.mNavBtn} disabled={page >= PAGES} onClick={() => browse(page + 1)} aria-label={t('الصفحة التالية')}>
-            <span>{t('التالية')}</span><RIcon name="next" size={20} />
+            <span dir="auto">{t('التالية')}</span><RIcon name="next" size={20} />
           </button>
         </div>
 
         {canSet && (
-          <div className={s.mHost} role="group" aria-label={t('تحريك الموضع للجميع')}>
+          <div className={s.mHost} role="group" aria-label={t('تحريك الموضع للجميع')} dir="rtl">
             <button type="button" className={`${s.btn} ${s.btnSm} ${s.btnGhost}`} onClick={() => stepHost(-1)} disabled={shared.surah === 1 && shared.ayah === 1}>
-              <RIcon name="back" size={16} />{t('الآية السابقة')}
+              <RIcon name="back" size={16} /><span dir="auto">{t('الآية السابقة')}</span>
             </button>
             <button type="button" className={`${s.btn} ${s.btnSm} ${s.btnGold}`} onClick={() => stepHost(1)} disabled={shared.surah === 114 && shared.ayah === ayahCount(114)} data-host-next>
-              {t('الآية التالية')}<RIcon name="next" size={16} />
+              <span dir="auto">{t('الآية التالية')}</span><RIcon name="next" size={16} />
             </button>
           </div>
         )}

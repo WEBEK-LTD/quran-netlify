@@ -243,19 +243,18 @@
 .mTap { cursor:pointer; }
 .mTap:hover { background:var(--ayah-hover); }
 .mTap:focus-visible { outline:2px solid var(--gold); outline-offset:1px; }
-.mCur { background:var(--ayah-active); box-shadow:0 0 0 2px var(--ayah-active); }
-:global(html[data-mode="contrast"]) .mCur { outline:2px solid var(--gold); background:transparent; box-shadow:none; }
+.mCur { background:var(--ayah-active); }
 .mWait { display:flex; flex-direction:column; gap:14px; padding:10px 0; }
 .mWait i { display:block; height:18px; border-radius:9px; background:var(--line); opacity:.6; }
 .mWait i:nth-child(2n) { width:86%; margin-inline-start:auto; }
-.mNav { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr); gap:8px; align-items:stretch; }
-.mNavBtn, .mPageBtn { min-height:48px; border-radius:12px; border:var(--bw) solid var(--line); background:var(--bg2); color:var(--text); font:inherit; font-size:.86rem; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:4px; padding:0 8px; cursor:pointer; min-width:0; }
+.mNav { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); gap:8px; align-items:stretch; }
+.mNavBtn, .mPageBtn { min-height:48px; border-radius:12px; border:var(--bw) solid var(--line); background:var(--bg2); color:var(--text); font:inherit; font-size:.82rem; font-weight:600; display:inline-flex; align-items:center; justify-content:center; gap:3px; padding:0 6px; cursor:pointer; min-width:0; }
 .mNavBtn svg { color:var(--gold); flex:none; }
 .mNavBtn span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .mNavBtn[disabled] { opacity:.45; cursor:not-allowed; }
-.mPageBtn { flex-direction:column; gap:0; line-height:1.25; border-color:var(--line2); }
+.mPageBtn { gap:4px; padding:0 12px; border-color:var(--line2); white-space:nowrap; }
 .mPageBtn b { color:var(--gold); font-size:.95rem; }
-.mPageBtn small { color:var(--muted); font-size:.72rem; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+.mPageBtn svg { color:var(--gold); flex:none; }
 .mHost { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:8px; }
 .mHost .btn { width:100%; }
 .micSpin { width:22px; height:22px; border-radius:50%; border:2.5px solid currentColor; border-top-color:transparent; animation:spinR .8s linear infinite; }

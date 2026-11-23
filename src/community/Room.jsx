@@ -671,7 +671,7 @@ function HostSheet({ open, onClose, room, myRole, roomId, hands, onIgnore, api, 
             </span>
           </div>
           <button type="button" className={`${s.btn} ${s.btnOutline} ${s.btnBlock}`}
-            onClick={() => { onMove({ surah, ayah }); toast(t('ظهرت الآية لكل من في الغرفة.')); onClose(); }}>{t('اعرضها للجميع')}</button>
+            onClick={() => { onMove({ surah, ayah }); toast(t('ظهرت الآية لكل من في الغرفة.')); }}>{t('اعرضها للجميع')}</button>
         </div>
         {isOwner && (
           <div className={s.setRow} style={{ borderTop: 'var(--bw) solid var(--line)', borderBottom: 0, paddingBottom: 0 }}>

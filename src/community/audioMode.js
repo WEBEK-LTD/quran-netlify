@@ -14,9 +14,12 @@ let current = 'media';
 /** mode: 'voice' (speaking) | 'media' (listening / out of the room) */
 export async function setAudioMode(mode) {
   if (!isIOS() || mode === current) return;
+  const prev = current;
+  current = mode;
   try {
     if (!NQAudio) NQAudio = registerPlugin('NQAudio');
     await NQAudio.setMode({ mode });
-    current = mode;
-  } catch {}
+  } catch {
+    current = prev;   // try again next time
+  }
 }
