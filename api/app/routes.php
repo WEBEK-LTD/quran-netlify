@@ -9,6 +9,7 @@ use NQ\Controllers\GoogleController as Google;
 use NQ\Controllers\GroupController as Group;
 use NQ\Controllers\MeController as Me;
 use NQ\Controllers\PublicController as Pub;
+use NQ\Controllers\RadioController as Radio;
 use NQ\Controllers\RiwayatController as Riwayat;
 use NQ\Controllers\SupportController as Support;
 use NQ\Core\Router;
@@ -23,6 +24,7 @@ return static function (Router $r): void {
     $r->post('/presence', [Pub::class, 'presence']);
     $r->get('/riwayat/text/{edition}/{surah}', [Riwayat::class, 'text']);
     $r->get('/riwayat/audio', [Riwayat::class, 'audio']);
+    $r->get('/radio', [Radio::class, 'index']);
 
     // Auth
     $r->post('/auth/signup', [AuthC::class, 'signup']);

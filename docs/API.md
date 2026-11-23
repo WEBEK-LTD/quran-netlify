@@ -35,6 +35,9 @@ Part      { part_index, label, assignee, done, done_by_name|null, done_at|null,
 Ticket    { id, subject, topic, status: "open"|"pending"|"closed", created_at, updated_at, unread: int, message_count: int, user?: {id,email,name} }
 Message   { id, ticket_id, body, is_admin: bool, sender_name, created_at }
 Broadcast { id, title, body, type: "info"|"warning"|"success", created_at, expires_at|null }
+Station   { id, name_ar, name_en, country: "EG"|…|null, category: "quran"|"recitation"|"tafsir"|"programs", featured: bool,
+            source: "catalog"|"mp3quran", url: string|null, hls: bool, status: "ok"|"down"|"unknown", bitrate: int|null }
+            // url is always https (never http: mixed content); null = no usable URL. bitrate in kbps (icy-br / HLS BANDWIDTH).
 Recitation { reciter, reciter_id, moshaf, moshaf_id, style: "murattal"|"mujawwad"|"muallim"|null, combined: bool,
             server, surahs: int[] }   // file of surah N = server + zero-padded N + ".mp3" (e.g. …/001.mp3)
 ```
@@ -50,6 +53,7 @@ Recitation { reciter, reciter_id, moshaf, moshaf_id, style: "murattal"|"mujawwad
 | POST | `/presence` | `{visitor_id, path}` | `{}` — call every 60 s |
 | GET | `/riwayat/text/{edition}/{surah}` | `edition` ∈ `ara-quranuthmanihaf` (Hafs), `ara-quranshouba`, `ara-quranwarsh`, `ara-quranqaloon`, `ara-quranbazzi`, `ara-quranqumbul`, `ara-qurandoori`, `ara-quransoosi`; `surah` 1–114 | `{edition, surah, ayahs: string[]}` (Uthmani/Hafs numbering) |
 | GET | `/riwayat/audio` | | `{updated_at, stale: bool, rawis: {<rawi>: Recitation[]}}` |
+| GET | `/radio` | | `{checked_at\|null, stale: bool, stations: Station[]}` |
 
 **Riwayat** (page «الإجازة والقراءات», feature `ijaza`; no auth, plain GETs, safe to cache):
 - `/riwayat/text/…` — King Fahd Complex texts published by fawazahmed0/quran-api. The server fetches a surah once
@@ -71,6 +75,30 @@ Recitation { reciter, reciter_id, moshaf, moshaf_id, style: "murattal"|"mujawwad
   `riwayat_upstream_audio`: list of base URLs ending in `/api/v3`) — for local tests only; plain `http` is accepted only for 127.0.0.1/localhost.
 - Check the live sources from the server: `php ~/nuralquran-api/tools/check-riwayat.php` (add `--refresh` to rewrite the audio cache,
   `--surah=N`, `--edition=…`, `--no-head`).
+
+**Radio** (page «الإذاعة»; no auth, plain GET, `Cache-Control: public, max-age=600`):
+- Stations = the curated catalogue in `api/app/Core/RadioCatalog.php` (official national Quran radios — Cairo, Saudi,
+  Sharjah, Abu Dhabi, Noor Dubai, Kuwait, Jordan, Nablus, Zitouna, Mohammed VI, Qatar, Oman, Algeria, Bahrain, Haramain
+  live… — each with an ordered list of candidate stream URLs), then the mp3quran.net 24/7 channels
+  (`GET https://www.mp3quran.net/api/v3/radios?language=ar`, English names from `language=eng`; cached 24 h in
+  `storage/cache/radio/mp3quran.json`, stale copy kept when a refresh fails, retried after 10 min). mp3quran entries
+  whose URL or name duplicates an earlier station are dropped, as are non-https ones. Category for mp3quran: `tafsir`
+  when the name says «تفسير», `programs` for رقية/أذكار/فتاوى/سيرة/دروس…, else `recitation`.
+- Stream check (at most every 6 h, `storage/cache/radio/status.json`): every candidate is probed in parallel with a short
+  GET (≤ 32 KB read, 8 s, ≤ 5 redirects, no Range header). Accepted: `audio/*`, `application/ogg`, ICY responses, raw
+  MP3/AAC/Ogg bytes (sniffed), HLS playlists (`application/vnd.apple.mpegurl`, `audio/mpegurl`, … with `#EXT-X-` → `hls:true`;
+  refused when it lists `http://` media). Plain `.m3u`/`.pls` playlists are followed one level. A stream must deliver
+  ≥ 2 KB. Per station the first working candidate wins; `url` is the first URL of its redirect chain from which every hop is
+  https (an http candidate counts only when it redirects to https). No working candidate → `status:"down"` and `url` =
+  the first https candidate (or null). Never checked yet (or the station's candidates changed) → `status:"unknown"`.
+  A check that reaches nothing at all while the previous one had working stations is discarded (previous results served,
+  `stale:true`, retried after 10 min). With old results and PHP-FPM/LiteSpeed the check runs after the response is sent;
+  the very first check runs inside the request (≈ 10–30 s) — run the CLI below after deploying.
+- Config (local tests only): `radio_catalog` (replaces the catalogue), `radio_upstream_mp3quran` (list of base URLs ending
+  in `/api/v3`); plain `http://127.0.0.1` is then treated as browser-safe.
+- Check from the server: `php ~/nuralquran-api/tools/check-radio.php` (prints every candidate and the chosen URL;
+  `--refresh` rewrites the caches `/v1/radio` serves, `--only=id1,id2`, `--catalog` skips mp3quran). Exit 1 when a
+  featured station is down or the mp3quran list is unreachable.
 
 ## Auth
 

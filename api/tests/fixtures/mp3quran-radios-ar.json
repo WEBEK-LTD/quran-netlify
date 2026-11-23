@@ -1,0 +1,10 @@
+{"radios":[
+{"id":1,"name":"إذاعة عبدالباسط عبدالصمد","url":"{BASE}/radio/q/abdulbasit","recent_date":"2020-04-21 00:00:00"},
+{"id":2,"name":"تفسير الطبري","url":"{BASE}/radio/q/tabari","recent_date":"2020-04-21 00:00:00"},
+{"id":3,"name":"الرقية الشرعية","url":"{BASE}/radio/q/ruqyah","recent_date":"2020-04-21 00:00:00"},
+{"id":4,"name":"إذاعة  عبدالباسط عبدالصمد","url":"{BASE}/radio/q/abdulbasit-2","recent_date":"2020-04-21 00:00:00"},
+{"id":5,"name":"إذاعة مشاري العفاسي","url":"http://example.com/radio/afasy","recent_date":"2020-04-21 00:00:00"},
+{"id":6,"name":"إذاعة متنوعة لعدد من القراء","url":"{BASE}/radio/q/mix","recent_date":"2020-04-21 00:00:00"},
+{"id":7,"name":"إذاعة متوقفة","url":"{BASE}/radio/gone","recent_date":"2020-04-21 00:00:00"},
+{"id":8,"name":"","url":"{BASE}/radio/q/noname","recent_date":"2020-04-21 00:00:00"}
+]}

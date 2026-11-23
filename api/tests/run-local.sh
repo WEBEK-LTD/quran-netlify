@@ -21,7 +21,7 @@ SERVER=$!
 php -S "127.0.0.1:$FAKE_PORT" "$API_DIR/tests/fake-upstream.php" > "$API_DIR/storage/logs/fake-upstream.log" 2>&1 &
 FAKE=$!
 trap 'kill $SERVER $FAKE 2>/dev/null || true; rm -f "$API_DIR/config.php"' EXIT
-rm -rf "$API_DIR/storage/cache/riwayat"
+rm -rf "$API_DIR/storage/cache/riwayat" "$API_DIR/storage/cache/radio"
 for _ in $(seq 1 50); do curl -s -o /dev/null "http://127.0.0.1:$PORT/" && curl -s -o /dev/null "http://127.0.0.1:$FAKE_PORT/" && break; sleep 0.1; done
 
 set +e

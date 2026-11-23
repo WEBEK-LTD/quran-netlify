@@ -22,12 +22,42 @@
 .spinner { width:22px; height:22px; border-radius:50%; border:2.5px solid var(--line); border-top-color:var(--gold); animation:rdSpin .8s linear infinite; flex:none; }
 @keyframes rdSpin { to { transform:rotate(360deg); } }
 .empty { display:grid; justify-items:center; gap:12px; padding:48px 20px; text-align:center; color:var(--muted); }
+.notice { display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:14px 18px; border-radius:16px; border:var(--bw) dashed var(--line2); background:var(--hl); margin-bottom:22px; }
+.notice > span { flex:1; min-width:200px; }
+.notice :global(.nq-ico) { color:var(--gold); }
+
+/* ── featured national radios ── */
+.featured { margin-bottom:34px; }
+.h2 { display:flex; align-items:center; gap:10px; font-family:var(--f-title); font-size:1.35rem; font-weight:700; margin:0 0 16px; color:var(--text); }
+.h2 :global(.nq-ico) { color:var(--gold); width:20px; height:20px; }
+.featGrid { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; }
+.featGrid > li { display:flex; }
+.cardFeat { min-height:180px; background:linear-gradient(color-mix(in srgb,var(--gold) 6%,var(--surface)),var(--surface)) padding-box, linear-gradient(150deg,var(--line2),var(--line) 45%,var(--line) 55%,var(--line2)) border-box; }
+.cardFeat .name { font-size:1.15rem; }
+
+.subTools { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin:-12px 0 20px; }
+.resultsFor { color:var(--muted); font-size:.88rem; }
+.downToggle { cursor:pointer; min-height:40px; padding:6px 14px; font-size:.84rem; color:var(--muted); margin-inline-start:auto; }
+.downToggle[aria-pressed="true"] { color:var(--gold); }
+.box { width:18px; height:18px; border-radius:5px; border:var(--bw) solid var(--line2); display:grid; place-items:center; flex:none; }
+.box :global(.nq-ico) { width:14px; height:14px; }
 
 /* ── stations ── */
 .grid { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:16px; }
 .grid > li { display:flex; }
+.item { position:relative; min-width:0; }
+.item > .card { width:100%; }
 .card { padding:20px; display:grid; gap:8px; align-content:start; color:inherit; height:100%; min-height:200px; grid-template-rows:auto auto 1fr auto; overflow:hidden; }
-.cardHead { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.cardHead { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-inline-end:44px; }
+.fav { position:absolute; top:12px; inset-inline-end:12px; width:44px; height:44px; border-radius:12px; display:grid; place-items:center; border:0; background:none; color:var(--faint); }
+.fav :global(.nq-ico) { width:20px; height:20px; }
+.fav:hover { color:var(--gold); }
+.favOn { color:var(--danger); }
+:global(:root[data-mode="contrast"]) .favOn { color:var(--gold); }
+.cardDown { opacity:.62; }
+.cardDown:hover { opacity:.85; }
+.pillDown { border-color:color-mix(in srgb,var(--danger) 50%,transparent) !important; color:var(--danger) !important; }
+.playWrap { display:flex; align-items:center; gap:10px; flex:none; }
 .name { font-family:var(--f-title); font-size:1.25rem; font-weight:700; line-height:1.4; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; text-align:start; }
 .desc { display:flex; flex-wrap:wrap; gap:4px 12px; color:var(--muted); font-size:.85rem; align-content:start; }
 .desc > span { display:inline-flex; align-items:center; gap:4px; }
@@ -70,10 +100,19 @@
 .slider::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--gold2); border:2px solid var(--surface); box-shadow:0 1px 4px rgba(0,0,0,.3); }
 .slider::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background:var(--gold2); border:2px solid var(--surface); }
 .volVal { color:var(--muted); font-size:.8rem; min-width:36px; }
+.npErr { background:linear-gradient(color-mix(in srgb,var(--danger) 10%,var(--raise)),var(--surface)) padding-box, linear-gradient(150deg,var(--danger),var(--line2) 40%,var(--line2) 60%,var(--danger)) border-box; }
+.liveErr { color:var(--danger); }
+.dotErr { width:9px; height:9px; border-radius:50%; background:var(--danger); flex:none; }
+.npActions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
 .stop { width:52px; height:52px; border-radius:50%; border:0; display:grid; place-items:center; background:linear-gradient(180deg,var(--gold2),var(--gold)); color:var(--on-gold); flex:none; box-shadow:0 10px 26px -12px var(--gold); }
 .stop :global(.nq-ico) { width:20px; height:20px; }
 :global(:root[data-mode="contrast"]) .stop { background:var(--gold); box-shadow:none; }
 :global(:root[data-mode="contrast"]) .np { background:#000; border-color:var(--gold); }
+
+/* desktop: the assistant's floating button sits at the bottom-left corner (physical left in both directions) */
+@media (min-width:761px) {
+  .np { padding-left:78px; }
+}
 
 @media (max-width:760px) {
   .wrap { padding-top:28px; }
@@ -87,7 +126,16 @@
   .npIcon :global(.nq-badge8) { width:40px !important; height:40px !important; }
   .slider, .volVal { display:none; }
   .stop { width:48px; height:48px; }
+  .npErr { flex-wrap:wrap; }
+  .npErr .npInfo { flex:1 1 calc(100% - 60px); }
+  .npActions { flex:1 1 100%; justify-content:stretch; }
+  .npActions :global(.nq-btn) { flex:1; }
+  .featGrid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .cardFeat { min-height:0; padding:16px; }
+  .cardFeat .name { font-size:1rem; }
+  .subTools { margin-top:-14px; }
 }
+
 
 /* Translations run longer than Arabic: on phones start the hero text below the arch's peak
    so the eyebrow and title don't cross the arch (Arabic keeps its original spacing). */

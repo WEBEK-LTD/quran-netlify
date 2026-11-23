@@ -1,152 +1,14 @@
 // ─── Radio ───────────────────────────────────────────────────────────────────
-// Verified HTTPS stations from the open Radio Browser directory, grouped by
-// category; station cards show their play state and a now-playing bar stays
-// at the bottom of the screen while a station is on.
-import { useState, useEffect, useRef, useCallback } from 'react';
+// The official national Quran radios (Cairo, Saudi Arabia, Sharjah, Kuwait, Abu Dhabi…)
+// and the mp3quran.net 24/7 reciter / tafsir channels, from GET /v1/radio: the server
+// checks every stream every 6 h and gives the browser the first working https URL.
+// A sticky now-playing bar stays at the bottom while a station is on.
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import styles from './RadioPage.module.css';
 import { PageHero, Icon, Badge8, toAr } from '../components/ornaments/Ornaments';
 import { useTr, intlLocale } from '../l10n';
-import { getLang } from '../i18n';
-
-// ── Radio Browser API — قاعدة بيانات مفتوحة بمحطات متحقق منها ──────────────
-const RB = 'https://de1.api.radio-browser.info/json/stations/search';
-
-// ── هل يستطيع المتصفح تشغيل هذه المحطة؟ ─────────────────────────────────────
-let _probe = null;
-function canPlayMime(mime) {
-  try {
-    if (!_probe) _probe = document.createElement('audio');
-    return !!(_probe.canPlayType && _probe.canPlayType(mime));
-  } catch { return true; }
-}
-const CODEC_MIME = {
-  'MP3':      ['audio/mpeg'],
-  'AAC':      ['audio/aac', 'audio/mp4; codecs="mp4a.40.2"'],
-  'AAC+':     ['audio/aac', 'audio/mp4; codecs="mp4a.40.5"', 'audio/mp4; codecs="mp4a.40.2"'],
-  'HE-AAC':   ['audio/aac', 'audio/mp4; codecs="mp4a.40.5"', 'audio/mp4; codecs="mp4a.40.2"'],
-  'OGG':      ['audio/ogg', 'audio/ogg; codecs="vorbis"'],
-  'VORBIS':   ['audio/ogg; codecs="vorbis"'],
-  'OPUS':     ['audio/ogg; codecs="opus"', 'audio/webm; codecs="opus"'],
-  'FLAC':     ['audio/flac', 'audio/ogg; codecs="flac"'],
-};
-function browserCanPlay(s) {
-  const url = (s.url_resolved || '').toLowerCase();
-  const isHls = s.hls === 1 || /\.m3u8(\?|$)/.test(url);
-  if (isHls) return canPlayMime('application/vnd.apple.mpegurl');
-  const codec = String(s.codec || '').toUpperCase().trim();
-  const mimes = CODEC_MIME[codec];
-  if (!mimes) return true; // UNKNOWN / غير مذكور — نجرّب
-  return mimes.some(canPlayMime);
-}
-
-async function rbSearch(params) {
-  const servers = [
-    'https://de1.api.radio-browser.info',
-    'https://at1.api.radio-browser.info',
-    'https://nl1.api.radio-browser.info',
-  ];
-  const q = new URLSearchParams({
-    hidebroken: 'true',
-    order: 'votes',
-    reverse: 'true',
-    is_https: 'true',   // HTTPS only — أمان
-    ...params,
-  }).toString();
-
-  for (const server of servers) {
-    try {
-      // ملاحظة: المتصفح يمنع تعديل User-Agent، لذا لا نرسله
-      const res = await fetch(`${server}/json/stations/search?${q}`);
-      if (!res.ok) continue;
-      const data = await res.json();
-      // فقط اللي عنده URL وتم التحقق منه ويستطيع المتصفح تشغيله
-      return data.filter(s =>
-        s.url_resolved &&
-        s.lastcheckok === 1 &&
-        s.url_resolved.startsWith('https') &&
-        browserCanPlay(s)
-      );
-    } catch { continue; }
-  }
-  return [];
-}
-
-// ── الفئات ────────────────────────────────────────────────────────────────────
-const CATS = [
-  { id: 'all',       label: 'الكل',          icon: 'radio'  },
-  { id: 'quran',     label: 'القرآن الكريم', icon: 'book'   },
-  { id: 'religious', label: 'برامج دينية',   icon: 'mosque' },
-  { id: 'anasheed',  label: 'أناشيد',        icon: 'head'   },
-];
-
-// ── البحث الخاص بكل فئة ───────────────────────────────────────────────────────
-const CAT_QUERIES = {
-  quran: [
-    { tag: 'quran',        limit: 25 },
-    { tag: 'al quran',     limit: 10 },
-    { tag: 'holy quran',   limit: 10 },
-    { name: 'quran',       limit: 15 },
-  ],
-  religious: [
-    { tag: 'islamic',      limit: 20 },
-    { tag: 'islam',        limit: 20 },
-    { tag: 'hadith',       limit: 10 },
-    { name: 'islamweb',    limit: 5  },
-    { name: 'sunnah',      limit: 5  },
-  ],
-  anasheed: [
-    { tag: 'nasheed',      limit: 20 },
-    { tag: 'anasheed',     limit: 15 },
-    { tag: 'islamic music',limit: 10 },
-    { name: 'nasheed',     limit: 10 },
-  ],
-};
-
-// Country names in the interface language (cached per language)
-const _regions = {};
-function countryName(code, fallback, lang = getLang()) {
-  if (!code || code.length !== 2) return fallback || '';
-  try {
-    if (!_regions[lang]) _regions[lang] = new Intl.DisplayNames([lang === 'ar' ? 'ar' : intlLocale(lang)], { type: 'region' });
-    return _regions[lang].of(code.toUpperCase()) || fallback || code;
-  } catch { return fallback || code; }
-}
-
-function rbToStation(s, cat) {
-  const catConf = CATS.find(c => c.id === cat);
-  const country = countryName(s.countrycode, s.country);
-  return {
-    id: s.stationuuid,
-    cat,
-    cc: s.countrycode || '',
-    countryRaw: s.country || '',
-    name: (s.name || 'Islamic Radio').trim().slice(0, 50),
-    country,
-    desc: [s.country, s.language].filter(Boolean).slice(0, 2).join(' · ') || 'Islamic Radio',
-    lang: String(s.language || '').split(',')[0].trim(),
-    icon:  catConf?.icon  || 'radio',
-    catLabel: catConf?.label || '',
-    url: s.url_resolved,
-    votes: s.votes || 0,
-    bitrate: s.bitrate || 0,
-  };
-}
-
-const LANGS_AR = { arabic: 'العربية', english: 'الإنجليزية', turkish: 'التركية', urdu: 'الأردية', french: 'الفرنسية', indonesian: 'الإندونيسية', malay: 'الملايوية', persian: 'الفارسية', bengali: 'البنغالية', german: 'الألمانية' };
-// Radio Browser gives language names in English: map them to ISO codes for Intl.DisplayNames
-const LANG_CODES = { arabic: 'ar', english: 'en', turkish: 'tr', urdu: 'ur', french: 'fr', indonesian: 'id', malay: 'ms', persian: 'fa', bengali: 'bn', german: 'de', spanish: 'es', russian: 'ru', hindi: 'hi', somali: 'so', swahili: 'sw', hausa: 'ha', pashto: 'ps', kurdish: 'ku', albanian: 'sq', bosnian: 'bs', dutch: 'nl', italian: 'it' };
-const _langNames = {};
-function langName(raw, lang = getLang()) {
-  const k = String(raw || '').toLowerCase();
-  if (lang === 'ar') return LANGS_AR[k] || raw;
-  const code = LANG_CODES[k];
-  if (!code) return raw;
-  try {
-    if (!_langNames[lang]) _langNames[lang] = new Intl.DisplayNames([intlLocale(lang)], { type: 'language' });
-    const n = _langNames[lang].of(code);
-    return n ? n.charAt(0).toLocaleUpperCase(intlLocale(lang)) + n.slice(1) : raw;
-  } catch { return raw; }
-}
+import { TABS, CAT_LABEL, CAT_ICON, loadStations, stationName, countryName, fold, readFavs, writeFavs } from './radio/stations';
+import { useRadioPlayer } from './radio/useRadioPlayer';
 
 function fmtTime(s) {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
@@ -154,279 +16,257 @@ function fmtTime(s) {
   return toAr(h ? `${h}:${p(m)}:${p(sec)}` : `${p(m)}:${p(sec)}`);
 }
 
+function fmtChecked(iso, lang) {
+  try {
+    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : intlLocale(lang), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+  } catch { return ''; }
+}
+
+const ERRORS = {
+  connect: 'تعذّر تشغيل هذه المحطة الآن.',
+  unsupported: 'متصفحك لا يدعم تشغيل هذا البث.',
+  blocked: 'اضغط «إعادة المحاولة» لبدء التشغيل.',
+};
+
+function StationCard({ st, tr, isOn, isLoading, isFav, onPlay, onFav, showCat, featured }) {
+  const name = stationName(st, tr.lang);
+  const country = countryName(st.country, tr.lang);
+  const where = country || (st.source === 'mp3quran' ? 'mp3quran.net' : '');
+  return (
+    <li className={styles.item}>
+      <button type="button"
+        className={`nq-card ${styles.card} ${featured ? styles.cardFeat : ''} ${isOn ? styles.cardOn : ''} ${st.status === 'down' ? styles.cardDown : ''}`}
+        onClick={() => onPlay(st)} aria-pressed={isOn}
+        aria-label={where
+          ? tr(isOn ? 'إيقاف {name}، {country}' : 'تشغيل {name}، {country}', { name, country: where })
+          : tr(isOn ? 'إيقاف {name}' : 'تشغيل {name}', { name })}>
+        <span className={styles.cardHead}>
+          <Badge8 icon={CAT_ICON[st.category] || 'radio'} size={featured ? 50 : 46} />
+        </span>
+        <span className={styles.name} dir="auto">{name}</span>
+        <span className={styles.desc}>
+          {where && <span><Icon name="globe" />{where}</span>}
+        </span>
+        <span className={styles.cardFoot}>
+          <span className={styles.tags}>
+            {showCat && <span className="nq-pill">{tr(CAT_LABEL[st.category])}</span>}
+            {st.status === 'down' && <span className={`nq-pill ${styles.pillDown}`}>{tr('متوقفة حالياً')}</span>}
+            {st.status === 'unknown' && <span className="nq-pill">{tr('لم تُفحص بعد')}</span>}
+            {st.bitrate > 0 && !featured && <span className="nq-pill nq-num">{tr('{n} ك.ب/ث', { n: toAr(st.bitrate) })}</span>}
+          </span>
+          <span className={styles.playWrap}>
+            {isOn && !isLoading && <span className={styles.wave} aria-hidden="true"><i /><i /><i /><i /></span>}
+            {isLoading && <span className={styles.spinner} aria-hidden="true" />}
+            <span className={`${styles.play} ${isOn ? styles.playOn : ''}`} aria-hidden="true">
+              <Icon name={isOn ? 'pause' : 'play'} fill />
+            </span>
+          </span>
+        </span>
+      </button>
+      <button type="button" className={`${styles.fav} ${isFav ? styles.favOn : ''}`} onClick={() => onFav(st.id)} aria-pressed={isFav}
+        aria-label={tr(isFav ? 'إزالة {name} من المفضّلة' : 'إضافة {name} إلى المفضّلة', { name })}>
+        <Icon name="heart" fill={isFav} />
+      </button>
+    </li>
+  );
+}
+
 export default function RadioPage() {
   const tr = useTr();
-  const [cat,      setCat]      = useState('all');
-  const [stations, setStations] = useState({ quran: [], religious: [], anasheed: [] });
-  const [fetching, setFetching] = useState({ quran: false, religious: false, anasheed: false });
-  const [loaded,   setLoaded]   = useState({ quran: false, religious: false, anasheed: false });
-  const [playing,  setPlaying]  = useState(null);
-  const [audioErr, setAudioErr] = useState('');
-  const [buffering,setBuffering]= useState(false);
-  const [volume,   setVolume]   = useState(0.8);
-  const [muted,    setMuted]    = useState(false);
-  const [elapsed,  setElapsed]  = useState(0);
-  const [search,   setSearch]   = useState('');
-  const audioRef = useRef(null);
-  const timerRef = useRef(null);
-  const stoppedRef = useRef(true);           // إيقاف مقصود — لا نعرض خطأ
-  const loadStateRef = useRef({});           // catId → 'fetching' | 'done' (يمنع التحميل المكرر)
+  const lang = tr.lang;
+  const [data, setData] = useState({ stations: [], checkedAt: null, fallback: false, loading: true });
+  const [tab, setTab] = useState('quran');
+  const [search, setSearch] = useState('');
+  const [showDown, setShowDown] = useState(false);
+  const [favs, setFavs] = useState(readFavs);
 
-  // ── Load category stations on demand ────────────────────────────────────────
-  const loadCat = useCallback(async (catId) => {
-    if (catId === 'all' || loadStateRef.current[catId]) return;
-    loadStateRef.current[catId] = 'fetching';
-    setFetching(f => ({ ...f, [catId]: true }));
-
-    const queries = CAT_QUERIES[catId] || [];
-    const seen = new Set();
-    const results = [];
-
-    for (const q of queries) {
-      const data = await rbSearch({ limit: q.limit, ...(q.tag ? { tag: q.tag } : { name: q.name }) });
-      for (const s of data) {
-        if (!seen.has(s.stationuuid)) {
-          seen.add(s.stationuuid);
-          results.push(rbToStation(s, catId));
-        }
-      }
-    }
-
-    // Sort by votes desc
-    results.sort((a, b) => b.votes - a.votes);
-
-    loadStateRef.current[catId] = 'done';
-    setStations(prev => ({ ...prev, [catId]: results }));
-    setLoaded(prev => ({ ...prev, [catId]: true }));
-    setFetching(f => ({ ...f, [catId]: false }));
+  const load = useCallback(() => {
+    setData(d => ({ ...d, loading: true }));
+    let alive = true;
+    loadStations().then(r => { if (alive) setData({ ...r, loading: false }); });
+    return () => { alive = false; };
   }, []);
+  useEffect(load, [load]);
 
-  // Load when cat changes (also runs on mount)
-  useEffect(() => {
-    if (cat !== 'all') loadCat(cat);
-    else {
-      loadCat('quran');
-      loadCat('religious');
-      loadCat('anasheed');
-    }
-  }, [cat]);
+  const all = data.stations;
+  const visible = useMemo(() => all.filter(s => s.url && (showDown || s.status !== 'down')), [all, showDown]);
+  const downCount = all.filter(s => s.status === 'down').length;
+  const featured = visible.filter(s => s.featured);
+  const favSet = new Set(favs);
 
-  // ── Audio setup ──────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const audio = new Audio();
-    audio.preload = 'none';
-    audioRef.current = audio;
+  const q = fold(search);
+  const matches = s => [s.name_ar, s.name_en, countryName(s.country, lang), countryName(s.country, 'ar'), countryName(s.country, 'en'),
+    tr(CAT_LABEL[s.category])].some(x => x && fold(x).includes(q));
+  const tabConf = TABS.find(t => t.id === tab) || TABS[0];
+  const inTab = s => (tabConf.cats ? tabConf.cats.includes(s.category) : favSet.has(s.id));
+  // the national radios already have their own row above the «official» tab
+  const list = q ? visible.filter(matches) : visible.filter(s => inTab(s) && !(tab === 'quran' && s.featured && !showDown));
+  const count = t => visible.filter(s => (t.cats ? t.cats.includes(s.category) : favSet.has(s.id))).length;
 
-    audio.addEventListener('playing', () => {
-      setBuffering(false); setAudioErr('');
-      clearInterval(timerRef.current);
-      timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
-    });
-    audio.addEventListener('waiting', () => setBuffering(true));
-    audio.addEventListener('stalled', () => setBuffering(true));
-    audio.addEventListener('error', () => {
-      // تجاهل الخطأ الناتج عن الإيقاف المقصود أو إزالة المصدر
-      if (stoppedRef.current || !audio.getAttribute('src')) return;
-      setAudioErr('تعذّر الاتصال بهذه المحطة، جرّب محطة أخرى');
-      setBuffering(false);
-      setPlaying(null);
-      clearInterval(timerRef.current);
-    });
-
-    return () => {
-      stoppedRef.current = true;
-      audio.pause();
-      audio.removeAttribute('src');
-      try { audio.load(); } catch {}
-      clearInterval(timerRef.current);
-    };
+  // next / previous station for «جرّب محطة أخرى» and the lock-screen buttons
+  const poolRef = useRef([]);
+  poolRef.current = (list.length > 1 ? list : visible).filter(s => s.status !== 'down');
+  const neighbour = useCallback((cur, step) => {
+    const pool = poolRef.current.length ? poolRef.current : [];
+    if (!pool.length) return null;
+    const i = cur ? pool.findIndex(s => s.id === cur.id) : -1;
+    const n = pool[((i < 0 ? (step > 0 ? -1 : 0) : i) + step + pool.length) % pool.length];
+    return n && (!cur || n.id !== cur.id) ? n : null;
   }, []);
+  const meta = useCallback(st => ({
+    title: stationName(st, lang),
+    artist: tr('نور القرآن'),
+    album: countryName(st.country, lang) || tr(CAT_LABEL[st.category]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [lang]);
+  const player = useRadioPlayer({ meta, neighbour });
+  const cur = player.station;
+  const active = player.phase === 'playing' || player.phase === 'connecting';
+  const loading = player.phase === 'connecting' || player.buffering;
 
-  // إيقاف البث بدون إطلاق حدث error
-  function silence(audio) {
-    stoppedRef.current = true;
-    audio.pause();
-    audio.removeAttribute('src');
-    try { audio.load(); } catch {}
-  }
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = muted ? 0 : volume;
-  }, [volume, muted]);
-
-  // ── Play ─────────────────────────────────────────────────────────────────────
-  function playStation(station) {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (playing === station.id) {
-      silence(audio);
-      clearInterval(timerRef.current);
-      setPlaying(null); setBuffering(false); setElapsed(0);
-      return;
-    }
-
-    setAudioErr(''); setElapsed(0); setBuffering(true);
-    setPlaying(station.id);
-    clearInterval(timerRef.current);
-    audio.pause();
-    stoppedRef.current = false;
-    audio.src = station.url;
-    audio.volume = muted ? 0 : volume;
-    audio.load();
-    const url = station.url;
-    audio.play().catch(err => {
-      // AbortError: تم تبديل المحطة أو إيقافها قبل بدء التشغيل — ليس خطأ
-      if (err && err.name === 'AbortError') return;
-      if (stoppedRef.current || audio.getAttribute('src') !== url) return;
-      setAudioErr('تعذّر تشغيل هذه المحطة، جرّب محطة أخرى');
-      setBuffering(false); setPlaying(null);
+  function toggleFav(id) {
+    setFavs(f => {
+      const next = f.includes(id) ? f.filter(x => x !== id) : [...f, id];
+      writeFavs(next);
+      return next;
     });
   }
-
-  function stop() {
-    const audio = audioRef.current;
-    if (!audio) return;
-    silence(audio);
-    clearInterval(timerRef.current);
-    setPlaying(null); setBuffering(false); setElapsed(0); setAudioErr('');
+  function tryAnother() {
+    const n = neighbour(cur, 1);
+    if (n) player.play(n); else player.stop();
   }
 
-  // ── Filtered stations ────────────────────────────────────────────────────────
-  // نفس المحطة قد تظهر في أكثر من فئة — نزيل التكرار
-  const allSt = (() => {
-    const seen = new Set();
-    return [...stations.quran, ...stations.religious, ...stations.anasheed]
-      .filter(s => (seen.has(s.id) ? false : (seen.add(s.id), true)));
-  })();
-  const catLoaded = cat === 'all'
-    ? (loaded.quran && loaded.religious && loaded.anasheed)
-    : loaded[cat];
-
-  // station country in the interface language (stations are fetched once, the language can change)
-  const countryOf = s => countryName(s.cc, s.countryRaw, tr.lang) || s.country;
-  const displayed = (cat === 'all' ? allSt : stations[cat] || [])
-    .filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.desc.toLowerCase().includes(search.toLowerCase()) || (s.country || '').includes(search.trim()) ||
-      countryOf(s).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()) ||
-      (s.lang && langName(s.lang, tr.lang).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())));
-
-  const currentStation = allSt.find(s => s.id === playing);
-  const isAnyFetching = Object.values(fetching).some(Boolean);
-
-  const catCount = id => id === 'all' ? allSt.length : (stations[id] || []).length;
+  const card = (st, opts = {}) => (
+    <StationCard key={st.id} st={st} tr={tr} featured={opts.featured} showCat={opts.showCat}
+      isOn={!!cur && cur.id === st.id && active} isLoading={!!cur && cur.id === st.id && active && loading}
+      isFav={favSet.has(st.id)} onPlay={player.toggle} onFav={toggleFav} />
+  );
 
   return (
     <div className={styles.page}>
       <PageHero
         eyebrow={tr('بثّ مباشر')}
         title={tr('الإذاعة')}
-        sub={tr('إذاعات القرآن الكريم والبرامج الإسلامية والأناشيد من حول العالم. نعرض المحطات المتحقَّق من عملها فقط.')}
+        sub={tr('إذاعات القرآن الكريم الرسمية من مصر والسعودية والإمارات والكويت وسائر البلاد العربية، وتلاوات متواصلة لكبار القرّاء على مدار الساعة.')}
       />
 
       <div className={`nq-wrap ${styles.wrap}`}>
-        <div className={styles.tools}>
-          <div className={`nq-seg ${styles.cats}`} role="group" aria-label={tr('فئات المحطات')}>
-            {CATS.map(c => (
-              <button key={c.id} type="button" aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>
-                <Icon name={c.icon} />{tr(c.label)}
-                {(c.id === 'all' ? catLoaded : loaded[c.id]) && <small className="nq-num">{toAr(catCount(c.id))}</small>}
-              </button>
-            ))}
-          </div>
-          <label className={`nq-input ${styles.search}`}>
-            <Icon name="search" />
-            <span className="nq-sr">{tr('ابحث في المحطات')}</span>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={tr('ابحث باسم المحطة أو البلد أو اللغة…')} dir={tr.dir} type="search" />
-            {search && <button type="button" className={styles.clear} onClick={() => setSearch('')} aria-label={tr('مسح البحث')}><Icon name="x" /></button>}
-          </label>
-        </div>
-
-        {audioErr && <div className={styles.error} role="alert"><Icon name="x" />{tr(audioErr)}</div>}
-
-        {isAnyFetching && (
+        {data.loading && (
           <div className={styles.fetching} role="status">
             <span className={styles.spinner} aria-hidden="true" />
-            <span>{tr('جارٍ تحميل المحطات المتحقَّق منها…')}</span>
+            <span>{tr('جارٍ تحميل المحطات…')}</span>
           </div>
         )}
 
-        {!isAnyFetching && displayed.length === 0 && catLoaded && (
+        {!data.loading && data.fallback && (
+          <div className={styles.notice} role="status">
+            <Icon name="radio" />
+            <span>{tr('تعذّر تحميل قائمة المحطات الكاملة، فنعرض الإذاعات الرئيسية فقط.')}</span>
+            <button type="button" className="nq-btn ghost sm" onClick={load}>{tr('إعادة المحاولة')}</button>
+          </div>
+        )}
+
+        {featured.length > 0 && !q && (
+          <section className={styles.featured} aria-labelledby="rd-feat">
+            <h2 id="rd-feat" className={styles.h2}><Icon name="star" />{tr('إذاعات القرآن الكريم الوطنية')}</h2>
+            <ul className={styles.featGrid}>{featured.map(st => card(st, { featured: true }))}</ul>
+          </section>
+        )}
+
+        {!data.loading && (
+          <div className={styles.tools}>
+            <div className={`nq-seg ${styles.cats}`} role="group" aria-label={tr('فئات المحطات')}>
+              {TABS.map(t => (
+                <button key={t.id} type="button" aria-pressed={!q && tab === t.id} onClick={() => { setTab(t.id); setSearch(''); }}>
+                  <Icon name={t.icon} />{tr(t.label)}
+                  <small className="nq-num">{toAr(count(t))}</small>
+                </button>
+              ))}
+            </div>
+            <label className={`nq-input ${styles.search}`}>
+              <Icon name="search" />
+              <span className="nq-sr">{tr('ابحث في المحطات')}</span>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={tr('ابحث باسم المحطة أو القارئ أو البلد…')} dir={tr.dir} type="search" />
+              {search && <button type="button" className={styles.clear} onClick={() => setSearch('')} aria-label={tr('مسح البحث')}><Icon name="x" /></button>}
+            </label>
+          </div>
+        )}
+
+        {!data.loading && downCount > 0 && (
+          <div className={styles.subTools}>
+            {q && <span className={styles.resultsFor}>{tr('نتائج البحث في كل الفئات')}</span>}
+            <button type="button" className={`nq-pill ${showDown ? 'on' : ''} ${styles.downToggle}`} aria-pressed={showDown} onClick={() => setShowDown(v => !v)}>
+              <span className={styles.box} aria-hidden="true">{showDown && <Icon name="check" />}</span>
+              {tr('إظهار المحطات المتوقفة')} <span className="nq-num">({toAr(downCount)})</span>
+            </button>
+          </div>
+        )}
+
+        {!data.loading && list.length === 0 && (
           <div className={`nq-card ${styles.empty}`}>
-            <Badge8 icon="radio" size={64} />
-            <p>{search ? tr('لا توجد محطات مطابقة لبحثك.') : tr('لا توجد محطات في هذه الفئة حالياً. حاول لاحقاً.')}</p>
-            {search && <button type="button" className="nq-btn ghost sm" onClick={() => setSearch('')}>{tr('مسح البحث')}</button>}
+            <Badge8 icon={tab === 'fav' && !q ? 'heart' : 'radio'} size={64} />
+            <p>{q ? tr('لا توجد محطات مطابقة لبحثك.')
+              : tab === 'fav' ? tr('لم تُضف محطات إلى المفضّلة بعد. اضغط على القلب في بطاقة أي محطة لإضافتها.')
+                : tr('لا توجد محطات في هذه الفئة حالياً. حاول لاحقاً.')}</p>
+            {q && <button type="button" className="nq-btn ghost sm" onClick={() => setSearch('')}>{tr('مسح البحث')}</button>}
           </div>
         )}
 
-        {displayed.length > 0 && (
-          <ul className={styles.grid}>
-            {displayed.map(st => {
-              const isOn = playing === st.id;
-              const isLoading = isOn && buffering;
-              const country = countryOf(st);
-              return (
-                <li key={st.id}>
-                  <button type="button" className={`nq-card ${styles.card} ${isOn ? styles.cardOn : ''}`}
-                    onClick={() => playStation(st)} aria-pressed={isOn}
-                    aria-label={country
-                      ? tr(isOn ? 'إيقاف {name}، {country}' : 'تشغيل {name}، {country}', { name: st.name, country })
-                      : tr(isOn ? 'إيقاف {name}' : 'تشغيل {name}', { name: st.name })}>
-                    <span className={styles.cardHead}>
-                      <Badge8 icon={st.icon} size={46} />
-                      {isOn && !isLoading && <span className={styles.wave} aria-hidden="true"><i /><i /><i /><i /></span>}
-                      {isLoading && <span className={styles.spinner} aria-hidden="true" />}
-                    </span>
-                    <span className={styles.name} dir="auto">{st.name}</span>
-                    <span className={styles.desc}>
-                      {country && <span><Icon name="globe" />{country}</span>}
-                      {st.lang && <span>{langName(st.lang, tr.lang)}</span>}
-                    </span>
-                    <span className={styles.cardFoot}>
-                      <span className={styles.tags}>
-                        {cat === 'all' && st.catLabel && <span className="nq-pill">{tr(st.catLabel)}</span>}
-                        {st.bitrate > 0 && <span className="nq-pill nq-num">{tr('{n} ك.ب/ث', { n: toAr(st.bitrate) })}</span>}
-                      </span>
-                      <span className={`${styles.play} ${isOn ? styles.playOn : ''}`} aria-hidden="true">
-                        <Icon name={isOn ? 'pause' : 'play'} fill />
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+        {list.length > 0 && <ul className={styles.grid}>{list.map(st => card(st, { showCat: !!q || tab === 'fav' }))}</ul>}
+
+        {!data.loading && (
+          <p className={styles.note}>
+            <Icon name="shield" />
+            <span>
+              {tr('نفحص كل محطة على خادم نور القرآن كل ٦ ساعات، ونعرض البث الآمن (HTTPS) الذي يعمل فقط. التلاوات المتواصلة من mp3quran.net.')}
+              {data.checkedAt && <> {tr('آخر فحص: {time}', { time: fmtChecked(data.checkedAt, lang) })}</>}
+            </span>
+          </p>
         )}
 
-        <p className={styles.note}><Icon name="shield" />{tr('المحطات من دليل Radio Browser المفتوح، ونعرض فقط المحطات الآمنة (HTTPS) التي تعمل في متصفحك.')}</p>
-
-        {playing && currentStation && (
-          <div className={`nq-card ${styles.np}`} role="region" aria-label={tr('المحطة قيد التشغيل')}>
+        {cur && player.phase !== 'idle' && (
+          <div className={`nq-card ${styles.np} ${player.phase === 'error' ? styles.npErr : ''}`} role="region" aria-label={tr('المحطة قيد التشغيل')}>
             <span className={styles.npIcon}>
-              {buffering ? <span className={styles.spinner} aria-hidden="true" /> : <Badge8 icon={currentStation.icon} size={50} />}
+              {loading ? <span className={styles.spinner} aria-hidden="true" /> : <Badge8 icon={CAT_ICON[cur.category] || 'radio'} size={50} />}
             </span>
             <span className={styles.npInfo}>
-              <span className={styles.live} aria-live="polite">
-                <i className={buffering ? styles.dotWait : styles.dot} aria-hidden="true" />
-                {buffering ? tr('جارٍ الاتصال…') : tr('يبث الآن')}
-                {!buffering && <b className="nq-num">{fmtTime(elapsed)}</b>}
+              {player.phase === 'error' ? (
+                <span className={`${styles.live} ${styles.liveErr}`} role="alert">
+                  <i className={styles.dotErr} aria-hidden="true" />{tr(ERRORS[player.error] || ERRORS.connect)}
+                </span>
+              ) : (
+                <span className={styles.live} aria-live="polite">
+                  <i className={loading ? styles.dotWait : styles.dot} aria-hidden="true" />
+                  {loading ? tr('جارٍ الاتصال…') : tr('يبث الآن')}
+                  {!loading && <b className="nq-num">{fmtTime(player.elapsed)}</b>}
+                </span>
+              )}
+              <span className={styles.npName} dir="auto">{stationName(cur, lang)}</span>
+              {(cur.country || cur.source === 'mp3quran') && <span className={styles.npDesc}>{countryName(cur.country, lang) || 'mp3quran.net'}</span>}
+            </span>
+            {player.phase === 'error' ? (
+              <span className={styles.npActions}>
+                <button type="button" className="nq-btn ghost sm" onClick={player.retry}>{tr('إعادة المحاولة')}</button>
+                <button type="button" className="nq-btn gold sm" onClick={tryAnother}>{tr('جرّب محطة أخرى')}</button>
+                <button type="button" className="nq-ibtn" onClick={player.stop} aria-label={tr('إغلاق')}><Icon name="x" /></button>
               </span>
-              <span className={styles.npName} dir="auto">{currentStation.name}</span>
-              {currentStation.country && <span className={styles.npDesc}>{countryOf(currentStation)}</span>}
-            </span>
-            <span className={styles.vol}>
-              <button type="button" className="nq-ibtn" onClick={() => setMuted(m => !m)} aria-pressed={muted}
-                aria-label={muted ? tr('إلغاء كتم الصوت') : tr('كتم الصوت')}>
-                <Icon name={muted ? 'x' : 'head'} />
-              </button>
-              <input type="range" min="0" max="1" step="0.05" aria-label={tr('مستوى الصوت')}
-                value={muted ? 0 : volume} className={styles.slider} style={{ '--v': `${(muted ? 0 : volume) * 100}%` }}
-                onChange={e => { setVolume(+e.target.value); setMuted(false); }} />
-              <span className={`${styles.volVal} nq-num`}>{tr('{n}٪', { n: toAr(Math.round((muted ? 0 : volume) * 100)) })}</span>
-            </span>
-            <button type="button" className={styles.stop} onClick={stop} aria-label={tr('إيقاف البث')}>
-              <Icon name="pause" fill />
-            </button>
+            ) : (
+              <>
+                <span className={styles.vol}>
+                  <button type="button" className="nq-ibtn" onClick={() => player.setMuted(m => !m)} aria-pressed={player.muted}
+                    aria-label={player.muted ? tr('إلغاء كتم الصوت') : tr('كتم الصوت')}>
+                    <Icon name={player.muted ? 'x' : 'head'} />
+                  </button>
+                  <input type="range" min="0" max="1" step="0.05" aria-label={tr('مستوى الصوت')}
+                    value={player.muted ? 0 : player.volume} className={styles.slider} style={{ '--v': `${(player.muted ? 0 : player.volume) * 100}%` }}
+                    onChange={e => player.setVolume(+e.target.value)} />
+                  <span className={`${styles.volVal} nq-num`}>{tr('{n}٪', { n: toAr(Math.round((player.muted ? 0 : player.volume) * 100)) })}</span>
+                </span>
+                <button type="button" className={styles.stop} onClick={player.stop} aria-label={tr('إيقاف البث')}>
+                  <Icon name="pause" fill />
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

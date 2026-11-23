@@ -8,7 +8,7 @@ declare(strict_types=1);
  *       [--install --db-name=nq_test --db-user=nq --db-pass=secret] \
  *       [--local=/path/to/api]   # local only: patch config.php for testing, read the mail log, inspect the DB
  *
- *       [--fake-upstream=http://127.0.0.1:8081]   # local only: tests/fake-upstream.php serving the riwayat upstreams
+ *       [--fake-upstream=http://127.0.0.1:8081]   # local only: tests/fake-upstream.php serving the riwayat + radio upstreams
  *
  * --local patches config.php after install: cookie_domain '', trust_proxy true (so each test actor
  * gets its own IP via X-Forwarded-For), mail_transport 'log'. Never use --local against production.
@@ -1005,6 +1005,164 @@ if ($LOCAL !== null && $FAKE !== null) {
         && !in_array(429, array_slice($codes, 0, 60), true) && $cachedOk['status'] === 200, implode(',', array_unique($codes)));
 } else {
     echo "  (upstream checks skipped — pass --local and --fake-upstream)\n";
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+section('Radio (catalogue + stream check)');
+if ($LOCAL !== null && $FAKE !== null) {
+    $fakeState = sys_get_temp_dir() . '/nq-fake-upstream-' . (string) parse_url($FAKE, PHP_URL_PORT);
+    $radioHits = static function () use ($fakeState): int {
+        clearstatcache();
+        $lines = is_file($fakeState . '/requests.log') ? (file($fakeState . '/requests.log') ?: []) : [];
+        return count(array_filter($lines, static fn (string $l): bool => str_starts_with($l, '/radio/') || str_starts_with($l, '/mp3quran/api/v3/radios')));
+    };
+    $FP = (string) parse_url($FAKE, PHP_URL_PORT);
+    $LH = 'http://localhost:' . $FP;   // resolves to the fake upstream too, but plain http to a name ≠ 127.0.0.1 is never browser-safe
+    $radioCatalog = [
+        ['id' => 't-ok-first', 'name_ar' => 'إذاعة الاختبار الأولى', 'name_en' => 'Test one', 'country' => 'EG', 'category' => 'quran', 'featured' => true,
+            'streams' => [$FAKE . '/radio/missing', $FAKE . '/radio/mp3']],
+        ['id' => 't-redirect', 'name_ar' => 'إذاعة التحويل', 'name_en' => 'Redirect', 'country' => 'SA', 'category' => 'quran', 'streams' => [$FAKE . '/radio/redirect']],
+        ['id' => 't-upgrade', 'name_ar' => 'إذاعة الترقية', 'name_en' => 'Upgrade', 'country' => 'AE', 'category' => 'quran', 'streams' => [$LH . '/radio/up']],
+        ['id' => 't-insecure', 'name_ar' => 'إذاعة غير آمنة', 'name_en' => 'Insecure', 'country' => 'KW', 'category' => 'quran',
+            'streams' => [$LH . '/radio/mp3', $FAKE . '/radio/to-localhost']],
+        ['id' => 't-hls', 'name_ar' => 'إذاعة HLS', 'name_en' => 'HLS', 'country' => 'JO', 'category' => 'quran', 'streams' => [$FAKE . '/radio/hls.m3u8']],
+        ['id' => 't-hls-mixed', 'name_ar' => 'إذاعة HLS مختلطة', 'name_en' => 'HLS mixed', 'country' => 'JO', 'category' => 'quran', 'streams' => [$FAKE . '/radio/hls-http.m3u8']],
+        ['id' => 't-html', 'name_ar' => 'صفحة لا بث', 'name_en' => 'HTML', 'country' => 'TN', 'category' => 'programs', 'streams' => [$FAKE . '/radio/html', $FAKE . '/radio/tiny']],
+        ['id' => 't-octet', 'name_ar' => 'إذاعة بلا نوع', 'name_en' => 'Octet', 'country' => 'MA', 'category' => 'quran', 'streams' => [$FAKE . '/radio/aac-octet']],
+        ['id' => 't-m3u', 'name_ar' => 'قائمة m3u', 'name_en' => 'M3U', 'country' => 'QA', 'category' => 'quran', 'streams' => [$FAKE . '/radio/playlist.m3u']],
+        ['id' => 't-pls', 'name_ar' => 'قائمة pls', 'name_en' => 'PLS', 'country' => 'OM', 'category' => 'quran', 'streams' => [$FAKE . '/radio/playlist.pls']],
+        ['id' => 't-empty', 'name_ar' => 'إذاعة بلا رابط', 'name_en' => 'Empty', 'country' => 'LY', 'category' => 'quran', 'streams' => []],
+        ['id' => 't-mix', 'name_ar' => 'تلاوات متنوعة', 'name_en' => 'Mix', 'country' => '', 'category' => 'recitation', 'streams' => [$FAKE . '/radio/q/mix']],
+    ];
+    $setRadio = static function (array $catalog) use ($LOCAL, $FAKE): void {
+        $cfgFile = $LOCAL . '/config.php';
+        $cfg = require $cfgFile;
+        $cfg['radio_catalog'] = $catalog;
+        $cfg['radio_upstream_mp3quran'] = [$FAKE . '/broken/api/v3', $FAKE . '/mp3quran/api/v3'];
+        file_put_contents($cfgFile, "<?php\nreturn " . var_export($cfg, true) . ";\n");
+        chmod($cfgFile, 0600);
+        sleep(3); // opcache.revalidate_freq
+    };
+    $radioDir = $LOCAL . '/storage/cache/radio';
+    foreach (glob($radioDir . '/*') ?: [] as $f) {
+        @unlink($f);
+    }
+    @unlink($fakeState . '/radio-down');
+    $setRadio($radioCatalog);
+    $byId = static function (array $res): array {
+        $m = [];
+        foreach ((array) (data($res)['stations'] ?? []) as $s) {
+            $m[$s['id']] = $s;
+        }
+        return $m;
+    };
+
+    $r1 = req('GET', '/radio', null, ['ip' => '10.42.0.1']);
+    $d1 = data($r1);
+    $st = $byId($r1);
+    check('radio: 200, public Cache-Control 10 min, checked_at set, not stale', $r1['status'] === 200 && hdr($r1, 'cache-control') === 'public, max-age=600'
+        && is_string($d1['checked_at'] ?? null) && ($d1['stale'] ?? null) === false, desc($r1));
+    $keys = array_keys((array) ($d1['stations'][0] ?? []));
+    sort($keys);
+    check('radio: station shape', $keys === ['bitrate', 'category', 'country', 'featured', 'hls', 'id', 'name_ar', 'name_en', 'source', 'status', 'url'], implode(',', $keys));
+    check('radio: catalogue first, in order', array_slice(array_keys($st), 0, 3) === ['t-ok-first', 't-redirect', 't-upgrade'], implode(',', array_keys($st)));
+    check('radio: first candidate 404 → the second one is chosen (+ icy-br bitrate, featured)', ($st['t-ok-first']['status'] ?? '') === 'ok'
+        && $st['t-ok-first']['url'] === $FAKE . '/radio/mp3' && $st['t-ok-first']['bitrate'] === 128 && $st['t-ok-first']['featured'] === true
+        && $st['t-ok-first']['hls'] === false && $st['t-ok-first']['country'] === 'EG', json_encode($st['t-ok-first'] ?? null));
+    check('radio: a redirect that stays browser-safe keeps the original URL', ($st['t-redirect']['status'] ?? '') === 'ok' && $st['t-redirect']['url'] === $FAKE . '/radio/redirect', json_encode($st['t-redirect'] ?? null));
+    check('radio: an http candidate that redirects to a safe URL → the browser gets the safe URL', ($st['t-upgrade']['status'] ?? '') === 'ok'
+        && $st['t-upgrade']['url'] === $FAKE . '/radio/mp3', json_encode($st['t-upgrade'] ?? null));
+    check('radio: http-only streams (or a redirect to http) are down and never handed out', ($st['t-insecure']['status'] ?? '') === 'down'
+        && !str_starts_with((string) $st['t-insecure']['url'], $LH), json_encode($st['t-insecure'] ?? null));
+    check('radio: HLS playlist → ok, hls:true, bitrate from BANDWIDTH', ($st['t-hls']['status'] ?? '') === 'ok' && $st['t-hls']['hls'] === true
+        && $st['t-hls']['bitrate'] === 64, json_encode($st['t-hls'] ?? null));
+    check('radio: HLS with http:// segments → down (mixed content)', ($st['t-hls-mixed']['status'] ?? '') === 'down', json_encode($st['t-hls-mixed'] ?? null));
+    check('radio: an HTML page / a 300-byte body is not a stream', ($st['t-html']['status'] ?? '') === 'down', json_encode($st['t-html'] ?? null));
+    check('radio: application/octet-stream with AAC frames is recognised', ($st['t-octet']['status'] ?? '') === 'ok', json_encode($st['t-octet'] ?? null));
+    check('radio: .m3u / .pls playlists are followed to the stream', ($st['t-m3u']['url'] ?? '') === $FAKE . '/radio/ogg' && ($st['t-m3u']['status'] ?? '') === 'ok'
+        && ($st['t-pls']['url'] ?? '') === $FAKE . '/radio/mp3', json_encode([$st['t-m3u'] ?? null, $st['t-pls'] ?? null]));
+    check('radio: a station without streams is down with url null', ($st['t-empty']['status'] ?? '') === 'down' && $st['t-empty']['url'] === null);
+    $safe = true;
+    foreach ($st as $s) {
+        $safe = $safe && ($s['url'] === null || str_starts_with($s['url'], 'https://') || str_starts_with($s['url'], $FAKE . '/'));
+    }
+    check('radio: every URL handed out is https (or the 127.0.0.1 test upstream)', $safe);
+    check('radio: mp3quran radios merged (English names, tafsir/programs categories)', ($st['mp3q-1']['name_en'] ?? '') === 'Abdulbasit Abdulsamad'
+        && ($st['mp3q-1']['category'] ?? '') === 'recitation' && ($st['mp3q-1']['source'] ?? '') === 'mp3quran' && ($st['mp3q-1']['status'] ?? '') === 'ok'
+        && ($st['mp3q-2']['category'] ?? '') === 'tafsir' && ($st['mp3q-3']['category'] ?? '') === 'programs' && ($st['mp3q-3']['name_en'] ?? '') === 'الرقية الشرعية'
+        && array_key_exists('country', $st['mp3q-1'] ?? []) && $st['mp3q-1']['country'] === null, json_encode(array_intersect_key($st, array_flip(['mp3q-1', 'mp3q-2', 'mp3q-3'])), JSON_UNESCAPED_UNICODE));
+    check('radio: mp3quran duplicates (name, catalogue URL), http and nameless entries dropped; a dead one is down',
+        !isset($st['mp3q-4']) && !isset($st['mp3q-5']) && !isset($st['mp3q-6']) && !isset($st['mp3q-8']) && ($st['mp3q-7']['status'] ?? '') === 'down'
+        && isset($st['t-mix']), implode(',', array_keys($st)));
+
+    $before = $radioHits();
+    $r2 = req('GET', '/radio', null, ['ip' => '10.42.0.2']);
+    check('radio: second request served from the cache (no stream or mp3quran calls)', $r2['status'] === 200 && data($r2)['stations'] === $d1['stations']
+        && $radioHits() === $before, desc($r2));
+
+    $statusFile = $radioDir . '/status.json';
+    $age = static function (string $file, string $key, int $by): void {
+        $doc = json_decode((string) file_get_contents($file), true);
+        $doc[$key] = (int) $doc[$key] - $by;
+        file_put_contents($file, json_encode($doc, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    };
+    $age($statusFile, 'checked_at', 7 * 3600);
+    $before = $radioHits();
+    $r3 = req('GET', '/radio', null, ['ip' => '10.42.0.3']);
+    check('radio: results older than 6 h → the streams are checked again', $r3['status'] === 200 && ($radioHits() - $before) >= 12
+        && data($r3)['stations'] === $d1['stations'] && (data($r3)['stale'] ?? null) === false, 'hits ' . ($radioHits() - $before));
+
+    $age($statusFile, 'checked_at', 7 * 3600);
+    touch($fakeState . '/radio-down');
+    $r4 = req('GET', '/radio', null, ['ip' => '10.42.0.4']);
+    check('radio: every stream unreachable → the last good results are served (stale:true)', $r4['status'] === 200 && (data($r4)['stale'] ?? null) === true
+        && data($r4)['stations'] === $d1['stations'] && is_file($statusFile . '.failed'), desc($r4));
+    $before = $radioHits();
+    req('GET', '/radio', null, ['ip' => '10.42.0.4']);
+    check('radio: after a failed check, no retry for 10 minutes', $radioHits() === $before);
+
+    $listFile = $radioDir . '/mp3quran.json';
+    $age($listFile, 'fetched_at', 2 * 86400);
+    $r5 = req('GET', '/radio', null, ['ip' => '10.42.0.5']);
+    check('radio: mp3quran down → its last list is kept', $r5['status'] === 200 && isset($byId($r5)['mp3q-1']) && is_file($listFile . '.failed'), desc($r5));
+    @unlink($fakeState . '/radio-down');
+    @unlink($statusFile . '.failed');
+    @unlink($listFile . '.failed');
+
+    $setRadio(array_merge($radioCatalog, [['id' => 't-new', 'name_ar' => 'محطة جديدة', 'name_en' => 'New', 'country' => 'BH', 'category' => 'quran', 'streams' => [$FAKE . '/radio/ogg']]]));
+    $r6 = req('GET', '/radio', null, ['ip' => '10.42.0.6']);
+    check('radio: a catalogue change is checked at once (no 6 h wait)', ($byId($r6)['t-new']['status'] ?? '') === 'ok', json_encode($byId($r6)['t-new'] ?? null));
+
+    foreach (glob($radioDir . '/*') ?: [] as $f) {
+        @unlink($f);
+    }
+    touch($fakeState . '/radio-down');
+    $r7 = req('GET', '/radio', null, ['ip' => '10.42.0.7']);
+    $st7 = $byId($r7);
+    check('radio: nothing cached and everything down → 200 with the catalogue only, all down', $r7['status'] === 200 && isset($st7['t-ok-first'])
+        && !isset($st7['mp3q-1']) && count(array_filter($st7, static fn (array $s): bool => $s['status'] !== 'down')) === 0, desc($r7));
+    @unlink($fakeState . '/radio-down');
+    foreach (glob($radioDir . '/*') ?: [] as $f) {
+        @unlink($f);
+    }
+
+    $cli = [];
+    exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($LOCAL . '/tools/check-radio.php') . ' 2>&1', $cli, $cliStatus);
+    $cliOut = implode("\n", $cli);
+    check('check-radio.php CLI: per-station candidates, chosen URL and status; cache untouched without --refresh', $cliStatus === 0
+        && str_contains($cliOut, '[ok  ] t-ok-first') && str_contains($cliOut, '→ ' . $FAKE . '/radio/mp3')
+        && str_contains($cliOut, '[DOWN] t-insecure') && str_contains($cliOut, 'works over http only')
+        && str_contains($cliOut, 'FAIL ' . $FAKE . '/radio/missing — HTTP 404') && str_contains($cliOut, '[HLS]')
+        && !is_file($statusFile), $cliOut);
+    $cli = [];
+    exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($LOCAL . '/tools/check-radio.php') . ' --refresh 2>&1', $cli, $cliStatus);
+    $cliOut = implode("\n", $cli);
+    $before = $radioHits();
+    $r8 = req('GET', '/radio', null, ['ip' => '10.42.0.8']);
+    check('check-radio.php --refresh: rewrites the cache that GET /radio then serves', $cliStatus === 0 && str_contains($cliOut, 'Cache rewritten')
+        && is_file($statusFile) && $r8['status'] === 200 && ($byId($r8)['t-ok-first']['status'] ?? '') === 'ok' && $radioHits() === $before, $cliOut);
+} else {
+    echo "  (radio checks skipped — pass --local and --fake-upstream)\n";
 }
 
 // ───────────────────────────────────────────────────────────────────────────
