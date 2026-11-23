@@ -17,6 +17,7 @@ final class RateLimit
         'writes'  => [120, 60],
         'presence' => [10, 60],
         'avatar'  => [10, 3600],
+        'riwayat' => [60, 600],   // uncached riwaya texts fetched from upstream, per IP
     ];
 
     /**

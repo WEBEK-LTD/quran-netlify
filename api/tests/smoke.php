@@ -8,11 +8,13 @@ declare(strict_types=1);
  *       [--install --db-name=nq_test --db-user=nq --db-pass=secret] \
  *       [--local=/path/to/api]   # local only: patch config.php for testing, read the mail log, inspect the DB
  *
+ *       [--fake-upstream=http://127.0.0.1:8081]   # local only: tests/fake-upstream.php serving the riwayat upstreams
+ *
  * --local patches config.php after install: cookie_domain '', trust_proxy true (so each test actor
  * gets its own IP via X-Forwarded-For), mail_transport 'log'. Never use --local against production.
  */
 
-$opt = getopt('', ['base:', 'install', 'db-name:', 'db-user:', 'db-pass:', 'local:']);
+$opt = getopt('', ['base:', 'install', 'db-name:', 'db-user:', 'db-pass:', 'local:', 'fake-upstream:']);
 $BASE = rtrim((string) ($opt['base'] ?? 'http://127.0.0.1:8080'), '/');
 $LOCAL = isset($opt['local']) ? rtrim((string) $opt['local'], '/') : null;
 $pass = 0;
@@ -876,6 +878,134 @@ $actions = array_column((array) (data($log)['items'] ?? []), 'action');
 check('admin log records actions (who/what/when)', $log['status'] === 200 && in_array('user.ban', $actions, true) && in_array('settings.update', $actions, true)
     && in_array('integrations.update', $actions, true) && (data($log)['items'][0]['admin_email'] ?? '') === $ADMIN_EMAIL, desc($log));
 check('admin log never stores secret values', !str_contains($log['raw'], $SECRET));
+
+// ───────────────────────────────────────────────────────────────────────────
+section('Riwayat (texts + reciters)');
+$rv = req('GET', '/riwayat/text/ara-quranfoo/1');
+check('riwayat text: unknown edition → 404', $rv['status'] === 404 && errc($rv) === 'not_found', desc($rv));
+$rv0 = req('GET', '/riwayat/text/ara-quranwarsh/0');
+$rv115 = req('GET', '/riwayat/text/ara-quranwarsh/115');
+$rvx = req('GET', '/riwayat/text/ara-quranwarsh/abc');
+check('riwayat text: surah outside 1–114 → 404', $rv0['status'] === 404 && $rv115['status'] === 404 && $rvx['status'] === 404, desc($rv115));
+$FAKE = isset($opt['fake-upstream']) ? rtrim((string) $opt['fake-upstream'], '/') : null;
+if ($LOCAL !== null && $FAKE !== null) {
+    $fakeState = sys_get_temp_dir() . '/nq-fake-upstream-' . (string) parse_url($FAKE, PHP_URL_PORT);
+    $fakeHits = static function (string $needle) use ($fakeState): int {
+        clearstatcache();
+        $lines = is_file($fakeState . '/requests.log') ? (file($fakeState . '/requests.log') ?: []) : [];
+        return count(array_filter($lines, static fn (string $l): bool => str_contains($l, $needle)));
+    };
+    $setUpstreams = static function (array $text, array $audio) use ($LOCAL): void {
+        $cfgFile = $LOCAL . '/config.php';
+        $cfg = require $cfgFile;
+        $cfg['riwayat_upstream_text'] = $text;
+        $cfg['riwayat_upstream_audio'] = $audio;
+        file_put_contents($cfgFile, "<?php\nreturn " . var_export($cfg, true) . ";\n");
+        chmod($cfgFile, 0600);
+        sleep(3); // the server's opcache may revalidate config.php only every 2 s (opcache.revalidate_freq)
+    };
+    $cacheDir = $LOCAL . '/storage/cache/riwayat';
+    foreach (glob($cacheDir . '/*') ?: [] as $f) {
+        @unlink($f);
+    }
+    @unlink($fakeState . '/down');
+    @unlink($fakeState . '/requests.log');
+    $setUpstreams([$FAKE . '/broken', $FAKE . '/text'], [$FAKE . '/broken/api/v3', $FAKE . '/mp3quran/api/v3']);
+    $fixture = json_decode((string) file_get_contents($LOCAL . '/tests/fixtures/ara-quranwarsh-1.json'), true)['chapter'];
+
+    $t1 = req('GET', '/riwayat/text/ara-quranwarsh/1', null, ['ip' => '10.40.0.1']);
+    $td1 = data($t1);
+    check('riwayat text: fetched through the fallback upstream (first one 500s)', $t1['status'] === 200 && ($td1['edition'] ?? '') === 'ara-quranwarsh'
+        && ($td1['surah'] ?? 0) === 1 && count((array) ($td1['ayahs'] ?? [])) === 7 && $fakeHits('/broken/ara-quranwarsh/1.json') === 1, desc($t1));
+    check('riwayat text: ayahs are the upstream texts, in order', ($td1['ayahs'] ?? []) === array_map(static fn (array $a): string => $a['text'], $fixture), desc($t1));
+    check('riwayat text: Cache-Control public, 7 days', hdr($t1, 'cache-control') === 'public, max-age=604800', hdr($t1, 'cache-control'));
+    $cached = json_decode((string) @file_get_contents($cacheDir . '/ara-quranwarsh-1.json'), true);
+    check('riwayat text: stored as a compact array in storage/cache/riwayat', is_array($cached) && array_is_list($cached) && count($cached) === 7);
+    $before = $fakeHits('/text/ara-quranwarsh/1.json');
+    $t2 = req('GET', '/riwayat/text/ara-quranwarsh/1', null, ['ip' => '10.40.0.2']);
+    check('riwayat text: second request is served from the cache (no upstream call)', $t2['status'] === 200 && data($t2) === $td1
+        && $fakeHits('/text/ara-quranwarsh/1.json') === $before, desc($t2));
+    $q = req('GET', '/riwayat/text/ara-quranqaloon/112', null, ['ip' => '10.40.0.1']);
+    $qText = implode(' ', (array) (data($q)['ayahs'] ?? []));
+    check('riwayat text: direction marks (U+200F) are stripped, letters kept', $q['status'] === 200 && count((array) data($q)['ayahs']) === 4
+        && !str_contains($qText, "\u{200F}") && str_contains($qText, 'اَ۬للَّهُ'), desc($q));
+    $miss = req('GET', '/riwayat/text/ara-quranbazzi/1', null, ['ip' => '10.40.0.1']);
+    check('riwayat text: every upstream fails → 502 upstream, nothing cached', $miss['status'] === 502 && errc($miss) === 'upstream'
+        && !is_file($cacheDir . '/ara-quranbazzi-1.json'), desc($miss));
+    $setUpstreams([$FAKE . '/bad'], [$FAKE . '/mp3quran/api/v3']);
+    $bad = req('GET', '/riwayat/text/ara-quranuthmanihaf/1', null, ['ip' => '10.40.0.1']);
+    check('riwayat text: a body with the wrong shape is rejected (502, not cached)', $bad['status'] === 502
+        && !is_file($cacheDir . '/ara-quranuthmanihaf-1.json'), desc($bad));
+    $setUpstreams([$FAKE . '/broken', $FAKE . '/text'], [$FAKE . '/broken/api/v3', $FAKE . '/mp3quran/api/v3']);
+    $hafs = req('GET', '/riwayat/text/ara-quranuthmanihaf/1', null, ['ip' => '10.40.0.1']);
+    check('riwayat text: Hafs (ara-quranuthmanihaf) works too', $hafs['status'] === 200 && (data($hafs)['ayahs'][0] ?? '') === 'بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ', desc($hafs));
+
+    $a1 = req('GET', '/riwayat/audio', null, ['ip' => '10.40.0.3']);
+    $ad = data($a1);
+    $rawis = (array) ($ad['rawis'] ?? []);
+    check('riwayat audio: 200 with all 20 rawis + Cache-Control 1 h', $a1['status'] === 200 && count($rawis) === 20
+        && hdr($a1, 'cache-control') === 'public, max-age=3600' && is_string($ad['updated_at'] ?? null) && ($ad['stale'] ?? null) === false, desc($a1));
+    $allHttps = true;
+    foreach ($rawis as $list) {
+        foreach ($list as $e) {
+            $allHttps = $allHttps && str_starts_with((string) $e['server'], 'https://') && str_ends_with((string) $e['server'], '/')
+                && is_array($e['surahs']) && $e['surahs'] !== [] && is_int($e['surahs'][0]);
+        }
+    }
+    check('riwayat audio: only https servers (the http moshaf is dropped)', $allHttps && count($rawis['warsh'] ?? []) === 3, json_encode($rawis['warsh'] ?? null, JSON_UNESCAPED_UNICODE));
+    $names = static fn (string $id): array => array_map(static fn (array $e): string => $e['reciter'] . ' / ' . $e['moshaf'], (array) ($rawis[$id] ?? []));
+    check('riwayat audio: «قالون عن نافع من طريق أبي نشيط» counts for Qalun', in_array('علي بن عبدالرحمن الحذيفي / قالون عن نافع من طريق أبي نشيط - مرتل', $names('qalun'), true), json_encode($names('qalun'), JSON_UNESCAPED_UNICODE));
+    check('riwayat audio: al-Duri ʿan Abi ʿAmr and al-Duri ʿan al-Kisaʾi are told apart', count($rawis['duri_abuamr'] ?? []) === 3 && $names('duri_kisai') === ['مفتاح السلطني / الدوري عن الكسائي - مرتل'],
+        json_encode([$names('duri_abuamr'), $names('duri_kisai')], JSON_UNESCAPED_UNICODE));
+    check('riwayat audio: Khalaf ʿan Hamza ≠ Ishaq ʿan Khalaf al-ʿAshir', $names('khalaf_hamza') === ['عبدالرشيد صوفي / خلف عن حمزة - مرتل'] && count($rawis['ishaq'] ?? []) === 1,
+        json_encode([$names('khalaf_hamza'), $names('ishaq')], JSON_UNESCAPED_UNICODE));
+    $bz = (array) ($rawis['bazzi'] ?? []);
+    check('riwayat audio: combined «البزي وقنبل» is listed for both, after the single riwaya', count($bz) === 2 && $bz[0]['combined'] === false && $bz[1]['combined'] === true
+        && count(array_filter((array) ($rawis['qunbul'] ?? []), static fn (array $e): bool => $e['combined'])) === 1, json_encode($bz, JSON_UNESCAPED_UNICODE));
+    check('riwayat audio: «مرتل» before «مجود»; partial surah lists kept', ($rawis['hafs'][3]['style'] ?? '') === 'mujawwad' && ($rawis['hafs'][0]['style'] ?? '') === 'murattal'
+        && count($rawis['shuba'][0]['surahs'] ?? []) === 67, json_encode($rawis['hafs'] ?? null, JSON_UNESCAPED_UNICODE));
+    check('riwayat audio: a rawi without recordings is an empty list', ($rawis['idris'] ?? null) === [], json_encode($rawis['idris'] ?? null));
+    $before = $fakeHits('/mp3quran/api/v3/reciters');
+    $a2 = req('GET', '/riwayat/audio', null, ['ip' => '10.40.0.4']);
+    check('riwayat audio: cached for 24 h (second request does not call mp3quran)', $a2['status'] === 200 && data($a2)['rawis'] === $rawis
+        && $fakeHits('/mp3quran/api/v3/reciters') === $before, desc($a2));
+    // expire the cache and take the upstream down → the stale copy is served
+    $mapFile = $cacheDir . '/audio-map.json';
+    $doc = json_decode((string) file_get_contents($mapFile), true);
+    $doc['fetched_at'] = time() - 2 * 86400;
+    file_put_contents($mapFile, json_encode($doc, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    touch($fakeState . '/down');
+    $a3 = req('GET', '/riwayat/audio', null, ['ip' => '10.40.0.5']);
+    check('riwayat audio: upstream down → the stale copy is served (stale:true)', $a3['status'] === 200 && (data($a3)['stale'] ?? null) === true
+        && data($a3)['rawis'] === $rawis && is_file($mapFile . '.failed'), desc($a3));
+    $before = $fakeHits('/mp3quran/api/v3/reciters');
+    req('GET', '/riwayat/audio', null, ['ip' => '10.40.0.5']);
+    check('riwayat audio: after a failure, no retry for 10 minutes', $fakeHits('/mp3quran/api/v3/reciters') === $before);
+    @unlink($mapFile);
+    @unlink($mapFile . '.failed');
+    $a4 = req('GET', '/riwayat/audio', null, ['ip' => '10.40.0.6']);
+    check('riwayat audio: nothing cached and upstream down → 502 upstream', $a4['status'] === 502 && errc($a4) === 'upstream', desc($a4));
+    @unlink($fakeState . '/down');
+    @unlink($mapFile . '.failed');
+    check('riwayat audio: recovers once the upstream is back', req('GET', '/riwayat/audio', null, ['ip' => '10.40.0.6'])['status'] === 200);
+
+    $cli = [];
+    exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($LOCAL . '/tools/check-riwayat.php') . ' --no-head --edition=ara-quranwarsh 2>&1', $cli, $cliStatus);
+    $cliOut = implode("\n", $cli);
+    check('check-riwayat.php CLI: reports reciters per rawi + text status, exit 0', $cliStatus === 0 && preg_match('/warsh\s+ورش عن نافع\s+3/u', $cliOut) === 1
+        && str_contains($cliOut, 'idris') && str_contains($cliOut, '(no reciter found)') && str_contains($cliOut, 'ara-quranwarsh: 7 ayahs')
+        && str_contains($cliOut, 'https://server11.mp3quran.net/koshi/001.mp3'), $cliOut);
+
+    $codes = [];
+    for ($i = 1; $i <= 61; $i++) {
+        $codes[] = req('GET', "/riwayat/text/ara-quranbazzi/{$i}", null, ['ip' => '10.41.0.1'])['status'];
+    }
+    $cachedOk = req('GET', '/riwayat/text/ara-quranwarsh/1', null, ['ip' => '10.41.0.1']);
+    check('riwayat text: uncached fetches are rate-limited per IP (61st → 429); cached texts still served', $codes[60] === 429
+        && !in_array(429, array_slice($codes, 0, 60), true) && $cachedOk['status'] === 200, implode(',', array_unique($codes)));
+} else {
+    echo "  (upstream checks skipped — pass --local and --fake-upstream)\n";
+}
 
 // ───────────────────────────────────────────────────────────────────────────
 section('Rate limiting');

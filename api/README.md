@@ -78,6 +78,16 @@
   خلال 5 دقائق تقريباً). إن ظهرت «حجم الصورة كبير جداً» لصور أصغر من 5 ميغابايت، اضبط القيمتين من cPanel ← *MultiPHP INI Editor*
   (أو *Select PHP Version* ← *Options*). بقية المسارات ما زالت ترفض أي طلب أكبر من 64 كيلوبايت.
 
+### الروايات (صفحة «الإجازة والقراءات»)
+
+- نصوص الروايات (حفص، شعبة، ورش، قالون، البزي، قنبل، الدوري، السوسي) تُجلب من نسخ مجمع الملك فهد المنشورة في مشروع
+  fawazahmed0/quran-api عبر `GET /v1/riwayat/text/{edition}/{surah}`، وتُحفظ على الخادم في
+  `/home/nuralqur/nuralquran-api/storage/cache/riwayat/` بلا انتهاء (لا تحذف هذا المجلد عند التحديث؛ إن حُذف يُعاد ملؤه تلقائياً).
+- قائمة القرّاء لكل رواية تُجلب من mp3quran.net عبر `GET /v1/riwayat/audio` مرة كل 24 ساعة على الأكثر، وإن تعذّر التحديث تُعرض آخر نسخة محفوظة.
+- ارفع الملف `api/tools/check-riwayat.php` إلى `/home/nuralqur/nuralquran-api/tools/` (بجانب `app`)، ثم من *Terminal* في cPanel شغّل:
+  `php ~/nuralquran-api/tools/check-riwayat.php` — يطبع لكل راوٍ عدد القرّاء الذين وُجدوا ورابط MP3 تجريبياً مع حالته،
+  وأسماء المصاحف التي لم تُطابق أي راوٍ، وحالة جلب سورة من كل نص. أضف `--refresh` لتحديث نسخة القرّاء المحفوظة فوراً.
+
 ## حل المشكلات
 
 | المشكلة | الحل |
@@ -102,6 +112,8 @@ DB_NAME=nq_test DB_USER=nq DB_PASS=nqpass123 api/tests/run-local.sh
   يُنشئ قاعدة بيانات جديدة، ويشغّل `php -S`، وينفّذ التثبيت عبر HTTP، ثم يشغّل `api/tests/smoke.php` (اختبار شامل لكل المسارات، ومنها رفع الصور ورفض الأنواع والأحجام غير المسموحة) ويحذف `config.php` المحلي في النهاية.
   يرفض العمل إن وُجد `api/config.php` (خادم محلي آخر يستخدمه)؛ عندها انسخ مجلد `api` إلى مكان مؤقت (بدون `config.php`) وشغّله من هناك مع `PORT=8097` مثلاً.
   يمكن أيضاً تشغيل `php api/tests/smoke.php --base=https://api.example.com` على خادم قائم (بدون `--local`).
+  يشغّل السكربت أيضاً `api/tests/fake-upstream.php` على المنفذ `PORT+1` (أو `FAKE_PORT`) بديلاً محلياً لـ jsDelivr/GitHub/mp3quran
+  ببيانات حقيقية من `api/tests/fixtures/`، فتُختبر مسارات `/v1/riwayat/*` وأداة `tools/check-riwayat.php` دون إنترنت.
 
 - **تصميم الرسائل**: كل الرسائل تُبنى من قالب واحد في `app/Core/Mailer.php` (`Mailer::render()`). لمعاينتها دون إرسال:
 

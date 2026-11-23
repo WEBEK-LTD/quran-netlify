@@ -11,7 +11,7 @@ This file is the contract between `api/` (server) and `src/` (web + app). Change
 - **Auth:** a session token. The web gets it as an httpOnly cookie `nq_session` (`Domain=.nuralquran.net; Secure; SameSite=Lax; Path=/`); the native app gets it in the JSON body and sends `Authorization: Bearer <token>`. The server accepts either. Sessions last 60 days, refreshed on use; stored hashed (SHA-256).
 - **CSRF:** every non-GET request must carry header `X-NQ-Client: web` or `X-NQ-Client: app`. Requests without it get 403. The header forces a CORS preflight, so other sites can't send it.
 - **CORS:** allowed origins come from config (`https://nuralquran.net`, `https://www.nuralquran.net`, `https://nur-alquran.netlify.app`, `capacitor://localhost`, `https://localhost`, `http://localhost:3000`, `http://localhost:5173`). `Access-Control-Allow-Credentials: true`. Never `*`.
-- **Rate limits** (per IP and per user, stored in DB): login 10/10 min, signup 5/hour, forgot-password 5/hour, AI 20/hour/user, profile photo upload 10/hour/user, reading log 2/second, writes 120/min.
+- **Rate limits** (per IP and per user, stored in DB): login 10/10 min, signup 5/hour, forgot-password 5/hour, AI 20/hour/user, profile photo upload 10/hour/user, reading log 2/second, writes 120/min, uncached riwaya texts 60/10 min.
 - **Body size:** request bodies over 64 KB get 413 `payload_too_large` (checked from `Content-Length` before routing). The only exception is `POST /me/avatar` (multipart, photo ≤ 5 MB).
 - **Maintenance mode:** when `maintenance_mode` is on, every route except `GET /settings/public`, `/auth/*`, `/admin/*` and `GET /avatars/*` returns 503 `maintenance` for non-admins.
 - **Bans:** a banned user (scope `app`) can't sign in; their sessions are revoked.
@@ -35,6 +35,8 @@ Part      { part_index, label, assignee, done, done_by_name|null, done_at|null,
 Ticket    { id, subject, topic, status: "open"|"pending"|"closed", created_at, updated_at, unread: int, message_count: int, user?: {id,email,name} }
 Message   { id, ticket_id, body, is_admin: bool, sender_name, created_at }
 Broadcast { id, title, body, type: "info"|"warning"|"success", created_at, expires_at|null }
+Recitation { reciter, reciter_id, moshaf, moshaf_id, style: "murattal"|"mujawwad"|"muallim"|null, combined: bool,
+            server, surahs: int[] }   // file of surah N = server + zero-padded N + ".mp3" (e.g. …/001.mp3)
 ```
 
 ## Public
@@ -46,6 +48,29 @@ Broadcast { id, title, body, type: "info"|"warning"|"success", created_at, expir
 | GET | `/broadcasts` | | `Broadcast[]` (active, not expired) |
 | GET | `/leaderboard` | `type=reading\|hifz\|khatma`, `period=week\|month\|all` | `[{rank, name, score, is_me}]` top 50, only users with `show_on_leaderboard` |
 | POST | `/presence` | `{visitor_id, path}` | `{}` — call every 60 s |
+| GET | `/riwayat/text/{edition}/{surah}` | `edition` ∈ `ara-quranuthmanihaf` (Hafs), `ara-quranshouba`, `ara-quranwarsh`, `ara-quranqaloon`, `ara-quranbazzi`, `ara-quranqumbul`, `ara-qurandoori`, `ara-quransoosi`; `surah` 1–114 | `{edition, surah, ayahs: string[]}` (Uthmani/Hafs numbering) |
+| GET | `/riwayat/audio` | | `{updated_at, stale: bool, rawis: {<rawi>: Recitation[]}}` |
+
+**Riwayat** (page «الإجازة والقراءات», feature `ijaza`; no auth, plain GETs, safe to cache):
+- `/riwayat/text/…` — King Fahd Complex texts published by fawazahmed0/quran-api. The server fetches a surah once
+  (jsDelivr, then raw.githubusercontent), checks the shape (`{"chapter":[{chapter, verse, text}]}`, one row per ayah),
+  strips invisible direction marks (U+200E/U+200F/BOM), re-joins a tanween split from its final alif («هُدࣰ ى» → «هُدࣰى»),
+  and keeps it forever in `storage/cache/riwayat/<edition>-<surah>.json`. Letters are never normalised.
+  `Cache-Control: public, max-age=604800`. Uncached fetches are rate-limited to 60 per 10 min per IP (429).
+  Unknown edition / surah → 404; every upstream down → 502 `upstream`.
+- `/riwayat/audio` — mp3quran.net `GET /api/v3/reciters?language=ar`, fetched at most once per 24 h
+  (`storage/cache/riwayat/audio-map.json`); when a refresh fails the last copy is served with `stale: true`
+  (and the next refresh is tried 10 min later). Nothing cached and mp3quran down → 502 `upstream`. `Cache-Control: public, max-age=3600`.
+  Rawi ids: `hafs, shuba, warsh, qalun, bazzi, qunbul, duri_abuamr, susi, hisham, ibndhakwan, khalaf_hamza, khallad,
+  abulharith, duri_kisai, ibnwardan, ibnjammaz, ruways, rawh, ishaq, idris` (all present; `[]` = no recording found).
+  A moshaf is matched by its riwaya name (Arabic, normalised): «الدوري» needs «أبي عمرو» or «الكسائي», «خلف» needs «حمزة»;
+  a combined moshaf («البزي وقنبل عن ابن كثير», «يعقوب الحضرمي بروايتي رويس وروح») is listed under each rawi with
+  `combined: true`; tariq-specific ones («قالون عن نافع من طريق أبي نشيط») count for their rawi. Only `https` servers.
+  Sorted: single riwaya before combined, «مرتل» before «مجود» before «معلم», then most surahs.
+- Upstreams can be overridden in `config.php` (`riwayat_upstream_text`: list of base URLs ending in `/editions`,
+  `riwayat_upstream_audio`: list of base URLs ending in `/api/v3`) — for local tests only; plain `http` is accepted only for 127.0.0.1/localhost.
+- Check the live sources from the server: `php ~/nuralquran-api/tools/check-riwayat.php` (add `--refresh` to rewrite the audio cache,
+  `--surah=N`, `--edition=…`, `--no-head`).
 
 ## Auth
 

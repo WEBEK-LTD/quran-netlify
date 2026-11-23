@@ -7,10 +7,12 @@ namespace NQ\Core;
 final class Http
 {
     /**
+     * $allowHttp permits plain http:// (only for local test upstreams; production calls stay https-only).
+     * $maxBytes > 0 aborts responses larger than that.
      * @param array<string,string> $headers
      * @return array{status:int, json:mixed, raw:string, error:string}
      */
-    public static function request(string $method, string $url, array $headers = [], ?string $body = null, int $timeout = 45): array
+    public static function request(string $method, string $url, array $headers = [], ?string $body = null, int $timeout = 45, bool $allowHttp = false, int $maxBytes = 0): array
     {
         $ch = curl_init($url);
         $h = [];
@@ -29,9 +31,16 @@ final class Http
             CURLOPT_USERAGENT => 'NurAlQuran-API/1.0',
         ]);
         if (defined('CURLOPT_PROTOCOLS_STR')) {
-            curl_setopt($ch, CURLOPT_PROTOCOLS_STR, 'https');
+            curl_setopt($ch, CURLOPT_PROTOCOLS_STR, $allowHttp ? 'http,https' : 'https');
         } else {
-            curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+            curl_setopt($ch, CURLOPT_PROTOCOLS, $allowHttp ? (CURLPROTO_HTTP | CURLPROTO_HTTPS) : CURLPROTO_HTTPS);
+        }
+        if ($method === 'HEAD') {
+            curl_setopt($ch, CURLOPT_NOBODY, true);
+        }
+        if ($maxBytes > 0) {
+            curl_setopt($ch, CURLOPT_NOPROGRESS, false);
+            curl_setopt($ch, CURLOPT_XFERINFOFUNCTION, static fn ($c, int $dlTotal, int $dlNow): int => $dlNow > $maxBytes ? 1 : 0);
         }
         if ($body !== null) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
