@@ -362,6 +362,7 @@ function hijriYear() {
 }
 export function SiteFooter() {
   const tr = coreTr(useTr());
+  const lang = useLang();
   return (
     <footer className="nq-footer">
       <Frieze />
@@ -375,6 +376,7 @@ export function SiteFooter() {
         <div><h4>{tr('القرآن')}</h4><ul>
           <li><Link to="/reader">{tr('المصحف')}</Link></li><li><Link to="/search">{tr('البحث')}</Link></li>
           <li><Link to="/daily-ayah">{tr('آية اليوم')}</Link></li><li><Link to="/radio">{tr('إذاعة القرآن')}</Link></li>
+          <li><a href={`/${lang}/`}>{tr('سور القرآن مكتوبة')}</a></li>
         </ul></div>
         <div><h4>{tr('العبادات')}</h4><ul>
           <li><Link to="/prayer-times">{tr('مواقيت الصلاة')}</Link></li><li><Link to="/qibla">{tr('القبلة')}</Link></li>

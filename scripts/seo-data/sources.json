@@ -1,0 +1,44 @@
+{
+  "fetched": "2026-11-23",
+  "editions": {
+    "quran-uthmani-hafs.json": {
+      "edition": "ara-quranuthmanihaf",
+      "name": "Uthmani Hafs text (King Fahd Glorious Quran Printing Complex, v13)",
+      "url": "https://raw.githubusercontent.com/fawazahmed0/quran-api/1/editions/ara-quranuthmanihaf.min.json"
+    },
+    "tafsir-ar-muyassar.json": {
+      "edition": "ara-kingfahadquranc",
+      "name": "التفسير الميسر (مجمع الملك فهد لطباعة المصحف الشريف)",
+      "url": "https://raw.githubusercontent.com/fawazahmed0/quran-api/1/editions/ara-kingfahadquranc.min.json"
+    },
+    "translation-en-saheeh.json": {
+      "edition": "eng-ummmuhammad",
+      "name": "Saheeh International (Umm Muhammad)",
+      "url": "https://raw.githubusercontent.com/fawazahmed0/quran-api/1/editions/eng-ummmuhammad.min.json"
+    },
+    "translation-tr-diyanet.json": {
+      "edition": "tur-diyanetisleri",
+      "name": "Diyanet İşleri",
+      "url": "https://raw.githubusercontent.com/fawazahmed0/quran-api/1/editions/tur-diyanetisleri.min.json"
+    },
+    "translation-fr-hamidullah.json": {
+      "edition": "fra-muhammadhamidul",
+      "name": "Muhammad Hamidullah",
+      "url": "https://raw.githubusercontent.com/fawazahmed0/quran-api/1/editions/fra-muhammadhamidul.min.json"
+    },
+    "translation-ur-jalandhry.json": {
+      "edition": "urd-fatehmuhammadja",
+      "name": "Fateh Muhammad Jalandhry",
+      "url": "https://raw.githubusercontent.com/fawazahmed0/quran-api/1/editions/urd-fatehmuhammadja.min.json"
+    },
+    "translation-id-kemenag.json": {
+      "edition": "ind-indonesianislam",
+      "name": "Kementerian Agama Republik Indonesia (via QuranEnc)",
+      "url": "https://raw.githubusercontent.com/fawazahmed0/quran-api/1/editions/ind-indonesianislam.min.json"
+    }
+  },
+  "facts": {
+    "info": "https://raw.githubusercontent.com/fawazahmed0/quran-api/1/info.json",
+    "revelationOrder": "https://raw.githubusercontent.com/yunusefendi52/quran_app/HEAD/assets/quran-data/chapters/chapters.en.json"
+  }
+}

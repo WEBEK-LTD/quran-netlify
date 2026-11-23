@@ -4,39 +4,49 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
-    <!-- ═══ SEO Core ═══════════════════════════════════════════════════════ -->
-    <title>نور القرآن — اقرأ القرآن الكريم بخطوط عثمانية مع تفسير وحفظ</title>
-    <meta name="description" content="نور القرآن: تطبيق القرآن الكريم الشامل. اقرأ 114 سورة بخطوط عثمانية، استمع لـ16 قارئاً، تتبّع حفظك، أوقات الصلاة، اتجاه القبلة، وأذكار الصباح والمساء." />
-    <meta name="keywords" content="قرآن كريم, قرآن, تلاوة, حفظ قرآن, مصحف, تفسير, أوقات الصلاة, قبلة, أذكار, ختمة, quran, quran online, quran app, prayer times, qibla compass, islamic app, kuran, namaz vakitleri, kıble, Coran, heures de prière, القرآن الكريم كاملا, تطبيق قرآن" />
+    <!-- ═══ SEO Core ═══════════════════════════════════════════════════════
+         scripts/seo-build.mjs copies this file per app route (dist/seo/app/*.html)
+         with that route's title, description and canonical — keep these tags'
+         shape (one line each) so its replacements keep matching. -->
+    <title>نور القرآن — اقرأ القرآن الكريم بالرسم العثماني مع التفسير والتلاوة والحفظ</title>
+    <meta name="description" content="نور القرآن: موقع وتطبيق مجاني للقرآن الكريم بلا إعلانات. اقرأ السور الـ١١٤ بالرسم العثماني مع التفسير، واستمع لـ١٦ قارئاً، وتابع حفظك، مع مواقيت الصلاة واتجاه القبلة وأذكار الصباح والمساء." />
+    <meta name="keywords" content="قرآن كريم, القرآن الكريم مكتوب, مصحف, تلاوة, تفسير, حفظ القرآن, أوقات الصلاة, القبلة, أذكار, ختمة, quran, quran online, quran app, prayer times, qibla, kuran, namaz vakitleri, coran, al quran" />
     <meta name="author" content="نور القرآن" />
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="google-site-verification" content="ce318f73553a62d7" />
     <link rel="canonical" href="https://nuralquran.net/" />
-    <!-- hreflang for multilingual SEO -->
-    <link rel="alternate" hreflang="ar"    href="https://nuralquran.net/" />
-    <link rel="alternate" hreflang="en"    href="https://nuralquran.net/" />
-    <link rel="alternate" hreflang="tr"    href="https://nuralquran.net/" />
-    <link rel="alternate" hreflang="fr"    href="https://nuralquran.net/" />
-    <link rel="alternate" hreflang="ur"    href="https://nuralquran.net/" />
-    <link rel="alternate" hreflang="id"    href="https://nuralquran.net/" />
+    <!-- Language versions: static landing pages per language (built by scripts/seo-build.mjs);
+         this page (the app, which picks the visitor's language) is the x-default. -->
+    <link rel="alternate" hreflang="ar" href="https://nuralquran.net/ar/" />
+    <link rel="alternate" hreflang="en" href="https://nuralquran.net/en/" />
+    <link rel="alternate" hreflang="tr" href="https://nuralquran.net/tr/" />
+    <link rel="alternate" hreflang="fr" href="https://nuralquran.net/fr/" />
+    <link rel="alternate" hreflang="ur" href="https://nuralquran.net/ur/" />
+    <link rel="alternate" hreflang="id" href="https://nuralquran.net/id/" />
     <link rel="alternate" hreflang="x-default" href="https://nuralquran.net/" />
 
     <!-- ═══ Open Graph (Facebook / WhatsApp / LinkedIn) ════════════════════ -->
     <meta property="og:type"        content="website" />
+    <meta property="og:site_name"   content="نور القرآن" />
     <meta property="og:url"         content="https://nuralquran.net/" />
-    <meta property="og:title"       content="نور القرآن — القرآن الكريم كاملاً مجاناً" />
-    <meta property="og:description" content="اقرأ القرآن الكريم بخطوط عثمانية احترافية. تفسير، استماع لـ16 قارئاً، حفظ، أوقات الصلاة، اتجاه القبلة، وأذكار يومية." />
+    <meta property="og:title"       content="نور القرآن — القرآن الكريم كاملاً بالرسم العثماني مجاناً" />
+    <meta property="og:description" content="اقرأ القرآن الكريم بالرسم العثماني مع التفسير، واستمع لـ١٦ قارئاً، واحفظ بخطة تناسبك، مع مواقيت الصلاة والقبلة والأذكار — بلا إعلانات." />
     <meta property="og:image"       content="https://nuralquran.net/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt"   content="نور القرآن" />
     <meta property="og:locale"      content="ar_AR" />
-    <meta property="og:site_name"   content="نور القرآن" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:locale:alternate" content="tr_TR" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:locale:alternate" content="ur_PK" />
+    <meta property="og:locale:alternate" content="id_ID" />
 
     <!-- ═══ Twitter Card ════════════════════════════════════════════════════ -->
     <meta name="twitter:card"        content="summary_large_image" />
     <meta name="twitter:url"         content="https://nuralquran.net/" />
-    <meta name="twitter:title"       content="نور القرآن — القرآن الكريم كاملاً" />
-    <meta name="twitter:description" content="اقرأ القرآن الكريم بخطوط عثمانية. تفسير، استماع، حفظ، أوقات الصلاة، قبلة، وأذكار." />
+    <meta name="twitter:title"       content="نور القرآن — القرآن الكريم كاملاً بالرسم العثماني" />
+    <meta name="twitter:description" content="اقرأ القرآن الكريم بالرسم العثماني مع التفسير والتلاوة والحفظ، ومواقيت الصلاة والقبلة والأذكار." />
     <meta name="twitter:image"       content="https://nuralquran.net/og-image.png" />
 
     <!-- ═══ PWA & Mobile ════════════════════════════════════════════════════ -->
@@ -45,32 +55,63 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="نور القرآن" />
+    <meta name="application-name" content="نور القرآن" />
 
     <!-- ═══ Structured Data (JSON-LD) ═══════════════════════════════════════ -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "نور القرآن",
-      "alternateName": "Nur Al-Quran",
-      "url": "https://nuralquran.net",
-      "description": "تطبيق القرآن الكريم الشامل: قراءة، تفسير، استماع، حفظ، أوقات الصلاة، قبلة، وأذكار.",
-      "applicationCategory": "EducationApplication",
-      "operatingSystem": "Web, iOS, Android",
-      "inLanguage": ["ar", "en", "tr", "fr", "ur", "id"],
-      "isAccessibleForFree": true,
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-      "author": { "@type": "Organization", "name": "نور القرآن", "url": "https://nuralquran.net" },
-      "featureList": [
-        "قراءة القرآن الكريم كاملاً",
-        "114 سورة بالخط العثماني",
-        "16 قارئاً للاستماع",
-        "ترجمة بـ16 لغة",
-        "نظام تتبع الحفظ",
-        "أوقات الصلاة",
-        "اتجاه القبلة",
-        "أذكار وأدعية",
-        "ختمات شخصية وجماعية"
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://nuralquran.net/#website",
+          "url": "https://nuralquran.net/",
+          "name": "نور القرآن",
+          "alternateName": ["Nur Al-Quran", "Noor Al-Quran"],
+          "description": "القرآن الكريم كاملاً بالرسم العثماني مع التفسير والتلاوة والحفظ، ومواقيت الصلاة والقبلة والأذكار.",
+          "inLanguage": ["ar", "en", "tr", "fr", "ur", "id"],
+          "publisher": { "@id": "https://nuralquran.net/#organization" },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": { "@type": "EntryPoint", "urlTemplate": "https://nuralquran.net/search?q={search_term_string}" },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://nuralquran.net/#organization",
+          "name": "نور القرآن",
+          "alternateName": "Nur Al-Quran",
+          "url": "https://nuralquran.net/",
+          "logo": { "@type": "ImageObject", "url": "https://nuralquran.net/icons/icon-512.png", "width": 512, "height": 512 },
+          "image": "https://nuralquran.net/og-image.png"
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://nuralquran.net/#app",
+          "name": "نور القرآن",
+          "alternateName": "Nur Al-Quran",
+          "url": "https://nuralquran.net/",
+          "description": "تطبيق القرآن الكريم الشامل: قراءة بالرسم العثماني، تفسير، استماع، حفظ، أوقات الصلاة، قبلة، وأذكار.",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "Web, iOS, Android",
+          "browserRequirements": "Requires JavaScript",
+          "inLanguage": ["ar", "en", "tr", "fr", "ur", "id"],
+          "isAccessibleForFree": true,
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+          "publisher": { "@id": "https://nuralquran.net/#organization" },
+          "featureList": [
+            "قراءة القرآن الكريم كاملاً — ١١٤ سورة بالرسم العثماني",
+            "تفاسير معتمدة ومعاني الكلمات",
+            "ترجمات معاني القرآن بعدة لغات",
+            "١٦ قارئاً للاستماع مع تظليل الآية",
+            "نظام تتبع الحفظ والمراجعة",
+            "أوقات الصلاة",
+            "اتجاه القبلة",
+            "أذكار وأدعية",
+            "ختمات شخصية وجماعية"
+          ]
+        }
       ]
     }
     </script>

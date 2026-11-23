@@ -1,9 +1,37 @@
+# نور القرآن — https://nuralquran.net
+# Everything public may be crawled, by search engines and AI assistants alike.
+# Readable copies: /{lang}/surah/{1-114}/ (HTML) and /{lang}/surah/{1-114}.md (Markdown);
+# summary for LLMs: /llms.txt
+
 User-agent: *
 Allow: /
-
-# Sitemap
-Sitemap: https://nuralquran.net/sitemap.xml
-
-# Block admin
+Allow: /.well-known/
 Disallow: /admin
-Disallow: /admin/
+Disallow: /auth/
+Disallow: /reset-password
+Disallow: /delete-data
+
+# Search engines and AI crawlers / assistants: explicitly welcome
+# (same private paths excluded — a named group replaces the * group for that bot).
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: Applebot
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: CCBot
+Allow: /
+Allow: /.well-known/
+Disallow: /admin
+Disallow: /auth/
+Disallow: /reset-password
+Disallow: /delete-data
+
+Sitemap: https://nuralquran.net/sitemap.xml

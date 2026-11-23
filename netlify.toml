@@ -1,8 +1,176 @@
 [build]
+  # npm run build = vite build && node scripts/seo-build.mjs (static surah pages,
+  # sitemaps, llms.txt). The SEO step reads only scripts/seo-data/ — no network.
   command = "npm install && npm run build"
   publish = "dist"
 
+# ─── Redirects / rewrites ──────────────────────────────────────────────────────
+# Netlify serves an existing file before any rule that is not `force = true`, so
+# the static pages (/ar/, /en/surah/2/, /en/surah/2.md, /sitemap.xml, /llms.txt …)
+# are never shadowed by the SPA fallback at the end.
+#
+# App routes worth indexing get a copy of index.html with their own <title>,
+# description and canonical (dist/seo/app/*.html, written by seo-build.mjs).
+# Same app, same URL in the address bar; query strings are passed through.
+[[redirects]]
+  from = "/reader"
+  to = "/seo/app/reader.html"
+  status = 200
+[[redirects]]
+  from = "/prayer-times"
+  to = "/seo/app/prayer-times.html"
+  status = 200
+[[redirects]]
+  from = "/qibla"
+  to = "/seo/app/qibla.html"
+  status = 200
+[[redirects]]
+  from = "/adhkar"
+  to = "/seo/app/adhkar.html"
+  status = 200
+[[redirects]]
+  from = "/tasbih"
+  to = "/seo/app/tasbih.html"
+  status = 200
+[[redirects]]
+  from = "/radio"
+  to = "/seo/app/radio.html"
+  status = 200
+[[redirects]]
+  from = "/daily-ayah"
+  to = "/seo/app/daily-ayah.html"
+  status = 200
+[[redirects]]
+  from = "/hifz"
+  to = "/seo/app/hifz.html"
+  status = 200
+[[redirects]]
+  from = "/khatma-group"
+  to = "/seo/app/khatma-group.html"
+  status = 200
+[[redirects]]
+  from = "/search"
+  to = "/seo/app/search.html"
+  status = 200
+[[redirects]]
+  from = "/ijaza"
+  to = "/seo/app/ijaza.html"
+  status = 200
+[[redirects]]
+  from = "/docs"
+  to = "/seo/app/docs.html"
+  status = 200
+[[redirects]]
+  from = "/help"
+  to = "/seo/app/help.html"
+  status = 200
+[[redirects]]
+  from = "/privacy"
+  to = "/seo/app/privacy.html"
+  status = 200
+[[redirects]]
+  from = "/terms"
+  to = "/seo/app/terms.html"
+  status = 200
+# Admin: the app shell with <meta name="robots" content="noindex, nofollow">
+[[redirects]]
+  from = "/admin"
+  to = "/seo/app/admin.html"
+  status = 200
+[[redirects]]
+  from = "/admin/*"
+  to = "/seo/app/admin.html"
+  status = 200
+
+# SPA fallback (must stay last)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# ─── Headers ───────────────────────────────────────────────────────────────────
+# Static SEO pages: fresh within an hour, served stale while revalidating.
+[[headers]]
+  for = "/seo/seo.css"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+[[headers]]
+  for = "/seo/fonts/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+[[headers]]
+  for = "/ar/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+[[headers]]
+  for = "/en/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+[[headers]]
+  for = "/tr/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+[[headers]]
+  for = "/fr/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+[[headers]]
+  for = "/ur/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+[[headers]]
+  for = "/id/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+
+# The app shell copies under /seo/app/ must not be cached long: they name the
+# current build's hashed assets.
+[[headers]]
+  for = "/seo/app/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Markdown copies for AI readers (/{lang}/surah/{n}.md): dist/_headers, generated
+# by seo-build.mjs, sets per file Content-Type: text/markdown; charset=utf-8 and
+# Link: <the HTML page>; rel="canonical". (Rules here never overlap a header that
+# another rule sets for the same path, since Netlify would merge the values.)
+
+[[headers]]
+  for = "/llms.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+[[headers]]
+  for = "/llms-full.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+    Cache-Control = "public, max-age=3600, stale-while-revalidate=86400"
+[[headers]]
+  for = "/robots.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+[[headers]]
+  for = "/sitemap.xml"
+  [headers.values]
+    Content-Type = "application/xml; charset=utf-8"
+    Cache-Control = "public, max-age=3600"
+[[headers]]
+  for = "/sitemap-pages.xml"
+  [headers.values]
+    Content-Type = "application/xml; charset=utf-8"
+    Cache-Control = "public, max-age=3600"
+[[headers]]
+  for = "/sitemap-surahs.xml"
+  [headers.values]
+    Content-Type = "application/xml; charset=utf-8"
+    Cache-Control = "public, max-age=3600"
+
+# Never index the admin area
+[[headers]]
+  for = "/admin"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
