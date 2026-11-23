@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { signInWithEmail, signInWithGoogle, resetPasswordEmail, isConfigured } from '../supabase';
+import { afterLoginPath } from '../store';
 import styles from './AuthPage.module.css';
 import { useT, useLang, useDir } from '../i18n';
 import LangSwitcher from '../components/LangSwitcher';
@@ -24,7 +25,7 @@ export default function LoginPage() {
     setLoading(true); setError('');
     const { error } = await signInWithEmail(email, password);
     if (error) { setError(error.message); setLoading(false); }
-    else navigate('/dashboard');
+    else navigate(afterLoginPath());
   }
 
   async function handleGoogle() {

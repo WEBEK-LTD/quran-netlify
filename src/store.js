@@ -18,6 +18,26 @@ export function savePref(key, value) {
   } catch {}
 }
 
+// Where to go after signing in: back to a group khatma invite if one is
+// waiting (KhatmaGroupPage resumes the join from sessionStorage), else the dashboard.
+export function afterLoginPath() {
+  try { if (sessionStorage.getItem('nq_pending_join')) return '/khatma-group'; } catch {}
+  return '/dashboard';
+}
+
+// Reciter folders that were misspelled or mislabelled in older versions.
+const READER_RENAMES = {
+  'Abdurrahman_as-Sudais_192kbps': 'Abdurrahmaan_As-Sudais_192kbps',
+  'Maher_AlMuaiqly_128kbps':       'MaherAlMuaiqly128kbps',
+  'Abdul_Basit_Murattal_64kbps':   'Abdul_Basit_Mujawwad_128kbps',
+};
+const savedReader = (() => {
+  const r = String(getLocal('nq_reader', DEFAULT_READER));
+  const fixed = READER_RENAMES[r];
+  if (fixed) { try { localStorage.setItem('nq_reader', fixed); } catch {} return fixed; }
+  return r;
+})();
+
 const lastRead = (() => {
   const v = getLocal('nq_lastRead', null);
   return v && typeof v === 'object' && v.surah >= 1 && v.surah <= 114
@@ -34,7 +54,7 @@ let globalState = {
   darkMode:      getLocal('nq_theme', 'dark') !== 'light',
   highlightMode: getLocal('nq_highlight', false) === true,
   bookmarks:     getLocal('nq_bookmarks', []),
-  reader:        String(getLocal('nq_reader', DEFAULT_READER)),
+  reader:        savedReader,
   translation:   String(getLocal('nq_translation', 'none')), // 'none' or edition id
   isPlaying:     false,
   audioAyah:     1,

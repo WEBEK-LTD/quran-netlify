@@ -4,7 +4,7 @@ import { useStore, setGlobal } from '../store';
 import { useAuth } from '../hooks/useAuth';
 import { SURAHS_META, toArabicNum } from '../data';
 import { fetchSurahAyahs, fetchSurahTranslation } from '../api';
-import { incrementUserScore, saveProgress } from '../supabase';
+import { incrementUserScore, saveProgress, loadBookmarks, syncBookmarks } from '../supabase';
 import TafsirPanel from './TafsirPanel';
 import styles from './Reader.module.css';
 
@@ -180,7 +180,26 @@ export default function Reader() {
       ? state.bookmarks.filter(b => !(b.surah === state.currentSurah && b.ayah === ayahNum))
       : [...state.bookmarks, { surah: state.currentSurah, ayah: ayahNum }];
     setGlobal({ bookmarks: next, toast: exists ? '🗑️ تم الحذف من المفضلة' : '🔖 تم الحفظ في المفضلة' });
-    localStorage.setItem('nq_bookmarks', JSON.stringify(next));
+    try { localStorage.setItem('nq_bookmarks', JSON.stringify(next)); } catch {}
+    if (user) syncBookmarkChange(user.id, state.currentSurah, ayahNum, !exists, next);
+  }
+
+  // Keep the account in step with this device without dropping bookmarks
+  // saved from another device: merge the server list, apply this one change.
+  async function syncBookmarkChange(userId, surah, ayah, added, localList) {
+    try {
+      const server = await loadBookmarks(userId);
+      const key = b => `${b.surah}:${b.ayah}`;
+      const merged = new Map([...(server || []), ...localList].map(b => [key(b), b]));
+      if (added) merged.set(`${surah}:${ayah}`, { surah, ayah });
+      else merged.delete(`${surah}:${ayah}`);
+      const list = [...merged.values()];
+      const ok = await syncBookmarks(userId, list);
+      if (ok) {
+        setGlobal({ bookmarks: list });
+        try { localStorage.setItem('nq_bookmarks', JSON.stringify(list)); } catch {}
+      }
+    } catch {}
   }
 
   function playAyah(e, num) {

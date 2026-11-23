@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { useT, useLang, useDir } from '../i18n';
 import LangSwitcher from '../components/LangSwitcher';
+import { afterLoginPath } from '../store';
 async function waitForAuth(timeoutMs = 12000) {
   const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
   const url  = import.meta.env.VITE_SUPABASE_URL      || '';
@@ -62,7 +63,7 @@ export default function AuthCallbackPage() {
         setTimeout(() => navigate('/reset-password', { replace: true }), 600);
       } else if (result.type === 'signed_in') {
         setStep(1);
-        setTimeout(() => navigate('/dashboard', { replace: true }), 400);
+        setTimeout(() => navigate(afterLoginPath(), { replace: true }), 400);
       } else {
         setStep(2);
         setTimeout(() => navigate('/login?error=auth_failed', { replace: true }), 2000);

@@ -124,7 +124,8 @@ export async function incrementUserScore(userId) {
   const { error: rpcErr } = await sb.rpc('increment_user_score', { p_user_id: userId });
   if (rpcErr) console.warn('[score] rpc error:', rpcErr.message);
   // تسجيل في reading_sessions باستخدام atomic RPC (آمن من race conditions)
-  const today = new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const { error: sessionErr } = await sb.rpc('upsert_reading_session', {
     p_user_id: userId,
     p_date: today,
