@@ -1,36 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { isConfigured } from '../supabase';
-
-// import shared client helper (same session = RLS works correctly)
-async function getSharedSb() {
-  const url  = import.meta.env.VITE_SUPABASE_URL       || '';
-  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY  || '';
-  if (!url || url.includes('placeholder')) return null;
-  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-  return createClient(url, anon, {
-    auth: { persistSession: true, storageKey: 'nq_sb_auth', storage: window.localStorage },
-  });
-}
+import { getLeaderboard, errorMessage } from '../backend';
 import styles from './LeaderboardPage.module.css';
 import { useT, useLang, useDir } from '../i18n';
 import LangSwitcher from '../components/LangSwitcher';
 
-// ─── Fetch helpers ────────────────────────────────────────────────────────────
-async function fetchLeaderboard(type) {
-  const sb = await getSharedSb();
-  if (!sb) return { data: [], err: 'Supabase غير متصل — تأكد من ENV variables في Netlify' };
-  const fnMap = { reading: 'leaderboard_reading', hifz: 'leaderboard_hifz', khatma: 'leaderboard_khatma' };
-  const fn = fnMap[type];
-  if (!fn) return { data: [], err: null };
-  const { data, error } = await sb.rpc(fn);
-  if (error) {
-    console.error('[Leaderboard]', error.message);
-    return { data: [], err: error.message };
-  }
-  return { data: data || [], err: null };
-}
+const PERIODS = [
+  { id: 'week',  label: 'أسبوع' },
+  { id: 'month', label: 'شهر' },
+  { id: 'all',   label: 'الكل' },
+];
 
 // TABS defined inside component (uses t() hook)
 
@@ -57,8 +37,8 @@ export default function LeaderboardPage() {
     { id: 'khatma',  label: t('mostKhatma'),  icon: '📿', unit: t('khatmas'),color: '#f97316' },
   ];
   const { user } = useAuth();
-  const configured = isConfigured();
   const [tab, setTab]       = useState('reading');
+  const [period, setPeriod] = useState('week');
   const [data, setData]     = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState('');
@@ -66,28 +46,19 @@ export default function LeaderboardPage() {
   const activeTab = TABS.find(tk => tk.id === tab);
 
   useEffect(() => {
-    if (!configured) return;
     let alive = true;
     setLoading(true);
     setLoadErr('');
     setData([]);
-    fetchLeaderboard(tab)
-      .then(({ data: rows, err }) => {
-        if (!alive) return;
-        setData(rows || []);
-        if (err) { console.warn('[Leaderboard error]', err); setLoadErr(err); }
-      })
-      .catch(e => { if (alive) setLoadErr(e?.message || 'network error'); })
+    getLeaderboard(tab, period)
+      .then(rows => { if (alive) setData(rows || []); })
+      .catch(e => { if (alive) setLoadErr(errorMessage(e, 'حدث خطأ أثناء الاتصال بالخادم — حاول مجدداً لاحقاً.')); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [tab, configured, user?.id]);
+  }, [tab, period, user?.id]);
 
-  // Derived from the loaded rows + current user (so it appears once auth resolves)
-  const myRank = (() => {
-    if (!user) return null;
-    const idx = data.findIndex(r => r.user_id === user.id);
-    return idx >= 0 ? idx + 1 : null;
-  })();
+  const myRow  = data.find(r => r.is_me);
+  const myRank = myRow ? (myRow.rank || data.indexOf(myRow) + 1) : null;
   const hasPodium = data.length >= 3;
 
   return (
@@ -113,6 +84,27 @@ export default function LeaderboardPage() {
         ))}
       </div>
 
+      {/* Period */}
+      <div className={styles.tabs} style={{ marginTop: -4 }}>
+        {PERIODS.map(p => (
+          <button key={p.id}
+            className={`${styles.tabBtn} ${period === p.id ? styles.tabActive : ''}`}
+            style={{ '--c': 'var(--gold)' }}
+            onClick={() => setPeriod(p.id)}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <p className={styles.note} style={{ marginTop: 0 }}>
+        🔒 تظهر هنا فقط أسماء من اختاروا الظهور في لوحة المتصدرين.{' '}
+        {user
+          ? (user.show_on_leaderboard
+              ? <>اسمك ظاهر — يمكنك إخفاؤه من <Link to="/settings" style={{ color: 'var(--gold)' }}>الإعدادات</Link>.</>
+              : <>اسمك مخفي — يمكنك إظهاره من <Link to="/settings" style={{ color: 'var(--gold)' }}>الإعدادات</Link>.</>)
+          : <><Link to="/login" style={{ color: 'var(--gold)' }}>سجّل الدخول</Link> ثم فعّل الظهور من الإعدادات لتنافس.</>}
+      </p>
+
       {/* My rank banner */}
       {myRank && (
         <div className={styles.myRankBanner}>
@@ -121,17 +113,8 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {/* Not configured */}
-      {!configured && (
-        <div className={styles.emptyBox}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🔌</div>
-          <p>{t('leaderboardTitle')} — Supabase</p>
-          <Link to="/docs" className={styles.docsLink}>اعرف كيف ←</Link>
-        </div>
-      )}
-
       {/* Loading */}
-      {configured && loading && (
+      {loading && (
         <div className={styles.loadingBox}>
           {[...Array(5)].map((_,i) => (
             <div key={i} className={styles.skeleton} style={{ animationDelay: `${i*80}ms` }} />
@@ -140,18 +123,18 @@ export default function LeaderboardPage() {
       )}
 
       {/* Error */}
-      {configured && !loading && loadErr && (
+      {!loading && loadErr && (
         <div className={styles.emptyBox}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
           <p style={{ fontWeight: 700, marginBottom: 8 }}>تعذّر تحميل قائمة المتصدرين</p>
           <p style={{ fontSize: 13, color: 'var(--text3)', lineHeight: 1.8 }}>
-            حدث خطأ أثناء الاتصال بالخادم — حاول مجدداً لاحقاً.
+            {loadErr}
           </p>
         </div>
       )}
 
       {/* Empty */}
-      {configured && !loading && !loadErr && data.length === 0 && (
+      {!loading && !loadErr && data.length === 0 && (
         <div className={styles.emptyBox}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
           <p style={{ fontWeight: 700, marginBottom: 8 }}>لا توجد بيانات بعد</p>
@@ -163,30 +146,30 @@ export default function LeaderboardPage() {
       )}
 
       {/* Leaderboard list */}
-      {configured && !loading && data.length > 0 && (
+      {!loading && data.length > 0 && (
         <div className={styles.list}>
           {/* Top 3 podium */}
           {hasPodium && (
             <div className={styles.podium}>
               {/* 2nd */}
               <div className={styles.podiumItem} style={{ '--c': '#94a3b8' }}>
-                <Avatar name={data[1]?.display_name} rank={2} />
-                <div className={styles.podiumName}>{data[1]?.display_name || 'مجهول'}</div>
+                <Avatar name={data[1]?.name} rank={2} />
+                <div className={styles.podiumName}>{data[1]?.name || 'مجهول'}</div>
                 <div className={styles.podiumScore}>{(data[1]?.score||0).toLocaleString('ar')} {activeTab.unit}</div>
                 <div className={styles.podiumBase} style={{ height: 60 }}>🥈</div>
               </div>
               {/* 1st */}
               <div className={`${styles.podiumItem} ${styles.podiumFirst}`} style={{ '--c': '#c9a84c' }}>
                 <div className={styles.crownAnim}>👑</div>
-                <Avatar name={data[0]?.display_name} rank={1} />
-                <div className={styles.podiumName}>{data[0]?.display_name || 'مجهول'}</div>
+                <Avatar name={data[0]?.name} rank={1} />
+                <div className={styles.podiumName}>{data[0]?.name || 'مجهول'}</div>
                 <div className={styles.podiumScore}>{(data[0]?.score||0).toLocaleString('ar')} {activeTab.unit}</div>
                 <div className={styles.podiumBase} style={{ height: 80 }}>🥇</div>
               </div>
               {/* 3rd */}
               <div className={styles.podiumItem} style={{ '--c': '#c97c3a' }}>
-                <Avatar name={data[2]?.display_name} rank={3} />
-                <div className={styles.podiumName}>{data[2]?.display_name || 'مجهول'}</div>
+                <Avatar name={data[2]?.name} rank={3} />
+                <div className={styles.podiumName}>{data[2]?.name || 'مجهول'}</div>
                 <div className={styles.podiumScore}>{(data[2]?.score||0).toLocaleString('ar')} {activeTab.unit}</div>
                 <div className={styles.podiumBase} style={{ height: 45 }}>🥉</div>
               </div>
@@ -195,14 +178,14 @@ export default function LeaderboardPage() {
 
           {/* Rest of the list (4th onwards — or everyone when fewer than 3) */}
           {data.slice(hasPodium ? 3 : 0).map((row, i) => {
-            const rank = i + (hasPodium ? 4 : 1);
-            const isMe = user && row.user_id === user.id;
+            const rank = row.rank || i + (hasPodium ? 4 : 1);
+            const isMe = !!row.is_me;
             return (
               <div key={rank} className={`${styles.row} ${isMe ? styles.rowMe : ''}`}>
                 <div className={styles.rowRank}>#{rank}</div>
-                <Avatar name={row.display_name} rank={rank} />
+                <Avatar name={row.name} rank={rank} />
                 <div className={styles.rowInfo}>
-                  <span className={styles.rowName}>{row.display_name || 'مجهول'}{isMe ? ' (أنت)' : ''}</span>
+                  <span className={styles.rowName}>{row.name || 'مجهول'}{isMe ? ' (أنت)' : ''}</span>
                   <span className={styles.rowSub}>{activeTab.icon} {(row.score||0).toLocaleString('ar')} {activeTab.unit}</span>
                 </div>
                 <div className={styles.rowScore} style={{ color: activeTab.color }}>
@@ -214,7 +197,7 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      <p className={styles.note}>* يُحدَّث المتصدرون كل 24 ساعة بناءً على نشاط المستخدمين المسجّلين</p>
+      <p className={styles.note}>* الترتيب مبني على نشاط المستخدمين المسجّلين خلال الفترة المختارة (أفضل ٥٠)</p>
     </div>
   );
 }

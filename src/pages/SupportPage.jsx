@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
-  getMyTickets, createTicket,
-  getTicketMessages, sendMessage,
-  subscribeToMessages,
-} from '../supabase';
+  listMyTickets, createSupportTicket,
+  listTicketMessages, sendTicketMessage,
+  pollTicketMessages, errorMessage,
+} from '../backend';
 import styles from './SupportPage.module.css';
 
 // ─── SupportPage ──────────────────────────────────────────────────────────────
@@ -26,25 +26,68 @@ function SupportView({ user }) {
   const [creating, setCreating] = useState(false);
   const [showNew,  setShowNew]  = useState(false);
   const [newSubject,setNewSubject]=useState('');
+  const [newTopic, setNewTopic] = useState('');
   const [newBody,  setNewBody]  = useState('');
   const [view,     setView]     = useState('list');
+  const [listLoading, setListLoading] = useState(true);
+  const [listErr,  setListErr]  = useState('');
+  const [msgLoading, setMsgLoading] = useState(false);
+  const [chatErr,  setChatErr]  = useState('');
+  const [formErr,  setFormErr]  = useState('');
   const messagesEnd = useRef(null);
+  const lastIdRef   = useRef(null);
+  const aliveRef    = useRef(true);
+  useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; }; }, []);
+
+  // Add messages without duplicates (poll + own send may overlap)
+  const mergeMessages = useCallback((incoming) => {
+    setMessages(prev => {
+      const seen = new Set(prev.map(m => m.id));
+      const add = incoming.filter(m => m && !seen.has(m.id));
+      if (!add.length) return prev;
+      const next = [...prev, ...add];
+      lastIdRef.current = next[next.length - 1].id;
+      return next;
+    });
+  }, []);
 
   const loadTickets = useCallback(async () => {
-    const data = await getMyTickets(user.id);
-    setTickets(data || []);
-  }, [user.id]);
+    try {
+      const data = await listMyTickets();
+      if (!aliveRef.current) return;
+      setTickets(data);
+      setListErr('');
+      // keep the open ticket's status fresh
+      setActive(a => (a ? (data.find(tk => tk.id === a.id) || a) : a));
+    } catch (e) {
+      if (aliveRef.current) setListErr(errorMessage(e, 'تعذّر تحميل استفساراتك'));
+    } finally {
+      if (aliveRef.current) setListLoading(false);
+    }
+  }, []);
 
   useEffect(() => { loadTickets(); }, [loadTickets]);
 
+  // Open ticket: load its messages, then poll every 5 s until closed/unmounted
   useEffect(() => {
-    if (!active) return;
-    getTicketMessages(active.id).then(setMessages);
-    const unsub = subscribeToMessages(active.id, msg =>
-      setMessages(prev => [...prev, msg])
-    );
-    return () => { if (typeof unsub === 'function') unsub(); };
-  }, [active?.id]);
+    if (!active?.id) return;
+    let alive = true;
+    const ticketId = active.id;
+    setMessages([]);
+    setChatErr('');
+    lastIdRef.current = null;
+    setMsgLoading(true);
+    listTicketMessages(ticketId)
+      .then(list => {
+        if (!alive) return;
+        setMessages(list);
+        lastIdRef.current = list.length ? list[list.length - 1].id : null;
+      })
+      .catch(e => { if (alive) setChatErr(errorMessage(e, 'تعذّر تحميل الرسائل')); })
+      .finally(() => { if (alive) setMsgLoading(false); });
+    const stop = pollTicketMessages(ticketId, lastIdRef, list => { if (alive) mergeMessages(list); });
+    return () => { alive = false; stop(); };
+  }, [active?.id, mergeMessages]);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,28 +95,48 @@ function SupportView({ user }) {
 
   async function handleSend(e) {
     e.preventDefault();
-    if (!input.trim() || !active) return;
-    setSending(true);
-    await sendMessage(active.id, user.id, input.trim(), false);
-    setInput('');
-    setSending(false);
-    loadTickets();
+    const body = input.trim();
+    if (!body || !active) return;
+    setSending(true); setChatErr('');
+    try {
+      const msg = await sendTicketMessage(active.id, body);
+      if (!aliveRef.current) return;
+      if (msg && msg.id) mergeMessages([msg]);   // show my message right away
+      setInput('');
+      loadTickets();
+    } catch (err) {
+      if (!aliveRef.current) return;
+      if (err?.code === 'ticket_closed') {
+        setActive(a => (a ? { ...a, status: 'closed' } : a));
+        setChatErr('هذه التذكرة مغلقة — افتح استفساراً جديداً');
+      } else {
+        setChatErr(errorMessage(err, 'تعذّر إرسال الرسالة، حاول مجدداً'));
+      }
+    }
+    if (aliveRef.current) setSending(false);
   }
 
   async function handleCreate(e) {
     e.preventDefault();
-    if (!newSubject.trim()) return;
-    setCreating(true);
-    const { data } = await createTicket(user.id, user.email, newSubject.trim());
-    if (data) {
-      if (newBody.trim()) await sendMessage(data.id, user.id, newBody.trim(), false);
-      setActive(data);
+    const subject = newSubject.trim();
+    if (!subject) return;
+    setCreating(true); setFormErr('');
+    try {
+      const ticket = await createSupportTicket({
+        subject,
+        topic: newTopic || 'أخرى',
+        body: newBody.trim() || subject,
+      });
+      if (!aliveRef.current) return;
       await loadTickets();
+      setActive(ticket);
       setShowNew(false);
-      setNewSubject(''); setNewBody('');
+      setNewSubject(''); setNewTopic(''); setNewBody('');
       setView('chat');
+    } catch (err) {
+      if (aliveRef.current) setFormErr(errorMessage(err, 'تعذّر إرسال الاستفسار، حاول مجدداً'));
     }
-    setCreating(false);
+    if (aliveRef.current) setCreating(false);
   }
 
   function openTicket(ticket) {
@@ -83,6 +146,7 @@ function SupportView({ user }) {
 
   const STATUS = {
     open:        { label: 'مفتوح',        color: '#f97316', bg: 'rgba(249,115,22,.1)' },
+    pending:     { label: 'قيد المعالجة', color: '#fbbf24', bg: 'rgba(251,191,36,.1)' },
     in_progress: { label: 'قيد المعالجة', color: '#fbbf24', bg: 'rgba(251,191,36,.1)' },
     closed:      { label: 'مغلق',         color: '#52b788', bg: 'rgba(82,183,136,.1)' },
   };
@@ -121,7 +185,17 @@ function SupportView({ user }) {
             <button className={styles.newBtn} onClick={() => setShowNew(true)}>+ جديد</button>
           </div>
 
-          {tickets.length === 0 && !showNew && (
+          {listLoading && (
+            <div className={styles.emptyState}><div className={styles.spinner}/></div>
+          )}
+          {!listLoading && listErr && (
+            <div className={styles.emptyState}>
+              <div className={styles.emptyIcon}>⚠️</div>
+              <p className={styles.emptyTitle}>{listErr}</p>
+              <button className={styles.emptyBtn} onClick={() => { setListLoading(true); loadTickets(); }}>إعادة المحاولة</button>
+            </div>
+          )}
+          {!listLoading && !listErr && tickets.length === 0 && !showNew && (
             <div className={styles.emptyState}>
               <div className={styles.emptyIcon}>💬</div>
               <p className={styles.emptyTitle}>لا توجد استفسارات بعد</p>
@@ -137,9 +211,14 @@ function SupportView({ user }) {
                 onClick={() => openTicket(ticket)}>
                 <div className={styles.ticketCardTop}>
                   <span className={styles.ticketIcon}>
-                    {ticket.status === 'closed' ? '✅' : ticket.status === 'in_progress' ? '⏳' : '🔵'}
+                    {ticket.status === 'closed' ? '✅' : ticket.status === 'pending' || ticket.status === 'in_progress' ? '⏳' : '🔵'}
                   </span>
                   <span className={styles.ticketSubject}>{ticket.subject}</span>
+                  {ticket.unread > 0 && (
+                    <span className={styles.ticketBadge} style={{ color: '#fff', background: '#f97316', marginInlineStart: 'auto' }}>
+                      {ticket.unread}
+                    </span>
+                  )}
                 </div>
                 <div className={styles.ticketCardMeta}>
                   <span className={styles.ticketBadge}
@@ -168,8 +247,8 @@ function SupportView({ user }) {
                 <div className={styles.topicsGrid}>
                   {TOPICS.map(topic => (
                     <button key={topic} type="button"
-                      className={`${styles.topicChip} ${newSubject === topic ? styles.topicChipA : ''}`}
-                      onClick={() => setNewSubject(topic)}>
+                      className={`${styles.topicChip} ${newTopic === topic ? styles.topicChipA : ''}`}
+                      onClick={() => { setNewTopic(topic); setNewSubject(topic); }}>
                       {topic}
                     </button>
                   ))}
@@ -181,13 +260,14 @@ function SupportView({ user }) {
                 <textarea className={styles.formTextarea} rows={5}
                   placeholder="اشرح المشكلة أو الاستفسار بالتفصيل..."
                   value={newBody} onChange={e => setNewBody(e.target.value)}/>
+                {formErr && <p role="alert" style={{ color: '#f87171', fontSize: 13, margin: '4px 0' }}>⚠️ {formErr}</p>}
                 <div className={styles.formActions}>
                   <button type="submit" className={styles.submitBtn}
                     disabled={creating || !newSubject.trim()}>
                     {creating ? '⏳ جارٍ الإرسال...' : '📤 إرسال'}
                   </button>
                   <button type="button" className={styles.cancelBtn}
-                    onClick={() => { setShowNew(false); setNewSubject(''); setNewBody(''); }}>
+                    onClick={() => { setShowNew(false); setNewSubject(''); setNewTopic(''); setNewBody(''); setFormErr(''); }}>
                     إلغاء
                   </button>
                 </div>
@@ -233,7 +313,10 @@ function SupportView({ user }) {
               </div>
 
               <div className={styles.messages}>
-                {messages.length === 0 && (
+                {msgLoading && messages.length === 0 && (
+                  <div className={styles.noMessages}><div className={styles.spinner}/></div>
+                )}
+                {!msgLoading && messages.length === 0 && (
                   <div className={styles.noMessages}>
                     <div style={{ fontSize: 36 }}>👋</div>
                     <p>محادثتك مع فريق الدعم ستظهر هنا</p>
@@ -254,7 +337,7 @@ function SupportView({ user }) {
                     <div key={msg.id} className={`${styles.msg} ${msg.is_admin ? styles.msgAdmin : styles.msgUser}`}>
                       <div className={styles.msgBubble}>{msg.body}</div>
                       <div className={styles.msgMeta}>
-                        {msg.is_admin ? '🛟 فريق الدعم' : '👤 أنت'} ·{' '}
+                        {msg.is_admin ? `🛟 ${msg.sender_name || 'فريق الدعم'}` : '👤 أنت'} ·{' '}
                         {new Date(msg.created_at).toLocaleTimeString('ar-EG', { hour:'2-digit', minute:'2-digit' })}
                       </div>
                     </div>
@@ -263,6 +346,10 @@ function SupportView({ user }) {
                 }, [])}
                 <div ref={messagesEnd}/>
               </div>
+
+              {chatErr && (
+                <p role="alert" style={{ color: '#f87171', fontSize: 13, textAlign: 'center', margin: '6px 12px' }}>⚠️ {chatErr}</p>
+              )}
 
               {active.status === 'closed' ? (
                 <div className={styles.closedBanner}>

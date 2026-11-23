@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { signOut, deleteAllUserData } from '../supabase';
+import { deleteAccount, exportMyData, errorMessage } from '../backend';
+import { signOutAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import styles from './LegalPage.module.css';
 
@@ -16,33 +17,70 @@ export default function DeleteDataPage() {
   const [loading, setLoading] = useState(false);
   const [reason,  setReason]  = useState('');
   const [error,   setError]   = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmText, setConfirmText] = useState('');
+  // Google-only accounts (has_password === false) confirm by typing DELETE.
+  // If the API doesn't say, ask for the password and offer DELETE as fallback.
+  const [useConfirm, setUseConfirm] = useState(false);
+  const googleOnly = user?.has_password === false || useConfirm;
+  const [exporting, setExporting] = useState(false);
+  const [exportMsg, setExportMsg] = useState('');
+
+  async function handleExport() {
+    setExporting(true); setExportMsg('');
+    try {
+      const data = await exportMyData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `nur-alquran-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setExportMsg('✅ تم تنزيل نسخة من بياناتك');
+    } catch (e) {
+      setExportMsg('⚠️ ' + errorMessage(e, 'تعذّر تنزيل البيانات، حاول مجدداً'));
+    }
+    setExporting(false);
+  }
+
+  function clearLocalData() {
+    // مسح بيانات التطبيق من هذا الجهاز (مع إبقاء إعدادات العرض فقط)
+    const keysToKeep = ['nq_theme', 'nq_fontSize', 'nq_fontStyle', 'nq_reader', 'nq_translation', 'nq_visitor_id'];
+    try {
+      Object.keys(localStorage).forEach(k => {
+        if (!keysToKeep.includes(k)) localStorage.removeItem(k);
+      });
+      sessionStorage.removeItem('nq_pending_join');
+    } catch {}
+  }
 
   async function handleDelete() {
+    if (!user) return;
+    if (googleOnly ? confirmText.trim() !== 'DELETE' : !password) {
+      setError(googleOnly ? 'اكتب DELETE بالأحرف الإنجليزية الكبيرة للتأكيد' : 'اكتب كلمة المرور للتأكيد');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      // 1. حذف كل البيانات من Supabase — نتوقف إن فشل أي جدول
-      if (user) {
-        const res = await deleteAllUserData(user.id);
-        if (res?.error) {
-          setError(typeof res.error === 'string' ? res.error : (res.error.message || 'تعذّر حذف البيانات'));
-          setLoading(false);
-          return;
-        }
-      }
-      // 2. تسجيل خروج
-      try { await signOut(); } catch {}
-      // 3. مسح بيانات التطبيق من هذا الجهاز (مع إبقاء إعدادات العرض فقط)
-      const keysToKeep = ['nq_theme', 'nq_fontSize', 'nq_fontStyle', 'nq_reader', 'nq_translation'];
-      try {
-        Object.keys(localStorage).forEach(k => {
-          if (!keysToKeep.includes(k)) localStorage.removeItem(k);
-        });
-        sessionStorage.removeItem('nq_pending_join');
-      } catch {}
+      await deleteAccount(googleOnly ? { confirm: 'DELETE' } : { password });
+      clearLocalData();
+      await signOutAuth();
       setStep(3);
     } catch (e) {
-      setError('تعذّر إكمال الحذف: ' + (e?.message || 'خطأ غير معروف') + ' — حاول مجدداً.');
+      const f = e?.fields || {};
+      if (!googleOnly && e?.code === 'validation' && (f.confirm || (!f.password && user?.has_password === undefined))) {
+        // Probably a Google-only account: switch to the DELETE confirmation
+        setUseConfirm(true);
+        setError('هذا الحساب مرتبط بحساب Google بدون كلمة مرور — اكتب DELETE للتأكيد');
+      } else if (!googleOnly && (e?.code === 'invalid_credentials' || f.password)) {
+        setError('كلمة المرور غير صحيحة');
+      } else {
+        setError('تعذّر حذف الحساب: ' + errorMessage(e) + ' — لم يُحذف شيء، حاول مجدداً.');
+      }
     }
     setLoading(false);
   }
@@ -81,10 +119,20 @@ export default function DeleteDataPage() {
           </div>
           <div className={styles.notLoggedIn}>
             <p style={{ fontSize: 13 }}>
-              ملاحظة: يحذف هذا الإجراء بياناتك المحفوظة. أما سجل تسجيل الدخول نفسه (البريد الإلكتروني)
-              فيمكن طلب إزالته نهائياً عبر <a href="mailto:support@webek.org?subject=طلب حذف حساب" className={styles.inlineLink}>support@webek.org</a>.
+              ملاحظة: يحذف هذا الإجراء حسابك نفسه (البريد الإلكتروني والاسم) وكل البيانات المرتبطة به من خوادمنا،
+              وتُحذف الختمات الجماعية التي أنشأتها. لا يمكن استرجاع الحساب بعد الحذف.
+              ننصحك بتنزيل نسخة من بياناتك أولاً.
             </p>
           </div>
+
+          {user && (
+            <div className={styles.notLoggedIn}>
+              <button className={styles.cancelBtn} onClick={handleExport} disabled={exporting} style={{ width: '100%' }}>
+                {exporting ? 'جارٍ التحضير...' : '⬇️ تنزيل نسخة من بياناتي'}
+              </button>
+              {exportMsg && <p style={{ fontSize: 13, marginTop: 8 }}>{exportMsg}</p>}
+            </div>
+          )}
 
           {!user ? (
             <div className={styles.notLoggedIn}>
@@ -112,6 +160,27 @@ export default function DeleteDataPage() {
           </div>
 
           <div className={styles.reasonBox}>
+            {googleOnly ? (
+              <>
+                <label className={styles.reasonLabel}>للتأكيد اكتب <strong dir="ltr">DELETE</strong></label>
+                <input className={styles.reasonSelect} value={confirmText} dir="ltr" autoComplete="off"
+                  onChange={e => setConfirmText(e.target.value)} placeholder="DELETE" />
+              </>
+            ) : (
+              <>
+                <label className={styles.reasonLabel}>اكتب كلمة المرور للتأكيد</label>
+                <input className={styles.reasonSelect} type="password" value={password} dir="ltr"
+                  autoComplete="current-password"
+                  onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+                <button type="button" onClick={() => { setUseConfirm(true); setError(''); }}
+                  style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', marginTop: 6, padding: 0 }}>
+                  دخلت بحساب Google وليس لدي كلمة مرور
+                </button>
+              </>
+            )}
+          </div>
+
+          <div className={styles.reasonBox}>
             <label className={styles.reasonLabel}>سبب المغادرة (اختياري — يساعدنا في التحسين)</label>
             <select className={styles.reasonSelect} value={reason} onChange={e => setReason(e.target.value)}>
               <option value="">اختر سبباً...</option>
@@ -130,7 +199,7 @@ export default function DeleteDataPage() {
           )}
 
           <div className={styles.confirmBtns}>
-            <button className={styles.cancelBtn} onClick={() => setStep(1)}>{t('cancel')}</button>
+            <button className={styles.cancelBtn} onClick={() => { setStep(1); setError(''); }}>{t('cancel')}</button>
             <button className={styles.confirmDeleteBtn} onClick={handleDelete} disabled={loading}>
               {loading ? 'جارٍ الحذف...' : '🗑️ حذف نهائياً'}
             </button>
@@ -141,9 +210,8 @@ export default function DeleteDataPage() {
       {step === 3 && (
         <div className={styles.doneBox}>
           <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
-          <h2>تم حذف بياناتك</h2>
-          <p>حُذفت بياناتك المحفوظة في حسابك وعلى هذا الجهاز، وتم تسجيل خروجك.</p>
-          <p style={{ marginTop: 8, fontSize: 13 }}>لإزالة سجل تسجيل الدخول (البريد الإلكتروني) نهائياً، راسلنا على العنوان أدناه.</p>
+          <h2>تم حذف حسابك</h2>
+          <p>حُذف حسابك وكل البيانات المرتبطة به من خوادمنا، ومُسحت بيانات التطبيق من هذا الجهاز، وتم تسجيل خروجك.</p>
           <p style={{ marginTop: 12, fontSize: 13 }}>
             لأي استفسار: <a href="mailto:support@webek.org" className={styles.inlineLink}>support@webek.org</a>
           </p>
