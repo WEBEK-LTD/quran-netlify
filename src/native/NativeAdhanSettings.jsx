@@ -221,7 +221,7 @@ export default function NativeAdhanSettings({ alarms, onToggle, coords, method, 
         <summary>{tr('مصادر تسجيلات الأذان')}</summary>
         <p>{tr('نستخدم تسجيلات مرخّصة ترخيصاً حراً فقط، مع ذكر أصحابها. قُصّت التسجيلات وعُدّلت شدة صوتها، ونسخة الإشعار على iOS أول ٣٠ ثانية منها.')}</p>
         <ul>
-          {manifest.recordings.filter(r => regular.concat(fajr).some(x => x.id === r.id)).map(r => (
+          {manifest.recordings.filter(r => r.licenseUrl && regular.concat(fajr).some(x => x.id === r.id)).map(r => (
             <li key={r.id}>
               <b>{recordingName(r, tr.lang)}</b> — {r.author} · <bdi dir="ltr">{r.license}</bdi>{' '}
               <button type="button" className={styles.link} onClick={() => openExternal(r.licenseUrl)}>{tr('الترخيص')}</button>{' · '}

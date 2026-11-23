@@ -2,6 +2,26 @@
   "_comment": "Adhan recordings the app may ship. Only freely licensed recordings with a clear chain of rights. status=bundled: processed files are in the repo (store-assets/adhan + android res/raw). status=candidate: run scripts/fetch-adhan.sh (needs network access to the source host), LISTEN to it, then set status to bundled. See docs/APP.md#adhan-recordings.",
   "recordings": [
     {
+      "id": "owner_fajr",
+      "type": "fajr",
+      "status": "bundled",
+      "name": {
+        "ar": "أذان الفجر",
+        "en": "Fajr adhan"
+      },
+      "author": "Provided by the owner of نور القرآن",
+      "license": "Owner-provided (rights held by the app owner)",
+      "licenseUrl": "",
+      "source": "Uploaded by the app owner on 2026-11-23 (My_Audio17.mp3)",
+      "download": "local:store-assets/adhan/src/owner_fajr.orig",
+      "sha1": "cbba1309cc5b80ebdfd2bd6c82667e9a23083248",
+      "evidence": "Chosen by the owner as the only Fajr adhan. Muezzin name and written permission to be confirmed by the owner before store release.",
+      "trim": {
+        "start": 0,
+        "end": null
+      }
+    },
+    {
       "id": "khalaf1",
       "type": "regular",
       "status": "bundled",
@@ -44,7 +64,7 @@
     {
       "id": "khalaf_fajr",
       "type": "fajr",
-      "status": "bundled",
+      "status": "rejected",
       "name": {
         "ar": "أحمد خلف — أذان الفجر",
         "en": "Ahmed Khalaf — Fajr adhan"
@@ -55,7 +75,7 @@
       "source": "https://github.com/nandxorandor/Athan/blob/ad2bf1799add51cca4aaf1f123b1c212378c7786/app/src/main/assets/athan/fajr/Developer_Athan-3_Fajr.mp3",
       "download": "https://raw.githubusercontent.com/nandxorandor/Athan/ad2bf1799add51cca4aaf1f123b1c212378c7786/app/src/main/assets/athan/fajr/Developer_Athan-3_Fajr.mp3",
       "sha1": "deb914243d02f53dde75d79c3b0605bd3ce8e9b8",
-      "evidence": "Same LICENSE as above. The author labels it the Fajr adhan; «الصلاة خير من النوم» must still be confirmed by ear before release.",
+      "evidence": "Same LICENSE as above. The author labels it the Fajr adhan; «الصلاة خير من النوم» must still be confirmed by ear before release. Owner listened on 2026-11-23 and rejected it.",
       "trim": {
         "start": 0,
         "end": null

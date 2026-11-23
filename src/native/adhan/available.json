@@ -1,8 +1,8 @@
 {
   "generated": "scripts/fetch-adhan.sh",
   "ids": [
+    "owner_fajr",
     "khalaf1",
-    "khalaf2",
-    "khalaf_fajr"
+    "khalaf2"
   ]
 }
