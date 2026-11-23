@@ -5,7 +5,9 @@
 	admin off
 	persist_config off
 	servers {
-		protocols h1 h2
+		# HTTP/1.1 only: the signal connection is a WebSocket. Over HTTP/2 (RFC 8441) Android WebView
+		# tunnelled it through h2 and LiveKit's 15 s pings stalled, so the app left and rejoined every 15 s.
+		protocols h1
 	}
 }
 
