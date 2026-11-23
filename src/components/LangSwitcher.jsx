@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { LANGS, useLang, setLang } from '../i18n';
 import styles from './LangSwitcher.module.css';
 import { Icon } from './ornaments/Ornaments';
+import { translate } from '../l10n';
 
 const SHORT = { ar: 'ع', en: 'EN', tr: 'TR', fr: 'FR', ur: 'اُ', id: 'ID' };
 
@@ -31,8 +32,8 @@ export default function LangSwitcher({ compact = false }) {
           if (r) setUp(window.innerHeight - r.bottom < 300 && r.top > window.innerHeight - r.bottom);
           setOpen(o => !o);
         }}
-        title="اللغة · Language"
-        aria-label={`اللغة: ${current.label}`}
+        title={translate(lang, 'اللغة')}
+        aria-label={`${translate(lang, 'اللغة')}: ${current.label}`}
         aria-expanded={open}
       >
         <Icon name="globe" />

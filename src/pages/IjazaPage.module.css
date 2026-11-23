@@ -186,6 +186,13 @@
   .chainMark :global(.nq-badge8) { width:46px !important; height:46px !important; }
   .articleIn { padding:44px 20px 36px; }
   .articleIn h3 { font-size:1.35rem; }
+  /* Other languages: labels are longer than the Arabic ones — show all four
+     sections as a 2×2 grid instead of a strip that hides the last tabs. */
+  :global(html:not([lang="ar"])) .secNavIn { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); overflow:visible; }
+  :global(html:not([lang="ar"])) .secLink { white-space:normal; justify-content:center; text-align:center; min-height:40px; line-height:1.25; padding:4px 8px; }
+  :global(html:not([lang="ar"])) .audioBar { top:calc(var(--header-h,72px) + 104px); }
+  /* justified Latin text leaves wide gaps on narrow screens */
+  :global([dir="ltr"]) .articleIn p { text-align:start; }
 }
 @media (max-width:420px) {
   .audioInfo span:not(.audioErr) { display:none; }

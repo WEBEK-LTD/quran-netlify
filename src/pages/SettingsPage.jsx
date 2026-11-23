@@ -9,6 +9,7 @@ import { READERS, TRANSLATIONS } from '../data';
 import { MODES, useAppearance, setAppearance } from '../appearance';
 import { PageHero, Icon, Badge8, toAr } from '../components/ornaments/Ornaments';
 import LangSwitcher from '../components/LangSwitcher';
+import AvatarEditor from '../components/account/AvatarEditor';
 import styles from './SettingsPage.module.css';
 import { useT } from '../i18n';
 import { useTr, isRtl } from '../l10n';
@@ -336,11 +337,6 @@ export default function SettingsPage() {
               </div>
             ) : (<>
               <div className={styles.profile}>
-                <span className={styles.avatar}>
-                  {avatarOf(user)
-                    ? <img src={avatarOf(user)} alt="" />
-                    : (displayNameOf(user, isRtl() ? '؟' : '?')[0] || '?').toUpperCase()}
-                </span>
                 <div className={styles.who}>
                   <b>{name}</b>
                   <span dir="ltr">{user.email}</span>
@@ -349,6 +345,8 @@ export default function SettingsPage() {
                   ? <span className={`nq-pill ${styles.warnPill}`}><Icon name="bell" />{tr('البريد غير مؤكَّد')}</span>
                   : <span className={`nq-pill ${styles.okPill}`}><Icon name="check" />{tr('البريد مؤكَّد')}</span>}
               </div>
+
+              <AvatarEditor />
 
               {user.email_verified === false && (
                 <div className={styles.verify}>
