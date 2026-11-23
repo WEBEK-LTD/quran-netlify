@@ -44,6 +44,11 @@ export function stripBasmala(text) {
     }
     if (acc.length > 24) break;
   }
+  // Last resort: «ب… … … …الرحيم» within the first words (unusual letter forms).
+  const k = tokens.findIndex((t, i) => i >= 2 && i <= 5 && /رح.م$/.test(normWord(t)));
+  if (k > 0 && normWord(tokens[0]).startsWith('ب') && k < tokens.length - 1) {
+    return tokens.slice(k + 1).join(' ').trim();
+  }
   return text;
 }
 
