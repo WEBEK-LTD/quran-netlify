@@ -168,11 +168,15 @@ a.nq-card:hover, button.nq-card:hover {
 .nq-phero .nq-frieze { position:absolute; inset-inline:0; bottom:0; opacity:.7; }
 .nq-phero > :not(.nq-pattern):not(.ph-arch):not(.nq-frieze) { position:relative; }
 .nq-phero h1 { font-family:var(--f-brand); font-weight:600; font-size:clamp(2.1rem,5.2vw,3.6rem); line-height:1.15; text-wrap:balance; }
-.nq-phero .ph-sub { color:var(--muted); max-width:56ch; }
+.nq-phero .ph-sub { color:var(--muted); max-width:min(52ch,470px); }
+.nq-phero h1, .nq-phero .ph-ayah { max-width:min(100%,520px); }
 .nq-phero .ph-ayah { font-family:var(--f-quran); color:var(--gold); font-size:clamp(1.15rem,2.4vw,1.4rem); line-height:2; }
 .nq-phero .ph-ref { color:var(--muted); font-size:.8rem; margin-top:-10px; }
 .nq-phero .ph-acts { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:4px; }
-@media (max-width:520px) { .nq-phero { padding-block:44px 60px; } }
+@media (max-width:520px) {
+  .nq-phero { padding:64px max(40px,11vw) 60px; }
+  .nq-phero .ph-arch { width:94%; }
+}
 
 /* ── overlays ─────────────────────────────────────────────────────────────── */
 .nq-overlay { position:fixed; inset:0; z-index:90; }

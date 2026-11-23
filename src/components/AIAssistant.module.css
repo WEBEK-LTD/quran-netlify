@@ -326,12 +326,14 @@
 }
 
 /* Mobile */
-@media (max-width: 600px) {
-  .fab { bottom: 80px; left: 16px; }
+/* Phones: no floating button (it covered page controls). The assistant opens
+   from «المزيد» → المساعد, or from «اسأل المساعد» on any ayah. */
+@media (max-width: 760px) {
+  .fab { display: none; }
   .panel {
-    bottom: 146px; left: 8px;
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px)); left: 8px;
     width: calc(100vw - 16px);
-    height: calc(100vh - 180px);
+    height: calc(100vh - 170px);
   }
 }
 .typingDots {

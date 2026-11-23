@@ -287,7 +287,7 @@ export default function SettingsPage() {
               <Switch checked={!!state.highlightMode} label="تظليل الآية" onChange={v => saveSetting('highlightMode', v)} />
             </Row>
 
-            <Row icon="head" title="القارئ" desc="يُستخدم عند الاستماع إلى التلاوة.">
+            <Row icon="head" title="القارئ" desc="يُستخدم عند الاستماع إلى التلاوة." stack>
               <label className={styles.selectWrap}>
                 <span className="nq-sr">القارئ</span>
                 <select className={styles.select} value={state.reader} onChange={e => saveSetting('reader', e.target.value)}>

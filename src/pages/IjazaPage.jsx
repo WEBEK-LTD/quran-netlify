@@ -435,7 +435,7 @@ export default function IjazaPage() {
       <PageHero
         eyebrow="علوم القرآن"
         title="الإجازة والقراءات"
-        sub="القراءات العشر المتواترة، وسند الإجازة المتصل برسول الله ﷺ، ومصحف تقرأ فيه بالروايات وتقارن بينها."
+        sub="القراءات العشر، وسند الإجازة المتصل برسول الله ﷺ، ومصحف تقرأ فيه بالروايات."
       />
 
       {/* audio lives outside the tabs so its listeners survive switching sections */}
