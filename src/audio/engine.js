@@ -123,6 +123,9 @@ export class AudioEngine {
       el._playing = true;
       el._unlocked = true;
       if (el !== this.active) return;
+      // the ayah has started: now let the next one buffer in full (see start())
+      const sb = this.standby;
+      if (sb && sb !== el && sb.preload !== 'auto') sb.preload = 'auto';
       this._disarmStall();
       this.everPlayed = true;
       this.fails = 0;
@@ -186,7 +189,10 @@ export class AudioEngine {
     });
   }
 
-  _load(el, url, resumeAt = 0) {
+  _load(el, url, resumeAt = 0, { lazy = false } = {}) {
+    // lazy: fetch only the header for now (the standby while the first ayah starts,
+    // so both do not share the bandwidth); `playing` on the active one upgrades it
+    el.preload = lazy ? 'metadata' : 'auto';
     el._url = url;
     el._failed = false;
     el._playing = false;
@@ -424,7 +430,7 @@ export class AudioEngine {
       const nxt = nextCursor(this.cursor, this.settings, this._opts());
       const nurl = nxt ? this._url(nxt) : null;
       const sb = this.standby;
-      if (nurl && nurl !== url && sb._url !== nurl) this._load(sb, nurl);
+      if (nurl && nurl !== url && sb._url !== nurl) this._load(sb, nurl, 0, { lazy: true });
       this._prime();
     }
     const el = this.active;

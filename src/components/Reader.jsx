@@ -104,8 +104,6 @@ const MushafAyah = memo(function MushafAyah({ item, sel, playing, buffering, lan
         tabIndex={0}
         aria-current={playing ? 'true' : undefined}
         aria-describedby={HINT_ID}
-        lang="ar"
-        data-l={lang}
       >
         {item.text}{' '}<AyahMark n={item.label} />
       </span>{' '}
@@ -459,10 +457,13 @@ export default function Reader() {
     },
     onContextMenu(e) {
       const item = itemFromEvent(e);
-      if (!item || hasTextSelection()) return;
+      if (!item) return;
+      const fromPress = Date.now() < suppressClick.current;  // our long press already opened the tools
+      if (!fromPress && hasTextSelection()) return;           // a right click on selected text: the browser menu
       e.preventDefault();
       cancelPress();
       suppressClick.current = Date.now() + 700;
+      if (e.nativeEvent && e.nativeEvent.pointerType !== 'mouse') { try { window.getSelection().removeAllRanges(); } catch {} }
       openTools(item);
     },
     onPointerDown(e) {
@@ -642,7 +643,7 @@ export default function Reader() {
             const playing = isPlayingK(item.kufi);
             return (
               <AyahCard key={item.uid} item={item} lang={tr.lang}
-                selected={!!sel && sel.uid === item.uid && barOpen}
+                selected={showSel(item.uid)}
                 playing={playing}
                 nowState={playing ? nowState : null}
                 buffering={bufferingK === item.kufi}

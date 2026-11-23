@@ -75,3 +75,20 @@ export function offlineSummary() {
 export function removeOfflineAudio(urls) {
   return ask({ type: 'nq-audio-remove', urls: urls || null }, { timeout: 30000 });
 }
+
+// Open the connection to the recitation host ahead of the first tap, so starting an
+// ayah does not also wait for DNS + TLS. Audio elements fetch without CORS, so the
+// hint carries no `crossorigin`.
+let preconnected = false;
+export function preconnectAudio() {
+  if (preconnected || typeof document === 'undefined') return;
+  preconnected = true;
+  try {
+    ['preconnect', 'dns-prefetch'].forEach(rel => {
+      const l = document.createElement('link');
+      l.rel = rel;
+      l.href = 'https://everyayah.com';
+      document.head.appendChild(l);
+    });
+  } catch {}
+}

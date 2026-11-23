@@ -18,7 +18,7 @@
     "cap:sync": "cap sync",
     "app:assets": "node scripts/app-icons.mjs && capacitor-assets generate --assetPath store-assets/app --android --ios --iconBackgroundColor '#06100C' --iconBackgroundColorDark '#06100C' --splashBackgroundColor '#060D0A' --splashBackgroundColorDark '#060D0A'",
     "app:adhan": "bash scripts/fetch-adhan.sh",
-    "test:native": "TZ=America/New_York node --test scripts/test-adhan-schedule.mjs scripts/test-push-routes.mjs",
+    "test:native": "TZ=America/New_York node --test scripts/test-adhan-schedule.mjs scripts/test-push-routes.mjs scripts/test-qibla.mjs",
     "check:native": "node scripts/check-native.mjs"
   },
   "dependencies": {

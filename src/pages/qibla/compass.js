@@ -44,11 +44,11 @@ export function kaabaDistanceKm(lat, lon) {
  * user faces, from W3C DeviceOrientation Euler angles (alpha about z, beta about x,
  * gamma about y; earth frame x = east, y = north, z = up) and the screen rotation.
  *
- * "Facing" = the screen's up edge projected on the ground PLUS the back-camera
- * direction projected on the ground. Lying flat the first one gives the heading
- * (the camera points at the floor); held upright the second one does (the top edge
- * points at the sky); in between both point the same way. So, unlike the plain
- * `360 - alpha`, the needle does not swing wildly when the phone is tilted up.
+ * "Facing" = the screen's up edge projected on the ground while the phone lies flat or
+ * tilted (roll doesn't move it), handing over smoothly to the back-camera direction
+ * as the phone is raised upright (then the up edge points at the sky and its
+ * projection — the plain `360 - alpha` — swings wildly). Both point the same way
+ * in between, so the hand-over is seamless.
  * Returns null when no direction can be derived (missing angles).
  */
 export function headingFromEuler(alpha, beta, gamma, screenAngle = 0) {
@@ -62,7 +62,12 @@ export function headingFromEuler(alpha, beta, gamma, screenAngle = 0) {
   // the screen's "up" in device coordinates for screen.orientation.angle s: (sin s, cos s)
   const ue = Math.sin(s) * X[0] + Math.cos(s) * Y[0];
   const un = Math.sin(s) * X[1] + Math.cos(s) * Y[1];
-  const e = ue + B[0], n = un + B[1];
+  const hu = Math.hypot(ue, un), hb = Math.hypot(B[0], B[1]);
+  // weight of the up edge: 1 up to ~55° of tilt, 0 from ~75° (nearly upright)
+  const w = Math.min(1, Math.max(0, (hu - 0.26) / 0.31));
+  let e = 0, n = 0;
+  if (hu > 1e-6) { e += w * ue / hu; n += w * un / hu; }
+  if (hb > 1e-6) { e += (1 - w) * B[0] / hb; n += (1 - w) * B[1] / hb; }
   if (Math.hypot(e, n) < 1e-6) return null;
   return norm360(toDeg(Math.atan2(e, n)));
 }
