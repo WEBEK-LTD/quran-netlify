@@ -7,3 +7,4 @@ storage/mail/*
 storage/schema-*.version
 storage/avatars/
 storage/cache/
+storage/*.lock
