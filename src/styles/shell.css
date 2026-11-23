@@ -102,3 +102,6 @@
   .nq-top, .nq-tabbar, .nq-footer, .nq-overlay, .nq-skip { display:none !important; }
   body { background:#fff !important; color:#000 !important; padding:0 !important; }
 }
+/* the drawer slides in from its own side in LTR languages */
+@keyframes nqSheetL { from { transform:translateX(-30px); opacity:.4; } to { transform:none; opacity:1; } }
+[dir="ltr"] .nq-sheet { animation-name:nqSheetL; }

@@ -26,8 +26,11 @@ function fill(s, vars) {
   return s.replace(/\{(\w+)\}/g, (all, k) => (vars[k] !== undefined && vars[k] !== null ? String(vars[k]) : all));
 }
 
+// A key may carry a context after «|» to tell homonyms apart, e.g. 'الحفظ|memorise'
+// vs 'الحفظ|save'. Arabic shows the part before «|».
 export function translate(lang, ar, vars) {
-  const s = (lang !== 'ar' && DICT[lang] && DICT[lang][ar]) || ar;
+  const hit = lang !== 'ar' && DICT[lang] && DICT[lang][ar];
+  const s = hit || (ar.includes('|') ? ar.slice(0, ar.indexOf('|')) : ar);
   return fill(s, vars);
 }
 
