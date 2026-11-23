@@ -386,7 +386,17 @@ final class Radio
             return $fail(sprintf('only %d bytes of audio%s', $p['bytes'], $p['error'] !== '' ? ' (' . $p['error'] . ')' : ''), $ct);
         }
         if ($browserUrl === null) {
-            return $fail('works over http only (blocked as mixed content on https)', $ct);
+            // Some hosts (e.g. radiojar) answer an https URL with a redirect to a tokenised
+            // http URL. Browsers auto-upgrade such mixed-content audio to https, so if the
+            // final host also serves the stream over https, the original https URL works.
+            $first = $chain[0] ?? '';
+            $last = (string) end($chain);
+            if (str_starts_with($first, 'https://') && str_starts_with($last, 'http://')
+                && self::httpsServesAudio('https://' . substr($last, 7))) {
+                $browserUrl = $first;
+            } else {
+                return $fail('works over http only (blocked as mixed content on https)', $ct);
+            }
         }
         return ['ok' => true, 'url' => $browserUrl, 'hls' => false, 'bitrate' => $bitrate, 'content_type' => $ct !== '' ? $ct : ($icy ? 'icy' : 'audio'),
             'reason' => trim(($ct !== '' ? $ct : 'audio') . ($icy ? ' (ICY)' : '') . ($bitrate ? ' ' . $bitrate . ' kbps' : '') . self::via($chain)), 'playlist' => null];
@@ -406,6 +416,35 @@ final class Radio
             $pick = $chain[$i];
         }
         return $pick;
+    }
+
+    /** Quick check that an https URL answers with audio (used for the http→https upgrade case). */
+    private static function httpsServesAudio(string $url): bool
+    {
+        if (!function_exists('curl_init') || !self::publicHost($url)) {
+            return false;
+        }
+        $ch = curl_init($url);
+        $got = '';
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => false,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 6,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_HTTPHEADER => ['Icy-MetaData: 0', 'User-Agent: NurAlQuran-RadioCheck/1.0'],
+            CURLOPT_WRITEFUNCTION => static function ($c, $data) use (&$got) {
+                $got .= $data;
+                return strlen($got) >= 4096 ? 0 : strlen($data); // stop after 4 KB
+            },
+        ]);
+        curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $ct = strtolower((string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE));
+        curl_close($ch);
+        return in_array($code, [200, 206], true) && strlen($got) >= 1024
+            && (str_starts_with($ct, 'audio/') || $ct === 'application/ogg' || self::sniffAudio($got));
     }
 
     /** https, or plain http to 127.0.0.1 (the local test upstream; a loopback address is a secure context in browsers). */
