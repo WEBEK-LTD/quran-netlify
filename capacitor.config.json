@@ -6,8 +6,7 @@
   "server": {
     "androidScheme": "https",
     "iosScheme": "capacitor",
-    "cleartext": false,
-    "allowNavigation": []
+    "cleartext": false
   },
   "plugins": {
     "SplashScreen": {
@@ -21,24 +20,26 @@
       "splashFullScreen": false,
       "splashImmersive": false
     },
-    "StatusBar": {
-      "overlaysWebView": false,
-      "style": "DARK",
-      "backgroundColor": "#060D0A"
-    },
     "Keyboard": {
       "resize": "body",
       "resizeOnFullScreen": true
     },
     "PushNotifications": {
-      "presentationOptions": ["badge", "sound", "alert"]
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
     },
     "LocalNotifications": {
       "smallIcon": "ic_stat_nq",
       "iconColor": "#C9A84C"
     },
     "SystemBars": {
-      "insetsHandling": "css"
+      "insetsHandling": "native",
+      "initialViewportFitValueHint": "cover",
+      "style": "DARK",
+      "animation": "NONE"
     }
   },
   "ios": {
@@ -47,7 +48,6 @@
     "scrollEnabled": true,
     "backgroundColor": "#060D0A",
     "preferredContentMode": "mobile",
-    "limitsNavigationsToAppBoundDomains": false,
     "appendUserAgent": "NurAlQuranApp"
   },
   "android": {
@@ -55,7 +55,6 @@
     "allowMixedContent": false,
     "captureInput": true,
     "webContentsDebuggingEnabled": false,
-    "appendUserAgent": "NurAlQuranApp",
-    "adjustMarginsForEdgeToEdge": "auto"
+    "appendUserAgent": "NurAlQuranApp"
   }
 }
