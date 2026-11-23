@@ -10,12 +10,12 @@
         "en": "Ibrahim Al-Madani — Fajr adhan"
       },
       "author": "Ibrahim Al-Madani (muezzin); recording provided by the owner of نور القرآن",
-      "license": "Owner-provided (rights held by the app owner)",
+      "license": "Free to use (stated by the app owner)",
       "licenseUrl": "",
       "source": "Uploaded by the app owner on 2026-11-23 (My_Audio17.mp3)",
       "download": "local:store-assets/adhan/src/owner_fajr.orig",
       "sha1": "cbba1309cc5b80ebdfd2bd6c82667e9a23083248",
-      "evidence": "Chosen by the owner as the only Fajr adhan; muezzin named by the owner on 2026-11-23. Owner to keep written permission from the muezzin before store release.",
+      "evidence": "Chosen by the owner as the only Fajr adhan; muezzin named by the owner on 2026-11-23. The owner states the recording is freely available for use.",
       "trim": {
         "start": 0,
         "end": null
