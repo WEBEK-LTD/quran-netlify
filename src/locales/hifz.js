@@ -97,7 +97,7 @@ const ROWS = [
   ['سجل الأيام · آخر {n} يوماً', 'Day log · last {n} days', 'Gün kaydı · son {n} gün', 'Journal · {n} derniers jours', 'دنوں کا ریکارڈ · آخری {n} دن', 'Catatan hari · {n} hari terakhir'],
   ['أتممت الورد', 'Portion completed', 'Vird tamamlandı', 'Portion terminée', 'ورد مکمل', 'Target selesai'],
   ['لم يُسجَّل ورد', 'No portion logged', 'Vird kaydedilmedi', 'Aucune portion', 'کوئی ورد درج نہیں', 'Tidak ada catatan'],
-  ['من {n} يوماً', 'of {n} days', '/ {n} gün', 'sur {n} jours', '/ {n} دن', 'dari {n} hari'],
+  ['من {n} يوماً', 'of {n} days', '/ {n} gün', 'sur {n} jours', '{n} دنوں میں سے', 'dari {n} hari'],
   ['يوم متواصل', 'day in a row', 'gün üst üste', 'jour d’affilée', 'دن مسلسل', 'hari berturut-turut'],
   ['أيام متواصلة', 'days in a row', 'gün üst üste', 'jours d’affilée', 'دن مسلسل', 'hari berturut-turut'],
   ['الأفضل', 'Best', 'En iyi', 'Record', 'بہترین', 'Terbaik'],
@@ -433,6 +433,15 @@ for (const [ar, ...vals] of ROWS) LANGS.forEach((l, i) => { dict[l][ar] = vals[i
 
 export default dict;
 
+// Rows used only through the scoped helpers below (not merged into the shared
+// dictionary, so the shared wording elsewhere stays as it is).
+const SCOPED_ONLY = [
+  // group-khatma part status / legend (common.js has a lowercase "completed" for the rosette centre)
+  ['تمّت قراءته', 'Completed', 'Okundu', 'Lu', 'مکمل', 'Selesai'],
+];
+const scoped = { en: { ...dict.en }, tr: { ...dict.tr }, fr: { ...dict.fr }, ur: { ...dict.ur }, id: { ...dict.id } };
+for (const [ar, ...vals] of SCOPED_ONLY) LANGS.forEach((l, i) => { scoped[l][ar] = vals[i]; });
+
 // The shared dictionary is merged from every locale file, so a short key such as
 // «محفوظة» (memorised / saved) can be overridden by another area. These pages use
 // the scoped helpers below: this file's rows first, then the shared dictionary.
@@ -440,7 +449,7 @@ const fill = (s, vars) => (vars ? s.replace(/\{(\w+)\}/g, (all, k) => (vars[k] !
 export function useHifzTr() {
   const base = useTr();
   const f = (ar, vars) => {
-    const own = dict[base.lang] && dict[base.lang][ar];
+    const own = scoped[base.lang] && scoped[base.lang][ar];
     return own ? fill(own, vars) : base(ar, vars);
   };
   f.lang = base.lang;
@@ -448,6 +457,6 @@ export function useHifzTr() {
   return f;
 }
 export function hifzTrNow(ar, vars) {
-  const own = dict[getLang()] && dict[getLang()][ar];
+  const own = scoped[getLang()] && scoped[getLang()][ar];
   return own ? fill(own, vars) : trNow(ar, vars);
 }

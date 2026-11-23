@@ -225,7 +225,7 @@ function DailyAyah() {
       <span className="nq-eyebrow">{tr('آية اليوم')}</span>
       {text
         ? <p className={`nq-q ${styles.dailyQ}`} lang="ar" dir="rtl">{text.replace(/^﻿/, '')} <AyahMark n={d.ayah} /></p>
-        : <p className={`nq-q ${styles.dailyQ} ${styles.dailyWait}`} lang="ar" dir="rtl">{failed ? d.reason : '…'}</p>}
+        : <p className={`nq-q ${styles.dailyQ} ${styles.dailyWait}`} {...(isRtl() ? { lang: 'ar', dir: 'rtl' } : {})}>{failed ? tr(d.reason) : '…'}</p>}
       <p className={styles.dailyRef}>{tr('سورة {name} · الآية {n}', { name: surahName(d.surah), n: num(d.ayah) })}</p>
       <div className={styles.dailyActs}>
         <button type="button" className="nq-btn ghost sm" onClick={() => navigate(`/reader?surah=${d.surah}&ayah=${d.ayah}`)}><Icon name="book" />{tr('اقرأ في المصحف')}</button>

@@ -196,3 +196,7 @@ button.dotBtn:hover .dot { box-shadow:0 0 0 3px var(--hl); }
 :global(html[dir="ltr"]) .icoBack { transform:scaleX(-1); }
 .icoNext { transform:scaleX(-1); }
 :global(html[dir="ltr"]) .icoNext { transform:none; }
+
+/* Inputs have a wide intrinsic size: let grid/flex children shrink so the join card
+   and the create form never push past a phone's width (any language). */
+.startGrid > *, .joinCard > *, .form > *, .field, .field > *, .joinRow > *, .addRow > * { min-width:0; }

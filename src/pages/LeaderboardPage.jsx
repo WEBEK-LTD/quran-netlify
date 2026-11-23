@@ -26,7 +26,7 @@ const TABS = [
 // Grouped number in the visitor's language (Arabic keeps ١٬٢٣٤)
 const fmt = n => (isRtl()
   ? toAr((n || 0).toLocaleString('en-US').replace(/,/g, '٬'))
-  : num((n || 0).toLocaleString(intlLocale())));
+  : num((n || 0).toLocaleString(intlLocale()).replace(/\u202f/g, '\u00a0')));
 // Arabic reference line, plus a transliterated reference in LTR languages
 const ayahRefLine = (ar, s, a) => (isRtl() ? ar : `${ar} — ${surahName(s)} ${s}:${a}`);
 
