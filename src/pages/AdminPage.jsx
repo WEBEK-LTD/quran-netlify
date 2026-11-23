@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getUnreadCount } from '../adminApi';
 import { toggleScheme, useAppearance } from '../appearance';
 import { Icon, Badge8, Pattern } from '../components/ornaments/Ornaments';
-import { styles, useInterval, Avatar, Ico } from './admin/shared';
+import { styles, useInterval, Avatar } from './admin/shared';
 import { OverviewTab, AnalyticsTab } from './admin/StatsTabs';
 import UsersTab from './admin/UsersTab';
 import BroadcastsTab from './admin/BroadcastsTab';
@@ -177,4 +177,3 @@ function Gate({ icon, title, text, action }) {
   );
 }
 
-export { Ico };
