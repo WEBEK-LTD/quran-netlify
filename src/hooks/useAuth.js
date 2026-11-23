@@ -1,34 +1,76 @@
 import { useState, useEffect } from 'react';
-import { getInitialSession, onAuthChange, isConfigured } from '../supabase';
+import { api, setToken } from '../apiClient';
+
+// ─── One shared auth state for the whole app ─────────────────────────────────
+// Initialised once by GET /auth/me. Every useAuth() subscribes to the same store,
+// so signing in/out anywhere updates every component at once.
+// User shape (docs/API.md): { id, email, name, avatar_url, gender, birthdate,
+//   is_admin, email_verified, show_on_leaderboard, created_at, has_password? }
+
+let authState = { user: null, loading: true };
+const subscribers = new Set();
+let started = false;
+let inflight = null;
+
+function emit() {
+  subscribers.forEach(fn => { try { fn(authState); } catch {} });
+}
+
+export function setAuthUser(user) {
+  authState = { user: user || null, loading: false };
+  emit();
+}
+
+export function getAuthUser() { return authState.user; }
+
+// Re-reads the session from the API. Never rejects.
+export function refreshAuth() {
+  if (inflight) return inflight;
+  inflight = api.get('/auth/me')
+    .then(d => { setAuthUser(d && d.user ? d.user : null); return authState.user; })
+    .catch(e => {
+      if (e && (e.status === 401 || e.code === 'unauthenticated' || e.code === 'banned')) setAuthUser(null);
+      else if (authState.loading) setAuthUser(null);   // offline on first load → act as guest
+      return authState.user;
+    })
+    .finally(() => { inflight = null; });
+  return inflight;
+}
+
+export async function signOutAuth() {
+  try { await api.post('/auth/logout'); } catch {}
+  setToken(null);
+  setAuthUser(null);
+}
+
+function onExpired() {
+  setToken(null);
+  if (authState.user || authState.loading) setAuthUser(null);
+}
+
+export function ensureAuthStarted() {
+  if (started) return;
+  started = true;
+  try { window.addEventListener('nq-auth-expired', onExpired); } catch {}
+  refreshAuth();
+}
 
 export function useAuth() {
-  const configured = isConfigured();
-  const [user,    setUser]    = useState(null);
-  const [loading, setLoading] = useState(configured); // لو مش configured مش هننتظر
+  const [state, setState] = useState(authState);
 
   useEffect(() => {
-    if (!configured) return;
-
-    let unsub = () => {};
-    let settled = false;
-
-    // اشتركت في auth changes أولاً — عشان مش نفوّت أي event
-    onAuthChange((u, event) => {
-      setUser(u);
-      if (!settled) { settled = true; setLoading(false); }
-    }).then(fn => { unsub = fn; });
-
-    // ثم جبنا الـ session الحالي كـ fallback لو مفيش event جه بسرعة
-    getInitialSession().then(session => {
-      if (!settled) {
-        settled = true;
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    });
-
-    return () => unsub();
+    subscribers.add(setState);
+    setState(authState);        // in case it changed between render and mount
+    ensureAuthStarted();
+    return () => { subscribers.delete(setState); };
   }, []);
 
-  return { user, loading };
+  return { user: state.user, loading: state.loading, refresh: refreshAuth, signOut: signOutAuth };
 }
+
+// Display helpers (replace the old user.user_metadata.* reads)
+export function displayNameOf(user, fallback = '') {
+  if (!user) return fallback;
+  return (user.name && String(user.name).trim()) || (user.email ? user.email.split('@')[0] : '') || fallback;
+}
+export function avatarOf(user) { return (user && user.avatar_url) || null; }

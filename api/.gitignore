@@ -1,0 +1,6 @@
+# Written by install.php — contains DB credentials and app_key. Never commit.
+config.php
+config.php.tmp*
+storage/logs/*
+!storage/logs/.gitkeep
+storage/mail/*
