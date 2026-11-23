@@ -128,7 +128,7 @@ final class MessagesController
             $params[] = $sinceDt;
         }
         $rows = Db::all(
-            'SELECT c.*, ' . Community::briefCols() . ', m.id AS m_id, m.body AS m_body, m.sender_id AS m_sender, m.created_at AS m_created,
+            'SELECT c.*, c.id AS conv_id, ' . Community::briefCols() . ', m.id AS m_id, m.body AS m_body, m.sender_id AS m_sender, m.created_at AS m_created,
                 (SELECT COUNT(*) FROM dm_messages x WHERE x.conversation_id = c.id AND x.deleted_at IS NULL AND x.sender_id <> ?
                    AND x.id > (CASE WHEN c.user_low = ? THEN c.low_read_id ELSE c.high_read_id END)) AS unread
              FROM conversations c
@@ -140,7 +140,7 @@ final class MessagesController
             $params
         );
         $items = array_map(static fn (array $c): array => [
-            'id' => (int) $c['id'],
+            'id' => (int) $c['conv_id'],
             'other' => Community::brief($c),
             'started_by_me' => (int) $c['started_by'] === $me,
             'last_message' => $c['m_id'] !== null ? [

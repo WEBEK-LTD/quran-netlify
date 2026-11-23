@@ -1166,6 +1166,9 @@ if ($LOCAL !== null && $FAKE !== null) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+require __DIR__ . '/smoke-community.php'; // voice rooms & community (needs --local and --fake-upstream)
+
+// ───────────────────────────────────────────────────────────────────────────
 section('Rate limiting');
 $codes = [];
 for ($i = 0; $i < 11; $i++) {

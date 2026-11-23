@@ -20,3 +20,13 @@ Thumbs.db
 
 # API server config (database credentials, app key) — never commit
 api/config.php
+
+# native app secrets / local signing (docs/APP.md)
+android/key.properties
+*.jks
+*.keystore
+android/app/google-services.json
+ios/App/App/GoogleService-Info.plist
+*.p8
+*.p12
+*.mobileprovision

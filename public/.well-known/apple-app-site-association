@@ -1,0 +1,97 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "TEAMID.net.nuralquran.app"
+        ],
+        "components": [
+          {
+            "/": "/admin*",
+            "exclude": true,
+            "comment": "admin area stays in the browser"
+          },
+          {
+            "/": "/seo/*",
+            "exclude": true
+          },
+          {
+            "/": "/*.xml",
+            "exclude": true
+          },
+          {
+            "/": "/*.txt",
+            "exclude": true
+          },
+          {
+            "/": "/*.md",
+            "exclude": true
+          },
+          {
+            "/": "/"
+          },
+          {
+            "/": "/reader*"
+          },
+          {
+            "/": "/prayer-times*"
+          },
+          {
+            "/": "/qibla*"
+          },
+          {
+            "/": "/adhkar*"
+          },
+          {
+            "/": "/tasbih*"
+          },
+          {
+            "/": "/radio*"
+          },
+          {
+            "/": "/daily-ayah*"
+          },
+          {
+            "/": "/hifz*"
+          },
+          {
+            "/": "/khatma*"
+          },
+          {
+            "/": "/search*"
+          },
+          {
+            "/": "/dashboard*"
+          },
+          {
+            "/": "/favorites*"
+          },
+          {
+            "/": "/notes*"
+          },
+          {
+            "/": "/leaderboard*"
+          },
+          {
+            "/": "/ijaza*"
+          },
+          {
+            "/": "/support*"
+          },
+          {
+            "/": "/settings*"
+          },
+          {
+            "/": "/auth/callback*"
+          },
+          {
+            "/": "/reset-password*"
+          },
+          {
+            "/": "/??/surah/*"
+          }
+        ]
+      }
+    ]
+  }
+}

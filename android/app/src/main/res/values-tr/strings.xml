@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="media_channel_name">Tilavet ve radyo oynatma</string>
+    <string name="media_channel_description">Oynatma sırasında ve kilit ekranında tilavet veya radyo kontrolleri</string>
+    <string name="media_play">Oynat</string>
+    <string name="media_pause">Duraklat</string>
+    <string name="media_previous">Önceki</string>
+    <string name="media_next">Sonraki</string>
+</resources>

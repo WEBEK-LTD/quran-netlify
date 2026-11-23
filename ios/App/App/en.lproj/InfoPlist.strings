@@ -1,0 +1,3 @@
+/* Permission prompts (Info.plist keys) — English */
+"NSLocationWhenInUseUsageDescription" = "Nur Al-Quran uses your location to calculate prayer times and the qibla direction for your city. Times are calculated on your device; your location is not stored on our servers.";
+"NSMicrophoneUsageDescription" = "Nur Al-Quran uses the microphone only when you ask to speak in a voice room, so the other participants can hear you. Your voice is not recorded and the microphone is never used at any other time.";

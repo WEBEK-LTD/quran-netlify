@@ -1,0 +1,2 @@
+"NSLocationWhenInUseUsageDescription" = "Nur Al-Quran, şehriniz için namaz vakitlerini ve kıble yönünü hesaplamak üzere konumunuzu kullanır. Vakitler cihazınızda hesaplanır; konumunuz sunucularımızda saklanmaz.";
+"NSMicrophoneUsageDescription" = "Nur Al-Quran mikrofonu yalnızca sesli bir odada konuşmak istediğinizde, katılımcılar sizi duyabilsin diye kullanır. Sesiniz kaydedilmez ve mikrofon başka hiçbir zaman kullanılmaz.";

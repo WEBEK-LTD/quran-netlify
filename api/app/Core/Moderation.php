@@ -100,7 +100,7 @@ final class Moderation
 
     /**
      * The comparable forms of a text.
-     * @return array{tokens:list<string>, joined:string, franco:list<string>, latin:list<string>}
+     * @return array{tokens:list<string>, joined:string, latin_joined:string, franco:list<string>, latin:list<string>}
      */
     public static function textForms(string $text): array
     {
@@ -135,9 +135,16 @@ final class Moderation
             $tokens[] = self::collapse($letters);
         }
         $flush();
+        foreach ($tokens as $tok) { // joined single letters («i d i o t») and dotted words count for latin words too
+            if (preg_match('/[a-z]/', $tok) === 1) {
+                $latin[] = self::leet($tok);
+            }
+        }
+        $joined = self::collapse(self::lettersOnly($f));
         return [
             'tokens' => $tokens,
-            'joined' => self::collapse(self::lettersOnly($f)),
+            'joined' => $joined,
+            'latin_joined' => preg_match('/[a-z]/', $joined) === 1 ? self::leet($joined) : '',
             'franco' => array_values(array_filter($franco, static fn (string $s): bool => $s !== '')),
             'latin' => $latin,
         ];
@@ -160,37 +167,45 @@ final class Moderation
         return self::$words = $out;
     }
 
-    /** @param array{ar:string, skel:string, latin:string} $w @param array{tokens:list<string>, joined:string, franco:list<string>, latin:list<string>} $t */
-    public static function matches(array $w, array $t): bool
+    /**
+     * 'strong' = the word itself (or an evasion of it) is in a word of the text; 'weak' = only found once every space
+     * is removed (could straddle two innocent words), which never suspends: a severe word found only that way is
+     * treated as «possible» (held for review).
+     * @param array{ar:string, skel:string, latin:string} $w @param array<string,mixed> $t
+     */
+    public static function matches(array $w, array $t): ?string
     {
         if ($w['ar'] !== '') {
             $len = mb_strlen($w['ar']);
             foreach ($t['tokens'] as $tok) {
                 if ($tok === $w['ar'] || ($len >= 3 && mb_strpos($tok, $w['ar']) !== false)) {
-                    return true;
+                    return 'strong';
                 }
-            }
-            if ($len >= 4 && mb_strpos($t['joined'], $w['ar']) !== false) {
-                return true;
             }
             $sk = $w['skel'];
             if (mb_strlen($sk) >= 3) {
                 foreach ($t['franco'] as $fr) {
                     if ($fr === $sk || $fr === 'ل' . $sk || (mb_strlen($sk) >= 4 && mb_strpos($fr, $sk) !== false)) {
-                        return true;
+                        return 'strong';
                     }
                 }
+            }
+            if ($len >= 4 && mb_strpos($t['joined'], $w['ar']) !== false) {
+                return 'weak';
             }
         }
         if ($w['latin'] !== '') {
             $len = strlen($w['latin']);
             foreach ($t['latin'] as $tok) {
                 if ($tok === $w['latin'] || ($len >= 4 && str_contains($tok, $w['latin']))) {
-                    return true;
+                    return 'strong';
                 }
             }
+            if ($len >= 5 && $t['latin_joined'] !== '' && str_contains($t['latin_joined'], $w['latin'])) {
+                return 'weak';
+            }
         }
-        return false;
+        return null;
     }
 
     /** First match, severe words first. @return array{id:int, word:string, level:string}|null */
@@ -204,12 +219,17 @@ final class Moderation
             return null;
         }
         $t = self::textForms($text);
+        $weak = null;
         foreach ($words as $w) {
-            if (self::matches($w, $t)) {
+            $m = self::matches($w, $t);
+            if ($m === 'strong') {
                 return ['id' => $w['id'], 'word' => $w['word'], 'level' => $w['level']];
             }
+            if ($m === 'weak' && $weak === null) {
+                $weak = ['id' => $w['id'], 'word' => $w['word'], 'level' => 'possible'];
+            }
         }
-        return null;
+        return $weak;
     }
 
     /**

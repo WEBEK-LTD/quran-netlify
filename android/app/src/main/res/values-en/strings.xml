@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- The app name stays «نور القرآن» in every language (brand). -->
+    <string name="media_channel_name">Recitation and radio playback</string>
+    <string name="media_channel_description">Controls for the recitation or radio while it plays and on the lock screen</string>
+    <string name="media_play">Play</string>
+    <string name="media_pause">Pause</string>
+    <string name="media_previous">Previous</string>
+    <string name="media_next">Next</string>
+</resources>

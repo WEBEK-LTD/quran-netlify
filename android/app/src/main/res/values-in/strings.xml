@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="media_channel_name">Pemutaran tilawah dan radio</string>
+    <string name="media_channel_description">Kontrol tilawah atau radio saat diputar dan di layar kunci</string>
+    <string name="media_play">Putar</string>
+    <string name="media_pause">Jeda</string>
+    <string name="media_previous">Sebelumnya</string>
+    <string name="media_next">Berikutnya</string>
+</resources>

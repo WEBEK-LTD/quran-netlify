@@ -174,3 +174,15 @@
   for = "/admin/*"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
+
+# Native app links (docs/APP.md): iOS universal links and Android App Links.
+# Note: deploy/apache-proxy.conf serves /.well-known/ from the Apache host, not
+# Netlify — copy these two files there too (or proxy them; see docs/APP.md).
+[[headers]]
+  for = "/.well-known/apple-app-site-association"
+  [headers.values]
+    Content-Type = "application/json"
+[[headers]]
+  for = "/.well-known/assetlinks.json"
+  [headers.values]
+    Content-Type = "application/json"

@@ -6,6 +6,7 @@ namespace NQ\Controllers;
 use NQ\Core\ApiError;
 use NQ\Core\Auth;
 use NQ\Core\Avatar;
+use NQ\Core\Community;
 use NQ\Core\Db;
 use NQ\Core\Mailer;
 use NQ\Core\MailText;
@@ -222,14 +223,23 @@ final class AuthController
             $sets[] = 'show_on_leaderboard = ?';
             $params[] = (int) V::bool($b, 'show_on_leaderboard');
         }
+        // Once the account has entered the voice rooms/community, gender and birthdate are locked (admins correct them).
+        $joined = Migrations::ready() && Db::value('SELECT 1 FROM community_profiles WHERE user_id = ?', [$uid]) !== null;
         if (array_key_exists('gender', $b)) {
+            $g = $b['gender'] === null || $b['gender'] === '' ? null : V::enum($b, 'gender', ['male', 'female']);
+            if ($joined && $g !== $r->user['gender']) {
+                throw new ApiError(409, 'gender_locked', 'لا يمكن تغيير الجنس بعد تحديده. تواصل مع الدعم إن كان هناك خطأ.');
+            }
             $sets[] = 'gender = ?';
-            $params[] = $b['gender'] === null || $b['gender'] === '' ? null : V::enum($b, 'gender', ['male', 'female']);
+            $params[] = $g;
         }
         if (array_key_exists('birthdate', $b)) {
             $bd = V::date($b, 'birthdate', false);
             if ($bd !== null && $bd > gmdate('Y-m-d')) {
                 throw ApiError::validation(['birthdate' => 'تاريخ غير صالح.']);
+            }
+            if ($joined && $bd !== ($r->user['birthdate'] ?: null)) {
+                throw new ApiError(409, 'birthdate_locked', 'لا يمكن تغيير تاريخ الميلاد بعد تحديده. تواصل مع الدعم إن كان هناك خطأ.');
             }
             $sets[] = 'birthdate = ?';
             $params[] = $bd;
@@ -259,6 +269,9 @@ final class AuthController
         // Foreign keys cascade: sessions, tokens, bookmarks, notes, progress, reading log, hifz,
         // khatmat, owned group rooms (+ parts, takers, members), claims, memberships, tickets, bans, presence.
         $photo = $r->user['avatar_file'] ?? null;
+        if (Migrations::ready()) {
+            Community::onAccountDelete($uid); // close own rooms, hand over founded groups
+        }
         Db::exec('DELETE FROM users WHERE id = ?', [$uid]);
         Avatar::delete(is_string($photo) ? $photo : null); // the profile photo file too
         Auth::clearCookie();
@@ -301,6 +314,14 @@ final class AuthController
             'group_claims' => Db::all('SELECT room_code, part_index, name, done, done_at FROM group_takers WHERE user_id = ?', [$uid]),
             'group_memberships' => Db::all('SELECT room_code, joined_at FROM group_members WHERE user_id = ?', [$uid]),
             'support_tickets' => $tickets,
+            'community' => [
+                'profile' => Db::one('SELECT bio, facebook_url, instagram_url, is_private, dm_policy, claps_sent, claps_received, joined_at FROM community_profiles WHERE user_id = ?', [$uid]),
+                'friends' => array_map('intval', array_column(Db::all('SELECT friend_id FROM friendships WHERE user_id = ?', [$uid]), 'friend_id')),
+                'following' => array_map('intval', array_column(Db::all('SELECT followee_id FROM follows WHERE follower_id = ?', [$uid]), 'followee_id')),
+                'blocked' => array_map('intval', array_column(Db::all('SELECT blocked_id FROM blocks WHERE blocker_id = ?', [$uid]), 'blocked_id')),
+                'groups' => Db::all('SELECT g.id, g.name, m.role, m.joined_at FROM cgroup_members m JOIN cgroups g ON g.id = m.group_id WHERE m.user_id = ?', [$uid]),
+                'direct_messages_sent' => Db::all('SELECT conversation_id, recipient_id, body, created_at FROM dm_messages WHERE sender_id = ? AND deleted_at IS NULL ORDER BY id', [$uid]),
+            ],
         ];
         return new Reply($data, 200, ['Content-Disposition' => 'attachment; filename="nuralquran-export.json"']);
     }

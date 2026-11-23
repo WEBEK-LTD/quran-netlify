@@ -1,0 +1,2 @@
+"NSLocationWhenInUseUsageDescription" = "Nur Al-Quran utilise votre position pour calculer les horaires de prière et la direction de la qibla pour votre ville. Les horaires sont calculés sur votre appareil ; votre position n’est pas conservée sur nos serveurs.";
+"NSMicrophoneUsageDescription" = "Nur Al-Quran utilise le micro uniquement quand vous demandez à parler dans un salon vocal, pour que les participants vous entendent. Votre voix n’est pas enregistrée et le micro n’est jamais utilisé à un autre moment.";

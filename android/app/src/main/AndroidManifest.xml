@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:allowBackup="true"
@@ -7,6 +8,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:localeConfig="@xml/locales_config"
+        android:enableOnBackInvokedCallback="false"
         android:theme="@style/AppTheme">
 
         <activity
@@ -15,6 +18,7 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
+            android:showWhenLocked="false"
             android:exported="true">
 
             <intent-filter>
@@ -22,7 +26,63 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Android App Links: https://nuralquran.net/… opens the app (verified with
+                 https://nuralquran.net/.well-known/assetlinks.json — see docs/APP.md). Only
+                 app routes; the admin area, sitemaps and files stay in the browser. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="nuralquran.net" />
+                <data android:path="/" />
+                <data android:pathPrefix="/reader" />
+                <data android:pathPrefix="/prayer-times" />
+                <data android:pathPrefix="/qibla" />
+                <data android:pathPrefix="/adhkar" />
+                <data android:pathPrefix="/tasbih" />
+                <data android:pathPrefix="/radio" />
+                <data android:pathPrefix="/daily-ayah" />
+                <data android:pathPrefix="/hifz" />
+                <data android:pathPrefix="/khatma" />
+                <data android:pathPrefix="/search" />
+                <data android:pathPrefix="/dashboard" />
+                <data android:pathPrefix="/favorites" />
+                <data android:pathPrefix="/notes" />
+                <data android:pathPrefix="/leaderboard" />
+                <data android:pathPrefix="/ijaza" />
+                <data android:pathPrefix="/support" />
+                <data android:pathPrefix="/settings" />
+                <data android:pathPrefix="/auth/callback" />
+                <data android:pathPrefix="/reset-password" />
+                <data android:pathPattern="/../surah/.*" />
+            </intent-filter>
+
+            <!-- Custom scheme: Google sign-in return (nuralquran://auth?token=…) and fallback links -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="nuralquran" />
+            </intent-filter>
         </activity>
+
+        <!-- Lock-screen / notification media controls while the recitation or radio plays -->
+        <service
+            android:name=".NQMediaService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- FCM: notifications that arrive while the app is in the background use these -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_nq" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/nq_gold" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="community" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -31,11 +91,39 @@
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"></meta-data>
+                android:resource="@xml/file_paths" />
         </provider>
     </application>
 
-    <!-- Permissions -->
+    <queries>
+        <!-- @capacitor/browser: Custom Tabs for Google sign-in -->
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
 
+    <!-- Permissions (each one is explained in docs/APP.md → "Android permissions") -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- prayer times for "use my location" (the WebView's geolocation); stays on the device -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- adhan / reminders / daily ayah (local notifications) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- exact adhan time; user-granted ("Alarms & reminders"). USE_EXACT_ALARM is deliberately
+         NOT declared: Play restricts it to alarm-clock/calendar apps (see docs/APP.md). -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- recitation / radio keep playing with the screen off -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- Voice rooms (not shipped yet). Uncomment together with the privacy policy and
+         Data safety updates when rooms launch — an unused microphone permission is a
+         review red flag and contradicts the current privacy policy («لا نصل إلى الميكروفون»).
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    -->
 </manifest>

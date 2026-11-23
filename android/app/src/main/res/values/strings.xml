@@ -3,5 +3,13 @@
     <string name="app_name">نور القرآن</string>
     <string name="title_activity_main">نور القرآن</string>
     <string name="package_name">net.nuralquran.app</string>
-    <string name="custom_url_scheme">net.nuralquran.app</string>
+    <string name="custom_url_scheme">nuralquran</string>
+
+    <!-- Media controls (NQMediaService) -->
+    <string name="media_channel_name">تشغيل التلاوة والإذاعة</string>
+    <string name="media_channel_description">أزرار التحكم في التلاوة أو الإذاعة أثناء التشغيل وقفل الشاشة</string>
+    <string name="media_play">تشغيل</string>
+    <string name="media_pause">إيقاف مؤقت</string>
+    <string name="media_previous">السابق</string>
+    <string name="media_next">التالي</string>
 </resources>

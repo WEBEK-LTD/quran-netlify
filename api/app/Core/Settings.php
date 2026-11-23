@@ -10,7 +10,7 @@ final class Settings
 
     /** Voice-room limits set by the admins (PUT /admin/community/settings): key => [default, min, max]. */
     public const ROOM_LIMITS = [
-        'max_listeners' => [500, 10, 5000],      // listeners per room (stage not counted)
+        'max_listeners' => [500, 1, 5000],      // listeners per room (stage not counted)
         'max_concurrent' => [20, 1, 500],        // rooms open at the same time, whole site
         'max_per_user' => [3, 1, 20],            // open + scheduled rooms per person
         'auto_close_minutes' => [10, 2, 240],    // close a room after this long with nobody on stage

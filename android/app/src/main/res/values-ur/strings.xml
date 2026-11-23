@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="media_channel_name">تلاوت اور ریڈیو</string>
+    <string name="media_channel_description">چلنے کے دوران اور لاک اسکرین پر تلاوت یا ریڈیو کے کنٹرول</string>
+    <string name="media_play">چلائیں</string>
+    <string name="media_pause">روکیں</string>
+    <string name="media_previous">پچھلا</string>
+    <string name="media_next">اگلا</string>
+</resources>

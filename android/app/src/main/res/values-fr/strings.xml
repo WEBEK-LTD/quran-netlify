@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="media_channel_name">Lecture de la récitation et de la radio</string>
+    <string name="media_channel_description">Commandes de la récitation ou de la radio pendant la lecture et sur l’écran verrouillé</string>
+    <string name="media_play">Lire</string>
+    <string name="media_pause">Pause</string>
+    <string name="media_previous">Précédent</string>
+    <string name="media_next">Suivant</string>
+</resources>

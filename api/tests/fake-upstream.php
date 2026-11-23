@@ -10,6 +10,11 @@ declare(strict_types=1);
  *   /mp3quran/api/v3/radios?language= → tests/fixtures/mp3quran-radios-<ar|eng>.json, «{BASE}» = this server
  *   /radio/…                          → fake radio streams for the radio checker (see radioRoute() below);
  *                                       /radio/* and /mp3quran/api/v3/radios answer 503 while <state>/radio-down exists
+ *   /livekit/twirp/livekit.RoomService/<M> → a LiveKit server API stand-in (503 while <state>/livekit-down exists)
+ *   /fcm/token                        → Google OAuth token endpoint stand-in (service-account JWT grant)
+ *   /fcm/v1/projects/<p>/messages:send → FCM HTTP v1 stand-in (a token starting with "dead" → 404 UNREGISTERED)
+ *   /apns/3/device/<token>            → APNs stand-in (a token starting with "dead" → 410 Unregistered)
+ *   LiveKit / FCM / APNs requests are appended as JSON lines (headers + body) to <state>/livekit.log and <state>/push.log.
  * <state> is sys_get_temp_dir()/nq-fake-upstream-<port>; every request path is appended to <state>/requests.log
  * so the smoke test can tell whether the API answered from its cache.
  */
@@ -20,6 +25,10 @@ $state = sys_get_temp_dir() . '/nq-fake-upstream-' . ($_SERVER['SERVER_PORT'] ??
 file_put_contents($state . '/requests.log', $path . "\n", FILE_APPEND);
 $self = 'http://127.0.0.1:' . ($_SERVER['SERVER_PORT'] ?? '0');
 
+if (str_starts_with($path, '/livekit/') || str_starts_with($path, '/fcm/') || str_starts_with($path, '/apns/')) {
+    pushRoute($path, $state);
+    return;
+}
 if ($path === '/mp3quran/api/v3/radios' || str_starts_with($path, '/radio/')) {
     if (is_file($state . '/radio-down')) {
         http_response_code(503);
@@ -99,4 +108,63 @@ function radioRoute(string $path, string $self): void
             echo 'no such stream';
         })(),
     };
+}
+
+/** LiveKit / FCM / APNs stand-ins: log what the API sent, answer like the real services. */
+function pushRoute(string $path, string $state): void
+{
+    $body = (string) file_get_contents('php://input');
+    $headers = array_change_key_case(function_exists('getallheaders') ? (array) getallheaders() : [], CASE_LOWER);
+    header('Content-Type: application/json');
+    if (str_starts_with($path, '/livekit/')) {
+        $method = (string) preg_replace('#^.*/livekit\.RoomService/#', '', $path);
+        file_put_contents($state . '/livekit.log', json_encode(['method' => $method, 'auth' => $headers['authorization'] ?? '', 'body' => json_decode($body, true)]) . "\n", FILE_APPEND);
+        if (is_file($state . '/livekit-down')) {
+            http_response_code(503);
+            echo '{"code":"unavailable","msg":"down"}';
+            return;
+        }
+        $req = json_decode($body, true) ?: [];
+        echo json_encode(match ($method) {
+            'ListRooms' => ['rooms' => []],
+            'CreateRoom' => ['sid' => 'RM_fake', 'name' => $req['name'] ?? ''],
+            'GetParticipant' => ['sid' => 'PA_fake', 'identity' => $req['identity'] ?? '', 'tracks' => [
+                ['sid' => 'TR_audio_' . ($req['identity'] ?? ''), 'type' => 'AUDIO', 'source' => 'MICROPHONE', 'muted' => false],
+            ]],
+            default => new stdClass(),
+        });
+        return;
+    }
+    $log = static function (string $kind, array $extra = []) use ($state, $path, $headers, $body): void {
+        file_put_contents($state . '/push.log', json_encode(['kind' => $kind, 'path' => $path, 'headers' => $headers, 'body' => $body] + $extra, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND);
+    };
+    if ($path === '/fcm/token') {
+        parse_str($body, $form);
+        $log('fcm_token', ['assertion' => $form['assertion'] ?? '']);
+        echo json_encode(['access_token' => 'fake-access-' . bin2hex(random_bytes(4)), 'expires_in' => 3599, 'token_type' => 'Bearer']);
+        return;
+    }
+    if (preg_match('#^/fcm/v1/projects/([^/]+)/messages:send$#', $path)) {
+        $log('fcm_send');
+        $msg = json_decode($body, true);
+        if (str_starts_with((string) ($msg['message']['token'] ?? ''), 'dead')) {
+            http_response_code(404);
+            echo '{"error":{"code":404,"status":"NOT_FOUND","details":[{"@type":"type.googleapis.com/google.firebase.fcm.v1.FcmError","errorCode":"UNREGISTERED"}]}}';
+            return;
+        }
+        echo '{"name":"projects/fake/messages/1"}';
+        return;
+    }
+    if (preg_match('#^/apns/3/device/([a-f0-9]+)$#', $path, $m)) {
+        $log('apns_send', ['device' => $m[1]]);
+        if (str_starts_with($m[1], 'dead')) {
+            http_response_code(410);
+            echo '{"reason":"Unregistered","timestamp":1700000000000}';
+            return;
+        }
+        header('apns-id: 00000000-0000-0000-0000-000000000001');
+        return;
+    }
+    http_response_code(404);
+    echo '{"error":"no route"}';
 }
