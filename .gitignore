@@ -1,0 +1,19 @@
+# dependencies and build output
+node_modules/
+dist/
+
+# local environment files (never commit secrets)
+.env
+.env.*
+
+# native app build output (Capacitor)
+android/app/build/
+ios/App/Pods/
+ios/App/build/
+
+# editor and OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
