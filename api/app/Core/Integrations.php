@@ -8,14 +8,14 @@ final class Integrations
 {
     /** key => [label, secret] */
     public const KEYS = [
-        'google_client_id'     => ['Google OAuth — Client ID', false],
-        'google_client_secret' => ['Google OAuth — Client Secret', true],
-        'ai_provider'          => ['مزوّد الذكاء الاصطناعي (openai | anthropic)', false],
+        'google_client_id'     => ['معرّف عميل Google (Client ID)', false],
+        'google_client_secret' => ['السر السري لعميل Google (Client Secret)', true],
+        'ai_provider'          => ['مزوّد الذكاء الاصطناعي (openai أو anthropic)', false],
         'ai_model'             => ['نموذج الذكاء الاصطناعي (اختياري)', false],
-        'openai_api_key'       => ['OpenAI API Key', true],
-        'anthropic_api_key'    => ['Anthropic API Key', true],
-        'mail_from_address'    => ['عنوان المرسل للبريد', false],
-        'mail_from_name'       => ['اسم المرسل للبريد', false],
+        'openai_api_key'       => ['مفتاح OpenAI', true],
+        'anthropic_api_key'    => ['مفتاح Anthropic', true],
+        'mail_from_address'    => ['عنوان البريد المُرسِل', false],
+        'mail_from_name'       => ['اسم المُرسِل في البريد', false],
     ];
 
     /** @var array<string,string>|null */
@@ -63,13 +63,17 @@ final class Integrations
         $items = [];
         foreach (self::KEYS as $key => [$label, $secret]) {
             $v = $vals[$key] ?? '';
-            $items[] = [
+            $item = [
                 'key' => $key,
                 'label' => $label,
                 'set' => $v !== '',
                 'preview' => $v === '' ? null : ($secret ? self::mask($v) : $v),
                 'secret' => $secret,
             ];
+            if (!$secret) {
+                $item['value'] = $v; // non-secret settings are returned in full; secrets never are
+            }
+            $items[] = $item;
         }
         return $items;
     }

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useHifz, localDateStr, parseLocalDate } from '../hifzStore';
+import { useAuth } from '../hooks/useAuth';
+import { listKhatmat, createKhatma, updateKhatma, deleteKhatma as apiDeleteKhatma, errorMessage } from '../backend';
 import styles from './KhatmaPage.module.css';
 import { useT, useLang, useDir, TRANSLATIONS } from '../i18n';
 import LangSwitcher from '../components/LangSwitcher';
@@ -10,7 +12,20 @@ const KHATMA_KEY = 'nq_khatmat';
 function loadKhatmat() {
   try { return JSON.parse(localStorage.getItem(KHATMA_KEY) || '[]'); } catch { return []; }
 }
-function saveKhatmat(k) { localStorage.setItem(KHATMA_KEY, JSON.stringify(k)); }
+function saveKhatmat(k) { try { localStorage.setItem(KHATMA_KEY, JSON.stringify(k)); } catch {} }
+
+// UI type key ↔ API type (docs/API.md: reading|memorizing|daily|listening|review)
+const toApiType   = key => (key === 'needsReview' ? 'review' : key);
+const fromApiType = typ => (typ === 'review' ? 'needsReview' : typ);
+// API Khatma → the shape this page renders
+function fromApi(k) {
+  return { id: k.id, start: k.start_date, end: k.end_date, type: fromApiType(k.type), notes: k.notes || '', created: k.created_at };
+}
+function toApi(form) {
+  const key = typeKeyOf(form.type) || 'reading';
+  return { type: toApiType(key), start_date: form.start, end_date: form.end, notes: form.notes || '' };
+}
+const mergedFlag = uid => `nq_khatmat_merged_${uid}`;
 
 // Dates are stored as local 'YYYY-MM-DD' strings — parse them as local dates
 function daysBetween(d1, d2) {
@@ -37,24 +52,102 @@ function typeKeyOf(stored) {
 export default function KhatmaPage() {
   const t = useT();
   const dir = useDir();
-  const { progressPct, completedSurahs } = useHifz();
+  const { user, loading: authLoading } = useAuth();
+  const { progressPct, completedSurahs } = useHifz(user?.id);
   const [khatmat, setKhatmat] = useState(loadKhatmat);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm]         = useState({ start: localDateStr(), end: '', type: 'reading', notes: '' });
+  const [editingId, setEditingId] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
+  const [listLoading, setListLoading] = useState(false);
+  const [saving, setSaving]     = useState(false);
+  const [error, setError]       = useState('');
+  const [formErr, setFormErr]   = useState('');
+  const aliveRef = useRef(true);
+  useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; }; }, []);
 
-  function addKhatma() {
+  // Signed in → the account is the source of truth (merge this device's entries up once).
+  // Signed out → localStorage.
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) { setKhatmat(loadKhatmat()); setError(''); return; }
+    let alive = true;
+    (async () => {
+      setListLoading(true); setError('');
+      try {
+        let server = await listKhatmat();
+        let already = false;
+        try { already = localStorage.getItem(mergedFlag(user.id)) === '1'; } catch {}
+        const local = loadKhatmat();
+        if (!already && local.length) {
+          const sig = k => `${k.start}|${k.end}|${typeKeyOf(k.type) || k.type}`;
+          const have = new Set(server.map(fromApi).map(sig));
+          const toUpload = local.filter(k => k.start && k.end && !have.has(sig(k)));
+          for (const k of toUpload) {
+            try { await createKhatma(toApi(k)); } catch {}
+          }
+          if (toUpload.length) server = await listKhatmat();
+        }
+        try { localStorage.setItem(mergedFlag(user.id), '1'); } catch {}
+        if (alive) setKhatmat(server.map(fromApi));
+      } catch (e) {
+        if (alive) { setError(errorMessage(e, 'تعذّر تحميل ختماتك من حسابك')); setKhatmat([]); }
+      }
+      if (alive) setListLoading(false);
+    })();
+    return () => { alive = false; };
+  }, [user?.id, authLoading]);
+
+  function openNew() {
+    setEditingId(null); setFormErr('');
+    setForm({ start: localDateStr(), end: '', type: 'reading', notes: '' });
+    setShowForm(true);
+  }
+  function openEdit(k) {
+    setEditingId(k.id); setFormErr('');
+    setForm({ start: k.start || localDateStr(), end: k.end || '', type: typeKeyOf(k.type) || 'reading', notes: k.notes || '' });
+    setShowForm(true);
+  }
+  function closeForm() { if (!saving) { setShowForm(false); setEditingId(null); setFormErr(''); } }
+
+  async function addKhatma() {
     if (!form.end) return;
-    const next = [
-      { ...form, id: Date.now(), created: new Date().toISOString() },
-      ...khatmat,
-    ];
-    setKhatmat(next); saveKhatmat(next);
-    setShowForm(false);
+    if (user) {
+      setSaving(true); setFormErr('');
+      try {
+        const saved = editingId != null
+          ? await updateKhatma(editingId, toApi(form))
+          : await createKhatma(toApi(form));
+        if (!aliveRef.current) return;
+        const item = fromApi(saved);
+        setKhatmat(prev => editingId != null ? prev.map(k => (k.id === editingId ? item : k)) : [item, ...prev]);
+      } catch (e) {
+        if (aliveRef.current) { setFormErr(errorMessage(e, 'تعذّر حفظ الختمة، حاول مجدداً')); setSaving(false); }
+        return;
+      }
+      setSaving(false);
+    } else {
+      const next = editingId != null
+        ? khatmat.map(k => (k.id === editingId ? { ...k, ...form } : k))
+        : [{ ...form, id: Date.now(), created: new Date().toISOString() }, ...khatmat];
+      setKhatmat(next); saveKhatmat(next);
+    }
+    setShowForm(false); setEditingId(null);
     setForm({ start: localDateStr(), end: '', type: 'reading', notes: '' });
   }
 
-  function deleteKhatma(id) {
+  async function deleteKhatma(id) {
+    if (user) {
+      setSaving(true); setError('');
+      try {
+        await apiDeleteKhatma(id);
+        if (aliveRef.current) setKhatmat(prev => prev.filter(k => k.id !== id));
+      } catch (e) {
+        if (aliveRef.current) setError(errorMessage(e, 'تعذّر حذف الختمة، حاول مجدداً'));
+      }
+      if (aliveRef.current) { setSaving(false); setConfirmDel(null); }
+      return;
+    }
     const next = khatmat.filter(k => k.id !== id);
     setKhatmat(next); saveKhatmat(next); setConfirmDel(null);
   }
@@ -74,8 +167,17 @@ export default function KhatmaPage() {
         <Link to="/reader" className={styles.backBtn}>{t('back')}</Link>
         <h1>{t('khatmaTitle')}</h1>
         <LangSwitcher compact={true} />
-        <button className={styles.newBtn} onClick={() => setShowForm(true)}>{t('newKhatma')}</button>
+        <button className={styles.newBtn} onClick={openNew}>{t('newKhatma')}</button>
       </div>
+
+      {error && (
+        <p role="alert" style={{ color: '#f87171', fontSize: 13, textAlign: 'center', margin: '0 0 12px' }}>⚠️ {error}</p>
+      )}
+      {!user && !authLoading && (
+        <p style={{ color: 'var(--text3)', fontSize: 12, textAlign: 'center', margin: '0 0 12px' }}>
+          💡 ختماتك محفوظة على هذا الجهاز — <Link to="/login" style={{ color: 'var(--gold)' }}>سجّل الدخول</Link> لمزامنتها مع حسابك
+        </p>
+      )}
 
       {/* Progress toward next khatma */}
       <div className={styles.progressCard}>
@@ -129,9 +231,9 @@ export default function KhatmaPage() {
 
       {/* Add form modal */}
       {showForm && (
-        <div className={styles.backdrop} onClick={e => e.target === e.currentTarget && setShowForm(false)}>
+        <div className={styles.backdrop} onClick={e => e.target === e.currentTarget && closeForm()}>
           <div className={styles.modal}>
-            <h3>تسجيل ختمة جديدة</h3>
+            <h3>{editingId != null ? 'تعديل الختمة' : 'تسجيل ختمة جديدة'}</h3>
             <div className={styles.fields}>
               <div className={styles.fieldRow}>
                 <div className={styles.field}>
@@ -169,10 +271,11 @@ export default function KhatmaPage() {
                 ⏱ المدة: {Math.max(1, daysBetween(form.start, form.end))} يوم
               </p>
             )}
+            {formErr && <p role="alert" style={{ color: '#f87171', fontSize: 13, margin: '0 0 10px' }}>⚠️ {formErr}</p>}
             <div className={styles.modalActions}>
-              <button className={styles.cancelBtn} onClick={() => setShowForm(false)}>{t('cancel')}</button>
-              <button className={styles.saveBtn} onClick={addKhatma} disabled={!form.end}>
-                🎉 تسجيل الختمة
+              <button className={styles.cancelBtn} onClick={closeForm}>{t('cancel')}</button>
+              <button className={styles.saveBtn} onClick={addKhatma} disabled={!form.end || saving}>
+                {saving ? '...' : editingId != null ? '💾 حفظ التعديل' : '🎉 تسجيل الختمة'}
               </button>
             </div>
           </div>
@@ -188,21 +291,23 @@ export default function KhatmaPage() {
               لا يمكن التراجع عن هذا الإجراء.
             </p>
             <div className={styles.modalActions}>
-              <button className={styles.cancelBtn} onClick={() => setConfirmDel(null)}>لا</button>
-              <button className={styles.deleteBtn} onClick={() => deleteKhatma(confirmDel)}>نعم، احذف</button>
+              <button className={styles.cancelBtn} onClick={() => setConfirmDel(null)} disabled={saving}>لا</button>
+              <button className={styles.deleteBtn} onClick={() => deleteKhatma(confirmDel)} disabled={saving}>{saving ? '...' : 'نعم، احذف'}</button>
             </div>
           </div>
         </div>
       )}
 
       {/* Khatmat list */}
-      {khatmat.length === 0 ? (
+      {listLoading ? (
+        <div className={styles.empty}><p>جارٍ تحميل ختماتك...</p></div>
+      ) : khatmat.length === 0 ? (
         <div className={styles.empty}>
           <div className={styles.emptyIcon}>📿</div>
           <p>لم تسجّل أي ختمة بعد</p>
           <small>بعد إتمام القرآن الكريم، سجّل ختمتك هنا لتحتفل بإنجازك وتتابع رحلتك</small>
           <button className={styles.newBtn} style={{ marginTop: 16 }}
-            onClick={() => setShowForm(true)}>
+            onClick={openNew}>
             تسجيل أول ختمة
           </button>
         </div>
@@ -227,7 +332,10 @@ export default function KhatmaPage() {
                     {k.start} ← {k.end}
                   </div>
                 </div>
-                <button className={styles.cardDelete} onClick={() => setConfirmDel(k.id)} title="حذف">✕</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <button className={styles.cardDelete} onClick={() => openEdit(k)} title="تعديل">✏️</button>
+                  <button className={styles.cardDelete} onClick={() => setConfirmDel(k.id)} title="حذف">✕</button>
+                </div>
               </div>
             );
           })}

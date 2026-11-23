@@ -11,25 +11,21 @@
    - Build command: `npm install && npm run build`
    - Publish directory: `dist`
 
-### متغيرات البيئة (اختيارية)
-في **Netlify → Site settings → Environment variables** أضف:
-
-| المتغير | الوصف | المصدر |
-|---------|-------|--------|
-| `VITE_SUPABASE_URL` | رابط مشروع Supabase | supabase.com |
-| `VITE_SUPABASE_ANON_KEY` | المفتاح العام لـ Supabase | supabase.com |
-| `OPENAI_KEY` | مفتاح OpenAI للمساعد الذكي (server-side فقط) | platform.openai.com |
-
-> التطبيق يعمل بدون هذه المتغيرات — ميزات الحساب والمساعد الذكي تتطلبها فقط.
+### متغيرات البيئة
+**لا يحتاج Netlify أي متغيرات بيئة.** الموقع ملفات ثابتة فقط (React + Vite)، وكل ما يتعلق
+بالحسابات والمزامنة والمساعد الذكي يمر عبر واجهة البرمجة على `https://api.nuralquran.net/v1`.
 
 ---
 
-## إعداد Supabase (للمزامنة السحابية)
+## الخادم (Backend)
 
-1. أنشئ مشروعاً مجانياً على [supabase.com](https://supabase.com)
-2. في **SQL Editor** شغّل ملف `supabase-schema.sql`
-3. في **Authentication → Providers** فعّل Google OAuth
-4. انسخ الـ URL والـ Anon Key من **Project Settings → API**
+الخادم هو واجهة PHP REST API الموجودة في مجلد [`api/`](api/) (PHP 8.2 + MySQL/MariaDB).
+- خطوات التثبيت والنشر: [`api/README.md`](api/README.md)
+- العقد بين الموقع والخادم (كل المسارات والأشكال): [`docs/API.md`](docs/API.md)
+- قاعدة البيانات: `api/schema.sql`
+
+مفاتيح الخدمات الخارجية (Google OAuth، مزوّد الذكاء الاصطناعي، البريد) تُضبط من **لوحة الإدارة ← التكاملات**
+وتُحفظ مشفّرة على الخادم — لا توضع في الموقع ولا في Netlify.
 
 ---
 
@@ -40,6 +36,9 @@ npm install
 npm run dev
 # http://localhost:5173
 ```
+
+أثناء التطوير على `localhost` يتصل الموقع بـ `http://localhost:8080/v1` افتراضياً.
+لتغييره: `localStorage.setItem('nq_api_base', 'https://api.nuralquran.net/v1')` من وحدة تحكم المتصفح.
 
 ---
 
@@ -56,7 +55,7 @@ npm run dev
 - مشغل صوت محسّن لـ 5 قراء
 
 ### المرحلة الثالثة — الحسابات
-- تسجيل دخول بـ Google أو البريد (Supabase)
+- تسجيل دخول بـ Google أو البريد (عبر واجهة PHP في `api/`)
 - لوحة تحكم مع إحصائيات ورسم بياني
 - مزامنة سحابية للمفضلة والإعدادات
 
@@ -67,7 +66,7 @@ npm run dev
 
 ### المرحلة الخامسة — المساعد الذكي
 - مساعد إسلامي يعرف الآية التي تقرأها
-- محادثة بالعربية مع streaming فوري
+- محادثة بالعربية عبر الخادم (المفتاح لا يصل للمتصفح أبداً)
 - زر AI بجانب كل آية للشرح الفوري
 
 ### المرحلة السادسة — الملاحظات والبحث

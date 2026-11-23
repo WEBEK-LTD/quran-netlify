@@ -71,7 +71,7 @@ export function useAuth() {
   return { user: state.user, loading: state.loading, refresh: refreshAuth, signOut: signOutAuth };
 }
 
-// Display helpers (replace the old user.user_metadata.* reads)
+// Display helpers (the API User has name/avatar_url at the top level)
 export function displayNameOf(user, fallback = '') {
   if (!user) return fallback;
   return (user.name && String(user.name).trim()) || (user.email ? user.email.split('@')[0] : '') || fallback;
