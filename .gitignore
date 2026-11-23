@@ -17,3 +17,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+
+# API server config (database credentials, app key) — never commit
+api/config.php
