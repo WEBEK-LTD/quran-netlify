@@ -342,7 +342,7 @@ Reported messages survive deletion (hidden, kept for the admins until an admin d
 | POST / DELETE | `/rooms/{id}/moderators/{uid}` | owner | `{role}` (removed moderator stays a speaker) |
 | POST | `/rooms/{id}/participants/{uid}/mute` | owner/moderator (moderators: not the owner/other moderators) | `{muted_tracks}` (server-side mute; only the user can unmute) |
 | POST | `/rooms/{id}/participants/{uid}/kick` | same | `{}` — disconnected, cannot rejoin this room |
-| PUT | `/rooms/{id}/page` | owner/moderator `{surah, ayah, page? (1–604)}` | `{surah, ayah, page, updated_at}` (broadcast) |
+| PUT | `/rooms/{id}/page` | owner/moderator `{surah, ayah, page? (1–604)}` | `{surah, ayah, page, updated_at}` (broadcast on topic `page` with `by` = who moved it). The app sends the Madani page of the ayah and shows everyone that whole page with the ayah highlighted; listeners may browse other pages locally (nothing is sent) and follow the host again — so one shared position is all the API keeps |
 | GET | `/rooms/{id}/chat` | `?after_id=` | `{items: ChatLine[]}` (last 100) |
 | POST | `/rooms/{id}/chat` | `{body}` (present participants; 10 per 20 s) | 201 `ChatLine` |
 | POST | `/rooms/{id}/reactions` | `{type: clap\|heart\|mashallah\|barakallah\|ameen\|jazakallah, to_user_id?}` | `{type, from, to}` — 1 per 2 s per person (429); `to_user_id` = a directed **clap** («فلان سقّف لفلان») to someone on stage, max once a minute per sender→speaker (429). Counts `claps_sent` / `claps_received` |

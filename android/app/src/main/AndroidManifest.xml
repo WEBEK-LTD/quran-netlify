@@ -37,6 +37,9 @@
                 <data android:host="nuralquran.net" />
                 <data android:path="/" />
                 <data android:pathPrefix="/reader" />
+                <data android:pathPrefix="/listen" />
+                <data android:pathPrefix="/tafsir" />
+                <data android:pathPrefix="/tadhkira" />
                 <data android:pathPrefix="/prayer-times" />
                 <data android:pathPrefix="/qibla" />
                 <data android:pathPrefix="/adhkar" />

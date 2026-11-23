@@ -248,10 +248,11 @@ async function stopMic(silent) {
 export function micErrorKind(e) {
   const name = (e && (e.name || (e.cause && e.cause.name))) || '';
   const msg = String((e && e.message) || '');
-  if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError' || /permission|not allowed|denied/i.test(msg)) return 'denied';
+  if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') return 'denied';
   if (name === 'NotFoundError' || name === 'OverconstrainedError' || name === 'DevicesNotFoundError') return 'nodevice';
   if (name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError') return 'busy';
   if (name === 'MicTimeout') return 'timeout';
+  if (/permission|not allowed/i.test(msg)) return 'denied';
   return 'unavailable';
 }
 
