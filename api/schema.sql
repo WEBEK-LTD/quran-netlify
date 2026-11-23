@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   id                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
   email               VARCHAR(254) NOT NULL,
   name                VARCHAR(100) NOT NULL DEFAULT '',
+  lang                VARCHAR(5) NOT NULL DEFAULT 'ar',
   avatar_url          VARCHAR(500) NULL,
   gender              ENUM('male','female') NULL,
   birthdate           DATE NULL,
@@ -59,6 +60,7 @@ CREATE TABLE IF NOT EXISTS oauth_states (
   state_hash CHAR(64) NOT NULL,
   next_path  VARCHAR(255) NOT NULL DEFAULT '/',
   client     ENUM('web','app') NOT NULL DEFAULT 'web',
+  lang       VARCHAR(5) NULL,
   created_at DATETIME NOT NULL,
   expires_at DATETIME NOT NULL,
   PRIMARY KEY (state_hash),
@@ -292,6 +294,18 @@ CREATE TABLE IF NOT EXISTS presence (
 
 -- support_tickets.last_notified_at: limits "new message from the team" emails to one per ticket per 10 minutes
 SET @nq_sql = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE support_tickets ADD COLUMN last_notified_at DATETIME NULL AFTER updated_at', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'support_tickets' AND COLUMN_NAME = 'last_notified_at');
+PREPARE nq_stmt FROM @nq_sql;
+EXECUTE nq_stmt;
+DEALLOCATE PREPARE nq_stmt;
+
+-- users.lang: language of the account's emails (ar, en, tr, fr, ur, id)
+SET @nq_sql = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE users ADD COLUMN lang VARCHAR(5) NOT NULL DEFAULT ''ar'' AFTER name', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'lang');
+PREPARE nq_stmt FROM @nq_sql;
+EXECUTE nq_stmt;
+DEALLOCATE PREPARE nq_stmt;
+
+-- oauth_states.lang: UI language carried through Google sign-in (for the welcome email of new accounts)
+SET @nq_sql = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE oauth_states ADD COLUMN lang VARCHAR(5) NULL AFTER client', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'oauth_states' AND COLUMN_NAME = 'lang');
 PREPARE nq_stmt FROM @nq_sql;
 EXECUTE nq_stmt;
 DEALLOCATE PREPARE nq_stmt;

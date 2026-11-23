@@ -169,6 +169,7 @@ final class Auth
             'id' => (int) $u['id'],
             'email' => (string) $u['email'],
             'name' => (string) $u['name'],
+            'lang' => MailText::lang($u['lang'] ?? null),
             'avatar_url' => $u['avatar_url'] !== null && $u['avatar_url'] !== '' ? (string) $u['avatar_url'] : null,
             'gender' => in_array($u['gender'], ['male', 'female'], true) ? $u['gender'] : null,
             'birthdate' => $u['birthdate'] ?: null,

@@ -14,7 +14,17 @@ namespace NQ\Core;
 final class Migrations
 {
     /** Bump when a step is added below. */
-    public const VERSION = 1;
+    public const VERSION = 2;
+
+    /** Whether every column of VERSION is known to exist (false only when an upgrade failed). */
+    private static bool $ready = true;
+
+    /** Code writing new columns checks this, so a failed upgrade never breaks signups or logins. */
+    public static function ready(): bool
+    {
+        self::ensure();
+        return self::$ready;
+    }
 
     public static function ensure(): void
     {
@@ -32,6 +42,7 @@ final class Migrations
             self::apply();
             @file_put_contents($marker, (string) self::VERSION, LOCK_EX);
         } catch (\Throwable $e) {
+            self::$ready = false;
             // never break the request; the next request retries
             error_log('[nq] schema migration failed: ' . $e->getMessage());
         }
@@ -41,6 +52,9 @@ final class Migrations
     {
         // v1: throttle for "new message from the team" emails
         self::addColumn('support_tickets', 'last_notified_at', 'DATETIME NULL AFTER updated_at');
+        // v2: language of the account's emails, and the language carried through Google sign-in
+        self::addColumn('users', 'lang', "VARCHAR(5) NOT NULL DEFAULT 'ar' AFTER name");
+        self::addColumn('oauth_states', 'lang', 'VARCHAR(5) NULL AFTER client');
     }
 
     private static function addColumn(string $table, string $column, string $definition): void
