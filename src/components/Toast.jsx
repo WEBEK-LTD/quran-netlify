@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react';
-import { useStore } from '../store';
+import { useStoreKeys, setGlobal as set } from '../store';
 import { useTr } from '../l10n';
 import { coreTr } from '../locales/core';
 import styles from './Toast.module.css';
 
+const TOAST_KEYS = ['toast'];
+
 export default function Toast() {
-  const [state, set] = useStore();
+  const state = useStoreKeys(TOAST_KEYS);
   const tr = coreTr(useTr());
   const timer = useRef(null);
 

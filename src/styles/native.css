@@ -1,0 +1,73 @@
+/* ─── App-only feel (iOS / Android) ───────────────────────────────────────────
+   Every rule is scoped to html.nq-native, which src/native/boot.js sets before the
+   first paint inside the Capacitor shell — the website never matches any of this.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.nq-native { --header-h:60px; -webkit-tap-highlight-color:transparent; }
+/* the page never rubber-bands away from the header / tab bar */
+.nq-native, .nq-native body { overscroll-behavior-y:none; }
+.nq-native body { -webkit-text-size-adjust:100%; }
+
+/* Controls are not text: no selection, magnifier or long-press callout on chrome.
+   Quran text, articles and form fields stay selectable. */
+.nq-native :is(button, a, nav, header, label, summary, img, svg, select,
+  [role="tab"], [role="menuitem"], [role="option"], [role="switch"],
+  .nq-btn, .nq-ibtn, .nq-pill, .nq-seg, .nq-tabbar, .nq-top, .nq-mitem, .nq-kbd, .nq-eyebrow) {
+  -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+}
+.nq-native :is(input, textarea, [contenteditable="true"], .nq-q, article, blockquote) { -webkit-user-select:text; user-select:text; }
+.nq-native img { -webkit-user-drag:none; }
+
+/* Pressed states: immediate on touch (boot.js adds the touch listener iOS needs) */
+.nq-native :is(.nq-btn, .nq-ibtn, .nq-mitem, .nq-pill, .nq-seg button):active { transform:scale(.97); opacity:.82; transition:none; }
+.nq-native :is(a.nq-card, button.nq-card):active { transform:scale(.985); transition:none; }
+/* a tap leaves :hover stuck on touch screens — no lift */
+.nq-native :is(a.nq-card, button.nq-card):hover { transform:none; }
+.nq-native :is(a.nq-card, button.nq-card):hover:active { transform:scale(.985); }
+.nq-native .nq-btn.ghost:hover { border-color:var(--line2); }
+
+/* Screen transitions: quick fade-in of each new screen (not the very first one,
+   which the splash reveals). Opacity only, so nothing fixed inside a page moves.
+   Reduced motion (system or in-app) turns it off with every other animation. */
+@keyframes nqScreenIn { from { opacity:0; } to { opacity:1; } }
+.nq-native.nq-ready main#main { animation:nqScreenIn .18s ease-out both; }
+
+/* Header: a compact app bar */
+.nq-native .nq-top { -webkit-backdrop-filter:saturate(1.4) blur(18px); backdrop-filter:saturate(1.4) blur(18px); }
+.nq-native .nq-top .nq-nav { display:none; }
+.nq-native .nq-top .nq-menu-btn { display:none !important; }   /* «المزيد» in the tab bar opens the same menu */
+.nq-native .nq-top .hide-sm { display:none !important; }
+.nq-native .nq-top-in { gap:10px; }
+.nq-native .nq-brand .word { height:28px; }
+.nq-native .nq-brand .mark { width:29px; height:34px; }
+.nq-native .nq-top .nq-ibtn { border-color:transparent; background:transparent; }
+.nq-native .nq-top .nq-ibtn:active { background:var(--hl); }
+
+/* Tab bar: always there, at every width, like a native tab bar */
+.nq-native .nq-tabbar { display:grid; grid-template-columns:repeat(5,1fr); position:fixed; left:0; right:0; bottom:0; z-index:55;
+  background:color-mix(in srgb,var(--surface) 94%,transparent); -webkit-backdrop-filter:saturate(1.4) blur(18px); backdrop-filter:saturate(1.4) blur(18px);
+  border-top:var(--bw) solid var(--line);
+  padding:4px max(4px,env(safe-area-inset-right,0px)) calc(4px + env(safe-area-inset-bottom,0px)) max(4px,env(safe-area-inset-left,0px)); }
+.nq-native .nq-tabbar a, .nq-native .nq-tabbar button { display:grid; justify-items:center; align-content:center; gap:2px; min-height:54px; padding:4px 0 2px;
+  font-size:.68rem; font-weight:600; line-height:1.3; color:var(--muted); border:0; background:transparent; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nq-native .nq-tabbar .nq-ico { width:24px; height:24px; padding:4px 16px; box-sizing:content-box; border-radius:999px; transition:background-color .15s; }
+.nq-native .nq-tabbar a[aria-current="page"] { color:var(--gold); }
+.nq-native .nq-tabbar a[aria-current="page"] .nq-ico { background:var(--hl); }
+.nq-native .nq-tabbar :is(a, button):active .nq-ico { background:var(--hl); transition:none; }
+.nq-native .nq-tabbar :is(a, button):active { transform:none; opacity:1; }
+.nq-native body.nq-has-tabbar { padding-bottom:calc(70px + env(safe-area-inset-bottom,0px)); }
+@media (min-width:761px) {
+  .nq-native .nq-tabbar { padding-inline:max(12%,env(safe-area-inset-left,0px)); }
+}
+
+/* On-screen keyboard open (src/native/keyboard.js): the tab bar steps aside */
+.nq-native.nq-kb .nq-tabbar { display:none; }
+.nq-native.nq-kb body.nq-has-tabbar { padding-bottom:env(safe-area-inset-bottom,0px); }
+
+/* Drawer and search: full-height sheets that respect the notch and gesture bar */
+.nq-native .nq-sheet { width:min(380px,88vw); }
+.nq-native .nq-palette .box { margin-top:calc(env(safe-area-inset-top,0px) + 12px); }
+.nq-native .nq-toast { bottom:calc(84px + env(safe-area-inset-bottom,0px)); }
+
+/* Landscape on tablets / notched phones: keep content off the notch */
+.nq-native .nq-top-in { padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); }

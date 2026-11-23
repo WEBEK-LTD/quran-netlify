@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useStore } from '../store';
+import { useStoreKeys } from '../store';
 import { useAuth } from '../hooks/useAuth';
 import { aiChat, errorMessage } from '../backend';
 import styles from './AIAssistant.module.css';
@@ -47,8 +47,10 @@ function aiErrorText(e) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
+const AI_KEYS = ['currentSurah', 'currentAyah'];
+
 export default function AIAssistant() {
-  const [state] = useStore();
+  const state = useStoreKeys(AI_KEYS);
   const tr = coreTr(useTr());
   const { user, loading: authLoading } = useAuth();
   const [open, setOpen]         = useState(false);

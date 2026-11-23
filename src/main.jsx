@@ -7,6 +7,7 @@ import App from './App.jsx'
 import './index.css'
 import './styles/fonts.css'
 import './styles/theme.css'
+import './styles/native.css'   // app-only rules, all under html.nq-native
 import { initAppearance } from './appearance'
 import { isNative } from './native/platform'
 

@@ -1,7 +1,7 @@
 // ─── Side index: surahs · juz · hizb · bookmarks ────────────────────────────
 // Sticky column on desktop; an off-canvas panel (opened from the reader bar) ≤860px.
 import { useEffect, useRef, useState } from 'react';
-import { useStore, setGlobal } from '../store';
+import { useStoreKeys, setGlobal } from '../store';
 import { SURAHS_META, JUZ_DATA, HIZB_DATA } from '../data';
 import { Icon, Badge8, toAr } from './ornaments/Ornaments';
 import { displayNumber, normWord } from './reader/ayahItems';
@@ -31,8 +31,10 @@ function ayahLabel(surah, kufi) {
   return n === null ? coreTrNow('البسملة') : coreTrNow('الآية {n}', { n: toAr(n) });
 }
 
+const SIDE_KEYS = ['bookmarks', 'currentSurah', 'sidebarOpen'];
+
 export default function Sidebar() {
-  const [state]     = useStore();
+  const state       = useStoreKeys(SIDE_KEYS);
   const tr = coreTr(useTr());
   const rtl = isRtl(tr.lang);
   const [tab, setTab]       = useState('surahs');

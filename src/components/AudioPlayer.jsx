@@ -4,8 +4,13 @@
 // to do at the end of a surah, speed, volume, sleep timer, follow-along,
 // offline download and the reciter list. Playback itself lives in the engine,
 // so it keeps going with the screen locked and is driven by the lock screen too.
+//
+// Mounted once for the whole app (App.jsx): a recitation started in the mushaf or
+// on /listen keeps playing while the visitor moves to another page; the dock
+// stays at the bottom with a link back to the recited ayah. Closing it stops.
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { useStore, setGlobal, savePref } from '../store';
+import { Link, useLocation } from 'react-router-dom';
+import { useStoreKeys, setGlobal, savePref } from '../store';
 import { SURAHS_META, READERS } from '../data';
 import { Icon, toAr } from './ornaments/Ornaments';
 import { displayNumber } from './reader/ayahItems';
@@ -53,15 +58,27 @@ const TYPING = 'input, textarea, select, [contenteditable=""], [contenteditable=
 const OWN_SPACE = 'button, a[href], [role="button"], [role="slider"], [role="switch"], [role="checkbox"], summary';
 const OWN_ARROWS = '[role="slider"], [role="tablist"], [role="radiogroup"], [role="listbox"], [role="menu"]';
 
+// Pages where the dock's keyboard shortcuts (Space, ←/→, N/P) apply; elsewhere
+// Space keeps scrolling the page.
+const QURAN_PAGES = /^\/(reader|listen|tafsir)(\/|$)/;
+const PLAYER_KEYS = ['showAudio', 'currentSurah', 'audioAyah', 'reader', 'followAudio'];
+
 export default function AudioPlayer() {
-  const [state] = useStore();
+  const state = useStoreKeys(PLAYER_KEYS);
   const tr = coreTr(useTr());
   const x = useSyncExternalStore(engine.subscribe, engine.getSnapshot);
   const [showMore, setShowMore] = useState(false);
   const moreRef = useRef(null);
+  const { pathname } = useLocation();
+  const onReader = pathname === '/reader';
+  const shortcuts = QURAN_PAGES.test(pathname);
 
-  // Leaving the reader stops the recitation (as the old in-page <audio> did)
-  useEffect(() => () => engine.pause(), []);
+  // Off the reader, keep the page's last lines clear of the dock
+  useEffect(() => {
+    if (!state.showAudio || onReader) return;
+    document.body.classList.add('nq-has-dock');
+    return () => document.body.classList.remove('nq-has-dock');
+  }, [state.showAudio, onReader]);
   // Lock-screen text follows the UI language
   useEffect(() => { refreshMediaSession(); }, [tr.lang]);
 
@@ -77,7 +94,7 @@ export default function AudioPlayer() {
 
   // Keyboard: Space play/pause · ←/→ seek ±5 s (mirrored in RTL) · N / P next / previous ayah
   useEffect(() => {
-    if (!state.showAudio) return;
+    if (!state.showAudio || !shortcuts) return;
     function onKey(e) {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
       const t = e.target instanceof Element ? e.target : null;
@@ -103,7 +120,7 @@ export default function AudioPlayer() {
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [state.showAudio]);
+  }, [state.showAudio, shortcuts]);
 
   // Sleep timer countdown (re-render while it runs, even when paused)
   const [, setTick] = useState(0);
@@ -206,9 +223,16 @@ export default function AudioPlayer() {
       </span>
 
       <div className={styles.meta}>
-        <b title={`${readerFull} · ${sName} · ${ayahText}`}>
-          <span className={styles.rName}>{readerShort} · </span>{sName} · <span className={styles.ayahNo}>{ayahText}</span>
-        </b>
+        {onReader ? (
+          <b title={`${readerFull} · ${sName} · ${ayahText}`}>
+            <span className={styles.rName}>{readerShort} · </span>{sName} · <span className={styles.ayahNo}>{ayahText}</span>
+          </b>
+        ) : (
+          <Link className={styles.metaLink} to={`/reader?surah=${aSurah}&ayah=${aAyah}`}
+            title={tr('اقرأ مع التلاوة في المصحف')} aria-label={`${readerFull} · ${sName} · ${ayahText} — ${tr('اقرأ مع التلاوة في المصحف')}`}>
+            <span className={styles.rName}>{readerShort} · </span>{sName} · <span className={styles.ayahNo}>{ayahText}</span>
+          </Link>
+        )}
         <div className={styles.track} onClick={seekTo} onKeyDown={seekKey}
           role="slider" tabIndex={0} aria-label={tr('موضع التلاوة')}
           aria-valuemin={0} aria-valuemax={Math.round(duration) || 0} aria-valuenow={Math.round(current) || 0}

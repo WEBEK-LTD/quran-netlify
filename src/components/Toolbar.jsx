@@ -3,7 +3,7 @@
 // reciter, the daily ward, quick links — plus the highlight setting from Settings.
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useStore, setGlobal, savePref, DEFAULT_READER } from '../store';
+import { useStore, useStoreKeys, setGlobal, savePref, DEFAULT_READER } from '../store';
 import { SURAHS_META, TRANSLATIONS, READERS } from '../data';
 import { useHifz } from '../hifzStore';
 import { Icon, toAr } from './ornaments/Ornaments';
@@ -139,8 +139,10 @@ function DisplayPopover({ onClose }) {
   );
 }
 
+const BAR_KEYS = ['currentSurah', 'isPlaying', 'sidebarOpen'];
+
 export default function Toolbar({ view, onView, onPrev, onNext, onListen }) {
-  const [state] = useStore();
+  const state = useStoreKeys(BAR_KEYS);
   const tr = coreTr(useTr());
   const [pop, setPop] = useState(false);
   const popRef = useRef(null);

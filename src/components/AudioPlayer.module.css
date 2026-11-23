@@ -166,3 +166,15 @@
 .dlRow :global(.nq-btn .nq-ico) { width: 15px; height: 15px; }
 .dlBtn.dlBtn { justify-self: stretch; justify-content: flex-start; text-align: start; white-space: normal; padding-block: 8px; line-height: 1.45; }
 .dlBtn :global(.nq-ico) { width: 16px; height: 16px; color: var(--gold); }
+
+/* ── the dock on every page (it is mounted once for the app) ───────────── */
+.metaLink { font-size: .9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); text-decoration: none; min-width: 0; }
+.metaLink:hover { color: var(--gold); }
+.metaLink:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
+:global(body.nq-has-dock) { padding-bottom: 110px; }
+@media (max-width: 760px) {
+  /* off the reader no layout sets --dock-bottom: sit above the tab bar */
+  .dock { bottom: var(--dock-bottom, calc(78px + env(safe-area-inset-bottom, 0px))); }
+  .metaLink { font-size: .82rem; }
+  :global(body.nq-has-dock.nq-has-tabbar) { padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+}

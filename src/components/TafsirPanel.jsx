@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useStore, setGlobal } from '../store';
+import { useStoreKeys, setGlobal } from '../store';
 import { SURAHS_META } from '../data';
 import { fetchAyahWithTafsir } from '../api';
 import { Icon, Badge8, Divider, toAr } from './ornaments/Ornaments';
@@ -58,8 +58,10 @@ function ayahTitle(surah, kufi) {
   return typeof n === 'string' ? coreTrNow('الآيتان {n}', { n: toAr(n) }) : coreTrNow('الآية {n}', { n: toAr(n) });
 }
 
+const TAFSIR_PANEL_KEYS = ['tafsirSurah', 'tafsirAyah'];
+
 export default function TafsirPanel() {
-  const [state] = useStore();
+  const state = useStoreKeys(TAFSIR_PANEL_KEYS);
   const tr = coreTr(useTr());
   const { tafsirSurah, tafsirAyah } = state;
 

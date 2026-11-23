@@ -1,9 +1,9 @@
-import { useEffect, useState, lazy, Suspense, Component } from 'react';
+import { useEffect, useLayoutEffect, useState, lazy, Suspense, Component } from 'react';
 import { useLang, LANGS } from './i18n';
 import { useTr, surahName } from './l10n';
 import { coreTr, coreTrNow } from './locales/core';
 import { Routes, Route, useLocation, Link } from 'react-router-dom';
-import { useStore, setGlobal } from './store';
+import { useStoreKeys, setGlobal } from './store';
 import { SiteHeader, SiteFooter, SiteChrome } from './components/shell/Shell';
 import { OrnamentDefs, Badge8, Icon } from './components/ornaments/Ornaments';
 import Sidebar         from './components/Sidebar';
@@ -23,6 +23,7 @@ const HifzPage = lazy(() => import('./pages/HifzPage'));
 import NotesPage       from './pages/NotesPage';
 import SearchPage      from './pages/SearchPage';
 import WelcomePage     from './pages/WelcomePage';
+import AppHome         from './pages/AppHome';   // the app's first screen (website: WelcomePage)
 const KhatmaPage = lazy(() => import('./pages/KhatmaPage'));
 const KhatmaGroupPage = lazy(() => import('./pages/KhatmaGroupPage'));
 const HelpPage = lazy(() => import('./pages/HelpPage'));
@@ -46,11 +47,14 @@ import ErrorBoundary    from './components/ErrorBoundary';
 const PrayerTimesPage = lazy(() => import('./pages/PrayerTimesPage'));
 const QiblaPage = lazy(() => import('./pages/QiblaPage'));
 const AdhkarPage = lazy(() => import('./pages/AdhkarPage'));
+const ListenPage = lazy(() => import('./pages/ListenPage'));
+const TafsirPage = lazy(() => import('./pages/TafsirPage'));
 import styles from './App.module.css';
 import { pingPresence } from './backend';
 import { useAuth } from './hooks/useAuth';
 import { usePublicSettings, featureOn } from './hooks/usePublicSettings';
 import { isNative } from './native/platform';
+import { NativeShell, useFirstScreen } from './native/NativeShell';
 
 // Voice rooms & community: app only. The website never matches these routes, so it
 // never requests the chunk (nor livekit-client, which only that chunk imports).
@@ -70,9 +74,16 @@ class ExtraBoundary extends Component {
   render() { return this.state.failed ? null : this.props.children; }
 }
 
+const TAFSIR_KEYS = ['showTafsir'];
 function ReaderLayout() {
-  const [state] = useStore();
+  const state = useStoreKeys(TAFSIR_KEYS);
   const tafsirOpen = !!state.showTafsir;
+  // layout widths for the app-wide player dock (App.module.css, body.nq-reader)
+  useLayoutEffect(() => {
+    document.body.classList.add('nq-reader');
+    return () => document.body.classList.remove('nq-reader', 'nq-tafsir');
+  }, []);
+  useLayoutEffect(() => { document.body.classList.toggle('nq-tafsir', tafsirOpen); }, [tafsirOpen]);
   return (
     <div className={`${styles.appRoot} ${tafsirOpen ? styles.withTafsir : ''}`}>
       <SiteHeader />
@@ -85,17 +96,19 @@ function ReaderLayout() {
         <Reader />
         {tafsirOpen && <TafsirPanel />}
       </div>
-      <AudioPlayer />
     </div>
   );
 }
 
 function FullLayout({ children, footer = true }) {
+  const { pathname } = useLocation();
+  useFirstScreen();
   return (
     <>
       <SiteHeader />
-      <main id="main" className={styles.fullPage}>{children}</main>
-      {footer && <SiteFooter />}
+      {/* app: keyed by route so each screen enters with a short transition; no website footer */}
+      <main id="main" className={styles.fullPage} key={NATIVE ? pathname : undefined}>{children}</main>
+      {footer && !NATIVE && <SiteFooter />}
     </>
   );
 }
@@ -218,8 +231,10 @@ export default function App() {
         </div>
       }>
       <Routes>
-        <Route path="/"             element={<FullLayout><WelcomePage /></FullLayout>} />
+        <Route path="/"             element={<FullLayout>{NATIVE ? <AppHome /> : <WelcomePage />}</FullLayout>} />
         <Route path="/reader"       element={<ReaderLayout />} />
+        <Route path="/listen"       element={<FullLayout><ListenPage /></FullLayout>} />
+        <Route path="/tafsir"       element={<FullLayout><TafsirPage /></FullLayout>} />
         <Route path="/login"        element={<FullLayout><LoginPage /></FullLayout>} />
         <Route path="/signup"       element={<FullLayout><SignupPage /></FullLayout>} />
         <Route path="/dashboard"    element={<FullLayout><DashboardPage /></FullLayout>} />
@@ -259,6 +274,9 @@ export default function App() {
       </ErrorBoundary>
 
       {!path.startsWith('/admin') && path !== '/auth/callback' && !immersive && <ExtraBoundary><SiteChrome /></ExtraBoundary>}
+      {/* One recitation player for the whole app: it keeps playing across pages */}
+      {!path.startsWith('/admin') && path !== '/auth/callback' && !immersive && <ExtraBoundary><AudioPlayer /></ExtraBoundary>}
+      {NATIVE && <NativeShell />}
       {NATIVE && <ExtraBoundary><Suspense fallback={null}><RoomPill /></Suspense></ExtraBoundary>}
       {communityPath && <ExtraBoundary><Toast /></ExtraBoundary>}
       {!hideExtras && (

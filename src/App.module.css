@@ -1,15 +1,19 @@
 /* ── Reader page: header · [side index | centre | tafsir] · floating dock ── */
-.appRoot {
-  /* widths the floating dock / ayah tools use to centre over the centre column */
+/* The widths the floating dock / ayah tools use to centre over the centre column.
+   Set on <body> (ReaderLayout adds the classes) because the dock is mounted once for
+   the whole app, outside the reader's tree. */
+:global(body.nq-reader) {
   --side-w: 290px;
   --taf-w: 0px;
   --cw: calc(100vw - var(--side-w) - var(--taf-w));
   --dock-bottom: max(16px, env(safe-area-inset-bottom, 0px));
   --dock-h: 76px;
+}
+:global(body.nq-reader.nq-tafsir) { --taf-w: 340px; }
+.appRoot {
   min-height: 100vh;
   background: var(--bg);
 }
-.appRoot.withTafsir { --taf-w: 340px; }
 
 .fullPage {
   min-height: 60vh;
@@ -46,16 +50,16 @@
 :global([dir="rtl"]) .progressBar { transform-origin: right center; }
 
 @media (max-width: 1240px) {
-  .appRoot { --side-w: 260px; }
-  .appRoot.withTafsir { --taf-w: 0px; }
+  :global(body.nq-reader) { --side-w: 260px; }
+  :global(body.nq-reader.nq-tafsir) { --taf-w: 0px; }
   .withTafsir .body { grid-template-columns: var(--side-w) minmax(0, 1fr); }
 }
 @media (max-width: 860px) {
-  .appRoot { --side-w: 0px; }
+  :global(body.nq-reader) { --side-w: 0px; }
   .body, .withTafsir .body { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 760px) {
-  .appRoot { --dock-bottom: calc(78px + env(safe-area-inset-bottom, 0px)); --dock-h: 64px; }
+  :global(body.nq-reader) { --dock-bottom: calc(78px + env(safe-area-inset-bottom, 0px)); --dock-h: 64px; }
 }
 
 /* ─── Feature-off / maintenance notice ─────────────────────────────────── */
