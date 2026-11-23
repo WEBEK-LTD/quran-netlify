@@ -5,6 +5,7 @@
 // which is displayed with the Madani count (the basmala is not an ayah):
 //   Madani 1–5 = Kufi 2–6
 //   Kufi 7 is split after the first «عليهم» into Madani 6 and Madani 7.
+import { JUZ_DATA, SURAHS_META } from '../../data';
 
 export const BASMALA_TEXT = 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ';
 
@@ -100,4 +101,15 @@ export function displayNumber(surah, kufi) {
   if (kufi <= 1) return null;          // the basmala — not numbered
   if (kufi === 7) return '6–7';
   return kufi - 1;
+}
+
+// First and last juz a surah falls in.
+export function juzRange(surah) {
+  const count = SURAHS_META[surah - 1][2];
+  let first = 1, last = 1;
+  JUZ_DATA.forEach(j => {
+    if (j.surah < surah || (j.surah === surah && j.ayah <= 1)) first = j.juz;
+    if (j.surah < surah || (j.surah === surah && j.ayah <= count)) last = j.juz;
+  });
+  return [first, last];
 }

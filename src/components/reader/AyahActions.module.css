@@ -1,0 +1,54 @@
+/* ── Floating action bar (mushaf view) ─────────────────────────────────── */
+.bar {
+  position: fixed; z-index: 42;
+  bottom: var(--abar-bottom, 16px);
+  inset-inline-start: calc(var(--side-w, 0px) + (var(--cw, 100vw) - var(--abar-w)) / 2);
+  --abar-w: min(820px, calc(var(--cw, 100vw) - 32px));
+  width: var(--abar-w);
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 8px 8px 8px; padding-inline-start: 16px;
+  border-radius: 18px;
+  background: linear-gradient(color-mix(in srgb, var(--surface) 96%, transparent), color-mix(in srgb, var(--surface) 96%, transparent)) padding-box,
+              linear-gradient(150deg, var(--gold), var(--line2) 35%, var(--line2) 65%, var(--gold)) border-box;
+  border: var(--bw) solid transparent;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  animation: barIn .22s ease both;
+}
+:root[data-mode="contrast"] .bar { background: #000; border-color: var(--gold); }
+@keyframes barIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.ref { font-family: var(--f-title); font-weight: 700; font-size: 1.05rem; color: var(--gold); white-space: nowrap; }
+.barBtns { display: flex; gap: 2px; flex: 1; justify-content: flex-end; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.barBtns::-webkit-scrollbar { display: none; }
+.bBtn { display: inline-flex; align-items: center; gap: 6px; padding: 0 11px; min-height: 42px; border-radius: 12px; border: 0; background: transparent; font-size: .84rem; font-weight: 500; color: var(--text); white-space: nowrap; flex: none; }
+.bBtn :global(.nq-ico) { width: 19px; height: 19px; color: var(--gold); }
+.bBtn:hover { background: var(--hl); }
+.pressed { color: var(--gold) !important; }
+.filled { fill: currentColor !important; }
+.close { width: 40px; height: 40px; border-radius: 12px; border: var(--bw) solid var(--line); background: var(--raise); display: grid; place-items: center; color: var(--muted); flex: none; padding: 0; }
+.close:hover { color: var(--gold); border-color: var(--line2); }
+.close :global(.nq-ico) { width: 18px; height: 18px; }
+
+/* ── Inline (ayah card) ────────────────────────────────────────────────── */
+.inline { display: flex; flex-wrap: wrap; gap: 6px; }
+.iBtn { min-height: 36px !important; padding: 0 12px !important; font-size: .82rem !important; font-weight: 500 !important; gap: 6px !important; }
+.iBtn :global(.nq-ico) { width: 17px; height: 17px; color: var(--gold); }
+.iBtn.pressed { border-color: var(--gold) !important; background: var(--hl) !important; }
+
+@media (max-width: 1100px) {
+  .bBtn { padding: 0 9px; }
+  .bBtn span { display: none; }
+  .bBtn :global(.nq-ico) { width: 21px; height: 21px; }
+}
+@media (max-width: 760px) {
+  .bar { padding: 6px; padding-inline-start: 12px; gap: 6px; border-radius: 16px; }
+  .ref { font-size: .92rem; }
+  .barBtns { justify-content: space-between; }
+  .bBtn { min-height: 40px; padding: 0 7px; }
+  .iBtn span { display: none; }
+  .iBtn { padding: 0 10px !important; }
+}
+@media (max-width: 420px) {
+  .ref { display: none; }
+}

@@ -1,13 +1,32 @@
-import { useState } from 'react';
+// ─── Side index: surahs · juz · hizb · bookmarks ────────────────────────────
+// Sticky column on desktop; an off-canvas panel (opened from the reader bar) ≤860px.
+import { useEffect, useRef, useState } from 'react';
 import { useStore, setGlobal } from '../store';
-import { SURAHS_META, JUZ_DATA, HIZB_DATA, toArabicNum } from '../data';
+import { SURAHS_META, JUZ_DATA, HIZB_DATA } from '../data';
+import { Icon, Badge8, toAr } from './ornaments/Ornaments';
+import { displayNumber, normWord } from './reader/ayahItems';
 import styles from './Sidebar.module.css';
+
+const MOBILE = 860;
+const isMobile = () => window.innerWidth <= MOBILE;
 
 // ─── helper: navigate and close on mobile ─────────────────────────────────
 function goTo(surah, ayah = 1) {
   setGlobal({ currentSurah: surah, currentAyah: ayah, scrollToAyah: ayah });
   localStorage.setItem('nq_lastRead', JSON.stringify({ surah, ayah }));
-  if (window.innerWidth <= 768) setGlobal({ sidebarOpen: false });
+  if (isMobile()) setGlobal({ sidebarOpen: false });
+}
+
+const TABS = [
+  { id: 'surahs',    label: 'السور' },
+  { id: 'juz',       label: 'الأجزاء' },
+  { id: 'hizb',      label: 'الأحزاب' },
+  { id: 'bookmarks', label: 'المحفوظات' },
+];
+
+function ayahLabel(surah, kufi) {
+  const n = displayNumber(surah, kufi);
+  return n === null ? 'البسملة' : `الآية ${toAr(n)}`;
 }
 
 export default function Sidebar() {
@@ -15,35 +34,65 @@ export default function Sidebar() {
   const [tab, setTab]       = useState('surahs');
   const [filter, setFilter] = useState('');
   const [openJuz, setOpenJuz] = useState(null); // expanded juz number
+  const listRef = useRef(null);
+  const asideRef = useRef(null);
+  const open = !!state.sidebarOpen;
 
+  // The store starts with sidebarOpen = true (desktop). On a phone, start closed.
+  useEffect(() => {
+    if (isMobile() && state.sidebarOpen) setGlobal({ sidebarOpen: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the current surah in view inside the list (scroll the list, not the page)
+  useEffect(() => {
+    if (tab !== 'surahs' || filter) return;
+    const list = listRef.current;
+    const el = list && list.querySelector('[aria-current="true"]');
+    if (el) list.scrollTop = el.offsetTop - list.clientHeight / 2 + el.offsetHeight / 2;
+  }, [state.currentSurah, tab, filter, open]);
+
+  // Off-canvas: Escape closes, focus moves into the panel
+  useEffect(() => {
+    if (!open || !isMobile()) return;
+    function onKey(e) { if (e.key === 'Escape') setGlobal({ sidebarOpen: false }); }
+    window.addEventListener('keydown', onKey);
+    setTimeout(() => asideRef.current?.querySelector('input,button')?.focus(), 30);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  const q = filter.trim();
+  const qn = normWord(q);
   const filteredSurahs = SURAHS_META
     .map((m, i) => ({ meta: m, num: i + 1 }))
-    .filter(({ meta }) =>
-      !filter ||
-      meta[0].includes(filter) ||
-      meta[1].toLowerCase().includes(filter.toLowerCase())
+    .filter(({ meta, num }) =>
+      !q ||
+      String(num) === q ||
+      meta[0].includes(q) ||
+      (qn && normWord(meta[0]).includes(qn)) ||
+      meta[1].toLowerCase().includes(q.toLowerCase())
     );
 
   return (
     <>
       {/* Mobile overlay */}
-      {state.sidebarOpen && (
-        <div className={styles.overlay}
+      {open && (
+        <div className={styles.overlay} aria-hidden="true"
           onClick={() => setGlobal({ sidebarOpen: false })} />
       )}
 
-      <aside className={`${styles.sidebar} ${!state.sidebarOpen ? styles.collapsed : ''}`}>
+      <aside ref={asideRef} className={`${styles.side} ${open ? styles.open : ''}`} aria-label="فهرس المصحف" id="nq-side">
+        <div className={styles.head}>
+          <span className="nq-eyebrow">فهرس المصحف</span>
+          <button type="button" className={styles.close} onClick={() => setGlobal({ sidebarOpen: false })} aria-label="إغلاق الفهرس">
+            <Icon name="x" />
+          </button>
+        </div>
 
         {/* ── Tabs ── */}
-        <div className={styles.tabs}>
-          {[
-            { id: 'surahs', label: 'السور' },
-            { id: 'juz',    label: 'الأجزاء' },
-            { id: 'hizb',   label: 'الأحزاب' },
-            { id: 'bookmarks', label: '🔖' },
-          ].map(t => (
-            <button key={t.id}
-              className={`${styles.tab} ${tab === t.id ? styles.activeTab : ''}`}
+        <div className={`nq-seg ${styles.tabs}`} role="group" aria-label="تصفّح حسب">
+          {TABS.map(t => (
+            <button key={t.id} type="button" aria-pressed={tab === t.id}
               onClick={() => { setTab(t.id); setFilter(''); setOpenJuz(null); }}>
               {t.label}
             </button>
@@ -52,79 +101,71 @@ export default function Sidebar() {
 
         {/* ── Search (surahs only) ── */}
         {tab === 'surahs' && (
-          <div className={styles.filterWrap}>
-            <input className={styles.filterInput} type="text"
-              placeholder="ابحث في السور..." value={filter}
-              onChange={e => setFilter(e.target.value)} dir="rtl" />
+          <label className={`nq-input ${styles.search}`}>
+            <Icon name="search" />
+            <input type="search" placeholder="ابحث عن سورة بالاسم أو الرقم" value={filter}
+              onChange={e => setFilter(e.target.value)} dir="rtl" aria-label="ابحث عن سورة" />
             {filter && (
-              <button className={styles.clearFilter} onClick={() => setFilter('')}>✕</button>
+              <button type="button" className={styles.clear} onClick={() => setFilter('')} aria-label="مسح البحث"><Icon name="x" /></button>
             )}
-          </div>
+          </label>
         )}
 
         {/* ── Content ── */}
-        <div className={styles.list}>
+        <div className={styles.list} ref={listRef}>
 
           {/* ════ SURAHS ════ */}
           {tab === 'surahs' && filteredSurahs.map(({ meta, num }) => (
-            <div key={num}
-              className={`${styles.item} ${state.currentSurah === num ? styles.activeItem : ''}`}
+            <button key={num} type="button"
+              className={styles.item}
+              aria-current={state.currentSurah === num ? 'true' : undefined}
               onClick={() => goTo(num)}>
-              <div className={styles.num}>{num}</div>
-              <div className={styles.info}>
+              <Badge8 size={36}>{toAr(num)}</Badge8>
+              <span className={styles.info}>
                 <span className={styles.name}>{meta[0]}</span>
-                <span className={styles.sub}>{meta[3]} • {meta[2]} آية</span>
-              </div>
-            </div>
+                <span className={styles.sub}>{meta[3]} · {toAr(meta[2])} آية</span>
+              </span>
+              <span className={styles.en} dir="ltr">{meta[1]}</span>
+            </button>
           ))}
+          {tab === 'surahs' && filteredSurahs.length === 0 && (
+            <div className={styles.empty}>لا توجد سورة بهذا الاسم.</div>
+          )}
 
           {/* ════ JUZ ════ */}
           {tab === 'juz' && JUZ_DATA.map(j => {
             const isOpen = openJuz === j.juz;
             const isActive = j.surahs.includes(state.currentSurah);
             return (
-              <div key={j.juz} className={styles.juzGroup}>
-                {/* Juz header — click to expand/go */}
-                <div className={`${styles.juzHeader} ${isActive ? styles.activeJuz : ''}`}
-                  onClick={() => {
-                    setOpenJuz(isOpen ? null : j.juz);
-                  }}>
-                  <div className={styles.juzBadge}>{j.juz}</div>
-                  <div className={styles.juzInfo}>
-                    <span className={styles.juzName}>الجزء {toArabicNum(j.juz)}</span>
-                    <span className={styles.juzSub}>
-                      {SURAHS_META[j.surah - 1][0]} • الآية {j.ayah}
-                    </span>
-                  </div>
-                  <div className={styles.juzMeta}>
-                    <span className={styles.juzCount}>{j.surahs.length} سورة</span>
-                    <span className={`${styles.juzArrow} ${isOpen ? styles.juzArrowOpen : ''}`}>›</span>
-                  </div>
-                </div>
+              <div key={j.juz} className={styles.group}>
+                <button type="button" className={`${styles.item} ${isActive ? styles.activeSoft : ''}`}
+                  aria-expanded={isOpen}
+                  onClick={() => setOpenJuz(isOpen ? null : j.juz)}>
+                  <Badge8 size={36}>{toAr(j.juz)}</Badge8>
+                  <span className={styles.info}>
+                    <span className={styles.name}>الجزء {toAr(j.juz)}</span>
+                    <span className={styles.sub}>{SURAHS_META[j.surah - 1][0]} · {ayahLabel(j.surah, j.ayah)} · {toAr(j.surahs.length)} سورة</span>
+                  </span>
+                  <Icon name="chev" className={`${styles.chev} ${isOpen ? styles.chevOpen : ''}`} />
+                </button>
 
-                {/* Surahs inside juz */}
                 {isOpen && (
-                  <div className={styles.juzSurahs}>
-                    {/* Go to start of juz */}
-                    <div className={styles.juzStartRow}
-                      onClick={() => goTo(j.surah, j.ayah)}>
-                      <span className={styles.juzStartIcon}>▶</span>
-                      <span>ابدأ من الجزء {toArabicNum(j.juz)}</span>
-                      <span className={styles.juzStartRef}>{j.surah}:{j.ayah}</span>
-                    </div>
-                    {/* Each surah in juz */}
+                  <div className={styles.sublist}>
+                    <button type="button" className={styles.start} onClick={() => goTo(j.surah, j.ayah)}>
+                      <Icon name="play" />
+                      <span>ابدأ من الجزء {toAr(j.juz)}</span>
+                      <small>{SURAHS_META[j.surah - 1][0]} {toAr(displayNumber(j.surah, j.ayah) ?? 1)}</small>
+                    </button>
                     {j.surahs.map(sNum => {
                       const m = SURAHS_META[sNum - 1];
                       return (
-                        <div key={sNum}
-                          className={`${styles.subItem} ${state.currentSurah === sNum ? styles.subItemActive : ''}`}
+                        <button key={sNum} type="button" className={styles.subItem}
+                          aria-current={state.currentSurah === sNum ? 'true' : undefined}
                           onClick={() => goTo(sNum)}>
-                          <div className={styles.subNum}>{sNum}</div>
-                          <div className={styles.info}>
-                            <span className={styles.name}>{m[0]}</span>
-                            <span className={styles.sub}>{m[3]} • {m[2]} آية</span>
-                          </div>
-                        </div>
+                          <span className={styles.subNum}>{toAr(sNum)}</span>
+                          <span className={styles.name}>{m[0]}</span>
+                          <span className={styles.sub}>{toAr(m[2])} آية</span>
+                        </button>
                       );
                     })}
                   </div>
@@ -138,37 +179,41 @@ export default function Sidebar() {
             const m = SURAHS_META[h.surah - 1];
             const isActive = state.currentSurah === h.surah;
             return (
-              <div key={h.hizb}
-                className={`${styles.hizbItem} ${isActive ? styles.hizbActive : ''}`}
+              <button key={h.hizb} type="button"
+                className={`${styles.item} ${isActive ? styles.activeSoft : ''}`}
                 onClick={() => goTo(h.surah, h.ayah)}>
-                <div className={styles.hizbBadge}>
-                  <span className={styles.hizbNum}>{h.hizb}</span>
-                  <span className={styles.hizbJuz}>ج{h.juz}</span>
-                </div>
-                <div className={styles.info}>
-                  <span className={styles.name}>الحزب {toArabicNum(h.hizb)}</span>
-                  <span className={styles.sub}>{m[0]} • الآية {h.ayah}</span>
-                </div>
-                <span className={styles.hizbRef}>{h.surah}:{h.ayah}</span>
-              </div>
+                <Badge8 size={36}>{toAr(h.hizb)}</Badge8>
+                <span className={styles.info}>
+                  <span className={styles.name}>الحزب {toAr(h.hizb)}</span>
+                  <span className={styles.sub}>{m[0]} · {ayahLabel(h.surah, h.ayah)}</span>
+                </span>
+                <span className={styles.tag}>الجزء {toAr(h.juz)}</span>
+              </button>
             );
           })}
 
           {/* ════ BOOKMARKS ════ */}
           {tab === 'bookmarks' && (
             state.bookmarks.length === 0
-              ? <div className={styles.empty}>لا توجد آيات محفوظة.<br />اضغط 🔖 بجانب أي آية.</div>
+              ? (
+                <div className={styles.empty}>
+                  <Badge8 icon="bookmark" />
+                  <p>لا توجد آيات محفوظة بعد.</p>
+                  <small>اختر آية ثم اضغط «المفضلة» لحفظها هنا.</small>
+                </div>
+              )
               : state.bookmarks.map((b, i) => {
                   const m = SURAHS_META[b.surah - 1];
+                  if (!m) return null;
                   return (
-                    <div key={i} className={styles.item}
+                    <button key={`${b.surah}:${b.ayah}:${i}`} type="button" className={styles.item}
                       onClick={() => goTo(b.surah, b.ayah)}>
-                      <div className={styles.num}>🔖</div>
-                      <div className={styles.info}>
-                        <span className={styles.name}>{m[0]} • الآية {b.ayah}</span>
-                        <span className={styles.sub}>{b.surah}:{b.ayah}</span>
-                      </div>
-                    </div>
+                      <Badge8 icon="bookmark" size={36} />
+                      <span className={styles.info}>
+                        <span className={styles.name}>{m[0]}</span>
+                        <span className={styles.sub}>{ayahLabel(b.surah, b.ayah)}</span>
+                      </span>
+                    </button>
                   );
                 })
           )}

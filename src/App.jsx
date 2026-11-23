@@ -3,11 +3,11 @@ import { useLang, LANGS } from './i18n';
 import { Routes, Route, useLocation, Link } from 'react-router-dom';
 import { useStore, setGlobal } from './store';
 import { SURAHS_META } from './data';
-import Toolbar from './components/Toolbar';
 import { SiteHeader, SiteFooter, SiteChrome } from './components/shell/Shell';
 import { OrnamentDefs } from './components/ornaments/Ornaments';
 import Sidebar         from './components/Sidebar';
 import Reader          from './components/Reader';
+import TafsirPanel     from './components/TafsirPanel';
 import AudioPlayer     from './components/AudioPlayer';
 import Toast           from './components/Toast';
 import AIAssistant     from './components/AIAssistant';
@@ -59,19 +59,19 @@ class ExtraBoundary extends Component {
 }
 
 function ReaderLayout() {
+  const [state] = useStore();
+  const tafsirOpen = !!state.showTafsir;
   return (
-    <div className={styles.appRoot}>
-      <div className={styles.stickyTop}>
-        <SiteHeader />
-        <Toolbar />
-        {/* Reading progress — pinned to the bottom edge of the sticky header */}
-        <div className={styles.progressTrack}>
-          <div id="progressBar" className={styles.progressBar} />
-        </div>
+    <div className={`${styles.appRoot} ${tafsirOpen ? styles.withTafsir : ''}`}>
+      <SiteHeader />
+      {/* Reading progress — a hairline pinned under the sticky header */}
+      <div className={styles.progressTrack} aria-hidden="true">
+        <div id="progressBar" className={styles.progressBar} />
       </div>
       <div className={styles.body}>
         <Sidebar />
         <Reader />
+        {tafsirOpen && <TafsirPanel />}
       </div>
       <AudioPlayer />
     </div>

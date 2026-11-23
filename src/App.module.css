@@ -1,48 +1,56 @@
+/* ── Reader page: header · [side index | centre | tafsir] · floating dock ── */
 .appRoot {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
+  /* widths the floating dock / ayah tools use to centre over the centre column */
+  --side-w: 290px;
+  --taf-w: 0px;
+  --cw: calc(100vw - var(--side-w) - var(--taf-w));
+  --dock-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  --dock-h: 76px;
+  min-height: 100vh;
+  background: var(--bg);
 }
+.appRoot.withTafsir { --taf-w: 340px; }
 
 .fullPage {
   min-height: 60vh;
   background: var(--bg);
 }
 
+.body {
+  display: grid;
+  grid-template-columns: var(--side-w) minmax(0, 1fr);
+  min-height: calc(100vh - var(--header-h));
+  align-items: start;
+}
+.withTafsir .body { grid-template-columns: var(--side-w) minmax(0, 1fr) var(--taf-w); }
+
 .progressTrack {
-  /* Lives inside .stickyTop (position: sticky) so it is never painted over by it */
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
+  position: fixed;
+  top: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+  inset-inline: 0;
   height: 2px;
-  background: var(--border);
+  z-index: 61;
   pointer-events: none;
 }
 .progressBar {
   height: 100%;
-  background: linear-gradient(90deg, var(--green2), var(--gold));
   width: 0%;
-  transition: width 0.1s linear;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold2), var(--gold));
+  box-shadow: 0 0 8px var(--glow);
+  transition: width .1s linear;
 }
 
-.body {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
+@media (max-width: 1240px) {
+  .appRoot { --side-w: 260px; }
+  .appRoot.withTafsir { --taf-w: 0px; }
+  .withTafsir .body { grid-template-columns: var(--side-w) minmax(0, 1fr); }
 }
-
-@media (max-width: 768px) {
-  .appRoot {
-    /* Leave room for BottomNav at bottom */
-    padding-bottom: 64px;
-  }
+@media (max-width: 860px) {
+  .appRoot { --side-w: 0px; }
+  .body, .withTafsir .body { grid-template-columns: minmax(0, 1fr); }
 }
-
-.stickyTop {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  flex-shrink: 0;
+@media (max-width: 760px) {
+  .appRoot { --dock-bottom: calc(78px + env(safe-area-inset-bottom, 0px)); --dock-h: 64px; }
 }
 
 /* ─── Feature-off / maintenance notice ─────────────────────────────────── */

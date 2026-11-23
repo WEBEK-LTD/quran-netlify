@@ -1,110 +1,200 @@
+// ─── Reader bar: index button, surah title, view switch, listen, display popover, prev/next ──
+// Everything the old toolbar had lives here now: font size and style, translation,
+// reciter, the daily ward, quick links — plus the highlight setting from Settings.
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore, setGlobal, savePref, DEFAULT_READER } from '../store';
 import { SURAHS_META, TRANSLATIONS, READERS } from '../data';
 import { useHifz } from '../hifzStore';
+import { Icon, toAr } from './ornaments/Ornaments';
+import { juzRange } from './reader/ayahItems';
 import styles from './Toolbar.module.css';
 
-export default function Toolbar() {
+const COUNTRY = { '🇪🇬': 'مصر', '🇸🇦': 'السعودية', '🇰🇼': 'الكويت' };
+const READER_GROUPS = READERS.reduce((acc, r) => {
+  const g = COUNTRY[r.country] || 'قرّاء آخرون';
+  (acc[g] = acc[g] || []).push(r);
+  return acc;
+}, {});
+
+export function changeFontSize(next) {
+  const v = Math.max(16, Math.min(48, Math.round(next)));
+  setGlobal({ fontSize: v });
+  savePref('nq_fontSize', v);
+  document.documentElement.style.setProperty('--font-size', v + 'px');
+}
+
+function DisplayPopover({ onClose }) {
   const [state] = useStore();
   const { hifz, markWardDone, todayDone, streak } = useHifz();
-  const meta = SURAHS_META[state.currentSurah - 1];
-
-  function changeFont(delta) {
-    const next = Math.max(16, Math.min(48, state.fontSize + delta));
-    setGlobal({ fontSize: next });
-    savePref('nq_fontSize', next);
-    document.documentElement.style.setProperty('--font-size', next + 'px');
-  }
+  const ward = hifz.dailyWard;
+  const wardName = ward ? SURAHS_META[ward.surah - 1]?.[0] : null;
 
   function setFontStyle(style) {
     setGlobal({ fontStyle: style });
     savePref('nq_fontStyle', style);
   }
 
-  const ward = hifz.dailyWard;
-  const wardName = ward ? SURAHS_META[ward.surah - 1]?.[0] : null;
-
   return (
-    <div className={styles.toolbar}>
-      {/* Font controls */}
-      <span className={styles.label}>حجم الخط:</span>
-      <div className={styles.group}>
-        <button className={styles.btn} onClick={() => changeFont(-2)}>أ−</button>
-        <span className={styles.sizeDisplay}>{state.fontSize}</span>
-        <button className={styles.btn} onClick={() => changeFont(2)}>أ+</button>
+    <div className={styles.pop} role="dialog" aria-label="إعدادات العرض">
+      <div className={styles.popHead}>
+        <span className="nq-eyebrow">العرض والتلاوة</span>
+        <button type="button" className={styles.popClose} onClick={onClose} aria-label="إغلاق"><Icon name="x" /></button>
       </div>
 
-      <div className={styles.sep} />
-
-      <span className={styles.label}>الخط:</span>
-      <button className={`${styles.btn} ${state.fontStyle === 'uthmani' ? styles.active : ''}`}
-        onClick={() => setFontStyle('uthmani')}>عثماني</button>
-      <button className={`${styles.btn} ${state.fontStyle === 'simple' ? styles.active : ''}`}
-        onClick={() => setFontStyle('simple')}>مبسط</button>
-
-      <div className={styles.sep} />
-
-      <span className={styles.toolLabel}>ترجمة:</span>
-      <select
-        className={styles.transSelect}
-        value={state.translation || 'none'}
-        title="الترجمة"
-        onChange={e => {
-          setGlobal({ translation: e.target.value });
-          savePref('nq_translation', e.target.value);
-        }}
-      >
-        {TRANSLATIONS.map(t => (
-          <option key={t.id} value={t.id}>{t.flag} {t.lang}</option>
-        ))}
-      </select>
-
-      <span className={styles.toolLabel}>قارئ:</span>
-      <select
-        className={styles.transSelect}
-        value={state.reader || DEFAULT_READER}
-        title="القارئ"
-        onChange={e => {
-          setGlobal({ reader: e.target.value });
-          savePref('nq_reader', e.target.value);
-          if (state.isPlaying) setGlobal({ playTrigger: Date.now() });
-        }}
-      >
-        {READERS.map(r => (
-          <option key={r.id} value={r.id}>{r.country} {r.name}</option>
-        ))}
-      </select>
-
-      <div className={styles.sep} />
-
-      {/* Quick links */}
-      <Link to="/search" className={styles.quickLink}>🔍 بحث</Link>
-      <Link to="/notes"  className={styles.quickLink}>📝 ملاحظات</Link>
-      <Link to="/hifz"   className={styles.quickLink}>📚 حفظ</Link>
-
-      <div className={styles.spacer} />
-
-      {/* Ward widget */}
-      {ward ? (
-        <div className={styles.wardWidget}>
-          {streak > 0 && <span className={styles.streak}>🔥 {streak}</span>}
-          <span className={styles.wardInfo}>
-            {wardName} {ward.startAyah}–{ward.endAyah}
-          </span>
-          <button
-            className={`${styles.wardBtn} ${todayDone ? styles.wardDone : ''}`}
-            onClick={markWardDone}
-            disabled={todayDone}
-            title="الورد اليومي"
-          >
-            {todayDone ? '✓ تم' : '☑ وردي'}
-          </button>
+      <div className={styles.field}>
+        <div className={styles.fieldTop}>
+          <label htmlFor="nqFontSize">حجم الخط</label>
+          <span className={`${styles.val} nq-num`}>{toAr(state.fontSize)}</span>
         </div>
-      ) : (
-        <Link to="/hifz" className={styles.setWardBtn}>+ ورد يومي</Link>
-      )}
+        <div className={styles.sizeRow}>
+          <button type="button" className={styles.step} onClick={() => changeFontSize(state.fontSize - 2)} aria-label="تصغير الخط" disabled={state.fontSize <= 16}>أ−</button>
+          <input id="nqFontSize" type="range" min="16" max="48" step="2" value={state.fontSize}
+            className={styles.range} onChange={e => changeFontSize(Number(e.target.value))}
+            style={{ '--p': ((state.fontSize - 16) / 32 * 100) + '%' }} />
+          <button type="button" className={styles.step} onClick={() => changeFontSize(state.fontSize + 2)} aria-label="تكبير الخط" disabled={state.fontSize >= 48}>أ+</button>
+        </div>
+        <p className={styles.preview} style={{ fontFamily: state.fontStyle === 'uthmani' ? 'var(--f-quran)' : 'var(--f-ui)', fontSize: Math.min(state.fontSize, 34) }}>
+          ٱلْحَمْدُ لِلَّهِ رَبِّ ٱلْعَٰلَمِينَ
+        </p>
+      </div>
 
-      <span className={styles.meta}>{meta[0]} • {meta[2]} آية • {meta[3]}</span>
+      <div className={styles.field}>
+        <span className={styles.lbl} id="nqFontStyleLbl">نوع الخط</span>
+        <div className="nq-seg" role="group" aria-labelledby="nqFontStyleLbl" style={{ display: 'flex' }}>
+          <button type="button" style={{ flex: 1 }} aria-pressed={state.fontStyle === 'uthmani'} onClick={() => setFontStyle('uthmani')}>عثماني</button>
+          <button type="button" style={{ flex: 1 }} aria-pressed={state.fontStyle !== 'uthmani'} onClick={() => setFontStyle('simple')}>مبسّط</button>
+        </div>
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.lbl} htmlFor="nqTrans">الترجمة</label>
+        <div className={styles.selectWrap}>
+          <select id="nqTrans" className={styles.select} value={state.translation || 'none'}
+            onChange={e => { setGlobal({ translation: e.target.value }); savePref('nq_translation', e.target.value); }}>
+            {TRANSLATIONS.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          <Icon name="chev" className={styles.selectChev} />
+        </div>
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.lbl} htmlFor="nqReader">القارئ</label>
+        <div className={styles.selectWrap}>
+          <select id="nqReader" className={styles.select} value={state.reader || DEFAULT_READER}
+            onChange={e => {
+              setGlobal({ reader: e.target.value });
+              savePref('nq_reader', e.target.value);
+              if (state.isPlaying) setGlobal({ playTrigger: Date.now() });
+            }}>
+            {Object.entries(READER_GROUPS).map(([g, list]) => (
+              <optgroup key={g} label={g}>
+                {list.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </optgroup>
+            ))}
+          </select>
+          <Icon name="chev" className={styles.selectChev} />
+        </div>
+      </div>
+
+      <button type="button" className={styles.toggleRow} aria-pressed={!!state.highlightMode}
+        onClick={() => { const v = !state.highlightMode; setGlobal({ highlightMode: v }); savePref('nq_highlight', v); }}>
+        <span>
+          <b>إبقاء تمييز الآية المختارة</b>
+          <small>تبقى الآية مظلّلة بعد إغلاق شريط الأدوات</small>
+        </span>
+        <i className={styles.switch} aria-hidden="true" />
+      </button>
+
+      <div className={styles.ward}>
+        <Icon name="calendar" />
+        {ward ? (
+          <>
+            <span className={styles.wardTxt}>
+              <b>الورد اليومي</b>
+              <small>{wardName} {toAr(ward.startAyah)}–{toAr(ward.endAyah)}{streak > 0 ? ` · ${toAr(streak)} يوماً متتالية` : ''}</small>
+            </span>
+            <button type="button" className="nq-btn ghost sm" onClick={markWardDone} disabled={todayDone} aria-pressed={todayDone}>
+              {todayDone ? <><Icon name="check" />تمّ</> : 'أتممت وردي'}
+            </button>
+          </>
+        ) : (
+          <>
+            <span className={styles.wardTxt}><b>الورد اليومي</b><small>لم تحدّد ورداً بعد</small></span>
+            <Link to="/hifz" className="nq-btn ghost sm" onClick={onClose}>حدّد وردك</Link>
+          </>
+        )}
+      </div>
+
+      <nav className={styles.quick} aria-label="روابط سريعة">
+        <Link to="/search" onClick={onClose}><Icon name="search" />بحث</Link>
+        <Link to="/notes" onClick={onClose}><Icon name="pen" />ملاحظاتي</Link>
+        <Link to="/hifz" onClick={onClose}><Icon name="scroll" />الحفظ</Link>
+      </nav>
+    </div>
+  );
+}
+
+export default function Toolbar({ view, onView, onPrev, onNext, onListen }) {
+  const [state] = useStore();
+  const [pop, setPop] = useState(false);
+  const popRef = useRef(null);
+  const s = state.currentSurah;
+  const meta = SURAHS_META[s - 1];
+  const [j1, j2] = juzRange(s);
+
+  useEffect(() => {
+    if (!pop) return;
+    function onDown(e) { if (popRef.current && !popRef.current.contains(e.target)) setPop(false); }
+    function onKey(e) { if (e.key === 'Escape') setPop(false); }
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [pop]);
+
+  return (
+    <div className={styles.bar}>
+      <button type="button" className={`nq-ibtn ${styles.indexBtn}`} aria-label="فهرس السور"
+        aria-expanded={!!state.sidebarOpen} onClick={() => setGlobal({ sidebarOpen: !state.sidebarOpen })}>
+        <Icon name="list" />
+      </button>
+
+      <div className={styles.title}>
+        <h1>سورة {meta[0]}</h1>
+        <small>
+          {j1 === j2 ? `الجزء ${toAr(j1)}` : `الأجزاء ${toAr(j1)}–${toAr(j2)}`}
+          {' · '}{meta[3]}{' · '}آياتها {toAr(meta[2])}
+        </small>
+      </div>
+
+      <div className={`nq-seg ${styles.views}`} role="group" aria-label="طريقة العرض">
+        <button type="button" aria-pressed={view === 'mushaf'} onClick={() => onView('mushaf')}><Icon name="book" />مصحف</button>
+        <button type="button" aria-pressed={view === 'ayah'} onClick={() => onView('ayah')}><Icon name="list" />آية بآية</button>
+      </div>
+
+      <div className={styles.acts}>
+        <button type="button" className="nq-ibtn" onClick={onListen}
+          aria-label={state.isPlaying ? 'إيقاف التلاوة مؤقتاً' : 'الاستماع للسورة'} title={state.isPlaying ? 'إيقاف مؤقت' : 'استماع للسورة'}>
+          <Icon name={state.isPlaying ? 'pause' : 'head'} />
+        </button>
+        <div className={styles.popWrap} ref={popRef}>
+          <button type="button" className={`nq-ibtn ${pop ? styles.on : ''}`} aria-label="حجم الخط والعرض"
+            title="حجم الخط والعرض" aria-expanded={pop} aria-haspopup="dialog" onClick={() => setPop(v => !v)}>
+            <Icon name="aa" />
+          </button>
+          {pop && <DisplayPopover onClose={() => setPop(false)} />}
+        </div>
+        <span className={styles.navPair}>
+          <button type="button" className="nq-ibtn" onClick={onPrev} disabled={s <= 1}
+            aria-label={s > 1 ? `السورة السابقة: ${SURAHS_META[s - 2][0]}` : 'السورة السابقة'} title="السورة السابقة">
+            <Icon name="back" />
+          </button>
+          <button type="button" className="nq-ibtn" onClick={onNext} disabled={s >= 114}
+            aria-label={s < 114 ? `السورة التالية: ${SURAHS_META[s][0]}` : 'السورة التالية'} title="السورة التالية">
+            <Icon name="back" className={styles.flip} />
+          </button>
+        </span>
+      </div>
     </div>
   );
 }

@@ -1,33 +1,61 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+// ─── Quran reader: framed mushaf page or ayah-by-ayah cards ──────────────────
+// Ayah numbers: the API, audio files, tafsir, bookmarks, progress and the
+// reading log all use the Kufi count. Al-Fatiha is displayed with the Madani
+// count (see reader/ayahItems.js); every displayed item keeps its `kufi` number.
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useStore, setGlobal } from '../store';
 import { useAuth } from '../hooks/useAuth';
-import { SURAHS_META, toArabicNum } from '../data';
+import { SURAHS_META } from '../data';
 import { fetchSurahAyahs, fetchSurahTranslation } from '../api';
 import { logReading, saveProgress, addBookmark, removeBookmark, errorMessage } from '../backend';
-import TafsirPanel from './TafsirPanel';
+import { Icon, AyahMark, Badge8, Divider, toAr } from './ornaments/Ornaments';
+import { buildItems, BASMALA_TEXT, juzRange } from './reader/ayahItems';
+import AyahActions from './reader/AyahActions';
+import Toolbar from './Toolbar';
 import styles from './Reader.module.css';
 
-// ── Basmala detection ──────────────────────────────────────────────────────
-// Remove Arabic diacritics / Quranic marks / tatweel / BOM and unify alef forms
-// so different editions (uthmani, imlaei) can be compared reliably.
-function normalizeArabic(str) {
-  return String(str || '')
-    .replace(/[\uFEFF\u200B-\u200F]/g, '')
-    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u08D3-\u08FF\u0640]/g, '')
-    .replace(/[\u0622\u0623\u0625\u0671\u0672\u0673]/g, '\u0627');
+const VIEW_KEY = 'nq_reader_view';
+function readView() {
+  try { return localStorage.getItem(VIEW_KEY) === 'ayah' ? 'ayah' : 'mushaf'; } catch { return 'mushaf'; }
 }
-const BASMALA_WORDS = ['بسم', 'الله', 'الرحمن', 'الرحيم'];
+const reducedMotion = () =>
+  (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) ||
+  document.documentElement.dataset.reduce === 'on';
 
-// Strip the basmala from the start of ayah 1 ONLY if the text really starts with it
-// (alquran.cloud includes it, quran.com does not).
-function stripBasmala(text) {
-  const tokens = String(text || '').trim().split(/\s+/);
-  if (tokens.length <= BASMALA_WORDS.length) return text;
-  const startsWithBasmala = BASMALA_WORDS.every((w, i) => normalizeArabic(tokens[i]) === w);
-  if (!startsWithBasmala) return text;
-  const stripped = tokens.slice(BASMALA_WORDS.length).join(' ').trim();
-  return stripped || text;
+export function toggleAudio() { window.dispatchEvent(new CustomEvent('nq:audio-toggle')); }
+
+function goToSurah(n) {
+  if (n < 1 || n > 114) return;
+  setGlobal({ currentSurah: n, currentAyah: 1, scrollToAyah: null });
+  try { localStorage.setItem('nq_lastRead', JSON.stringify({ surah: n, ayah: 1 })); } catch {}
+}
+
+// Gilded cartouche holding the surah name.
+function Cartouche({ name, count, type }) {
+  return (
+    <div className={styles.cart}>
+      <svg viewBox="0 0 400 62" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M26 4H374L396 31 374 58H26L4 31Z" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M34 10H366L382 31 366 52H34L18 31Z" style={{ fill: 'var(--hl)' }} stroke="currentColor" strokeOpacity=".5" strokeWidth="1" />
+        <circle cx="12" cy="31" r="2.5" fill="currentColor" /><circle cx="388" cy="31" r="2.5" fill="currentColor" />
+      </svg>
+      <small className={styles.cartR}>آياتها {toAr(count)}</small>
+      <h2>سورة {name}</h2>
+      <small className={styles.cartL}>{type}</small>
+    </div>
+  );
+}
+
+function PageCorners() {
+  return (
+    <>
+      <svg className={`${styles.pc} ${styles.pcA}`} aria-hidden="true"><use href="#nq-cornerBig" /></svg>
+      <svg className={`${styles.pc} ${styles.pcB}`} aria-hidden="true"><use href="#nq-cornerBig" /></svg>
+      <svg className={`${styles.pc} ${styles.pcC}`} aria-hidden="true"><use href="#nq-cornerBig" /></svg>
+      <svg className={`${styles.pc} ${styles.pcD}`} aria-hidden="true"><use href="#nq-cornerBig" /></svg>
+    </>
+  );
 }
 
 export default function Reader() {
@@ -38,17 +66,28 @@ export default function Reader() {
   const [loading, setLoading]           = useState(true);
   const [loadedSurah, setLoadedSurah]   = useState(null); // surah whose ayahs are currently rendered
   const [reloadKey, setReloadKey]       = useState(0);    // bump to force a re-fetch (retry)
-  const [highlightedAyah, setHighlightedAyah] = useState(null);
+  const [sel, setSel]                   = useState(null); // { uid, kufi } selected ayah
+  const [barOpen, setBarOpen]           = useState(false);
   const [error, setError]               = useState(null);
   const [translations, setTranslations] = useState({});
-  const readerRef  = useRef(null);
+  const [view, setViewState]            = useState(readView);
   const initDone   = useRef(false);
   const progressTimer = useRef(null);
+
+  function setView(v) {
+    setViewState(v);
+    try { localStorage.setItem(VIEW_KEY, v); } catch {}
+    // keep the selected ayah in sight when switching
+    if (sel) setTimeout(() => {
+      const el = document.querySelector(`[data-uid="${sel.uid}"]`);
+      if (el) el.scrollIntoView({ block: 'center' });
+    }, 60);
+  }
 
   // Debounced PUT /me/progress — cleared on unmount
   useEffect(() => () => clearTimeout(progressTimer.current), []);
 
-  // Deep links (/reader?surah=X&ayah=Y) + restore last-read position on first mount
+  // Deep links (/reader?surah=X&ayah=Y — Y is the Kufi number) + restore last-read position on first mount
   useEffect(() => {
     const qs = parseInt(searchParams.get('surah'), 10);
     if (qs >= 1 && qs <= 114) {
@@ -96,22 +135,15 @@ export default function Reader() {
     setAyahs([]);
     setLoadedSurah(null);
     setError(null);
-    setHighlightedAyah(null);
+    setSel(null);
+    setBarOpen(false);
 
-    if (readerRef.current) readerRef.current.scrollTop = 0;
+    window.scrollTo({ top: 0 });
 
     fetchSurahAyahs(surah)
       .then(data => {
         if (cancelled) return;
-        // Surah 1 (Fatiha): its first ayah IS the basmala → keep it.
-        // Surah 9 (Tawbah): no basmala.
-        // Others: basmala is shown separately above, so strip it from ayah 1 if present.
-        const cleaned = data.map(a =>
-          a.number === 1 && surah !== 1 && surah !== 9
-            ? { ...a, text: stripBasmala(a.text) }
-            : a
-        );
-        setAyahs(cleaned);
+        setAyahs(data);
         setLoadedSurah(surah);
         setLoading(false);
       })
@@ -125,29 +157,71 @@ export default function Reader() {
     return () => { cancelled = true; };
   }, [state.currentSurah, reloadKey]);
 
-  // Scroll to a specific ayah when requested — only once the requested surah is rendered
+  const built = useMemo(
+    () => (loadedSurah ? buildItems(loadedSurah, ayahs) : { basmala: false, basmalaKufi: null, items: [] }),
+    [loadedSurah, ayahs]
+  );
+
+  // Scroll to a specific (Kufi) ayah when requested — only once the requested surah is rendered
   useEffect(() => {
     if (!state.scrollToAyah || loading || loadedSurah !== state.currentSurah) return;
     const target = state.scrollToAyah;
-    setTimeout(() => {
+    const t = setTimeout(() => {
       const el = document.getElementById(`ayah-${target}`);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (el) el.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
     }, 200);
     setGlobal({ scrollToAyah: null });
+    return () => clearTimeout(t);
   }, [state.scrollToAyah, state.currentSurah, loadedSurah, loading]);
 
-  // Reading progress bar
-  const handleScroll = useCallback(() => {
-    if (!readerRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = readerRef.current;
-    const pct = (scrollTop / (scrollHeight - clientHeight)) * 100;
-    const bar = document.getElementById('progressBar');
-    if (bar) bar.style.width = Math.min(100, pct) + '%';
-  }, []);
+  // Reading progress bar (page scroll)
+  useEffect(() => {
+    let raf = 0;
+    function update() {
+      raf = 0;
+      const bar = document.getElementById('progressBar');
+      if (!bar) return;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = max > 0 ? (window.scrollY / max) * 100 : 0;
+      bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
+    }
+    function onScroll() { if (!raf) raf = requestAnimationFrame(update); }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    update();
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [loading, view]);
+
+  // Follow the recitation: keep the playing ayah on screen
+  useEffect(() => {
+    if (!state.isPlaying || loading) return;
+    const el = document.querySelector(`[data-kufi="${state.audioAyah}"]`);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const top = 150, bottom = window.innerHeight - 200;
+    if (r.top < top || r.top > bottom) {
+      el.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
+    }
+  }, [state.audioAyah, state.isPlaying, loading]);
+
+  // Escape closes the ayah tools
+  useEffect(() => {
+    if (!barOpen) return;
+    function onKey(e) { if (e.key === 'Escape' && !state.showTafsir) closeBar(); }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [barOpen, state.showTafsir, state.highlightMode]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
-  function selectAyah(num) {
-    if (state.highlightMode) setHighlightedAyah(num);
+  function selectAyah(item) {
+    setSel({ uid: item.uid, kufi: item.kufi });
+    setBarOpen(true);
+    const num = item.kufi;
     setGlobal({ currentAyah: num });
     localStorage.setItem('nq_lastRead', JSON.stringify({ surah: state.currentSurah, ayah: num }));
     // حفظ تاريخ اليوم للـ streak المحلي (يشتغل حتى بدون حساب)
@@ -169,23 +243,27 @@ export default function Reader() {
     }
   }
 
-  function copyAyah(e, ayah) {
-    e.stopPropagation();
-    const meta = SURAHS_META[state.currentSurah - 1];
-    navigator.clipboard.writeText(
-      `${ayah.text}\n\n— سورة ${meta[0]}، الآية ${ayah.number}`
-    ).then(() => setGlobal({ toast: '✅ تم نسخ الآية مع المرجع' }));
+  function closeBar() {
+    setBarOpen(false);
+    if (!state.highlightMode) setSel(null);
   }
 
-  function toggleBookmark(e, ayahNum) {
-    e.stopPropagation();
+  function copyAyah(item) {
+    const meta = SURAHS_META[state.currentSurah - 1];
+    navigator.clipboard.writeText(
+      `${item.text}\n\n— سورة ${meta[0]}، الآية ${item.label}`
+    ).then(() => setGlobal({ toast: 'تم نسخ الآية مع المرجع' }))
+     .catch(() => setGlobal({ toast: 'تعذّر النسخ' }));
+  }
+
+  function toggleBookmark(ayahNum) {
     const exists = state.bookmarks.find(
       b => b.surah === state.currentSurah && b.ayah === ayahNum
     );
     const next = exists
       ? state.bookmarks.filter(b => !(b.surah === state.currentSurah && b.ayah === ayahNum))
       : [...state.bookmarks, { surah: state.currentSurah, ayah: ayahNum }];
-    setGlobal({ bookmarks: next, toast: exists ? '🗑️ تم الحذف من المفضلة' : '🔖 تم الحفظ في المفضلة' });
+    setGlobal({ bookmarks: next, toast: exists ? 'تم الحذف من المفضلة' : 'تم الحفظ في المفضلة' });
     try { localStorage.setItem('nq_bookmarks', JSON.stringify(next)); } catch {}
     if (user) syncBookmarkChange(state.currentSurah, ayahNum, !exists);
   }
@@ -197,139 +275,212 @@ export default function Reader() {
       setGlobal({ bookmarks: list });
       try { localStorage.setItem('nq_bookmarks', JSON.stringify(list)); } catch {}
     } catch (e) {
-      setGlobal({ toast: '⚠️ ' + errorMessage(e, 'تعذّرت مزامنة المفضلة مع حسابك') + ' — حُفظ التغيير على هذا الجهاز' });
+      setGlobal({ toast: errorMessage(e, 'تعذّرت مزامنة المفضلة مع حسابك') + ' — حُفظ التغيير على هذا الجهاز' });
     }
   }
 
-  function playAyah(e, num) {
-    e.stopPropagation();
+  function playAyah(num) {
+    if (state.isPlaying && state.audioAyah === num) { toggleAudio(); return; }
     setGlobal({ audioAyah: num, showAudio: true, playTrigger: Date.now() });
   }
 
-  function openTafsir(e, num) {
-    e.stopPropagation();
-    setGlobal({ showTafsir: true, tafsirAyah: num, tafsirSurah: state.currentSurah });
+  function listen() {
+    if (state.isPlaying || state.showAudio) { toggleAudio(); return; }
+    setGlobal({ audioAyah: sel?.kufi || 1, showAudio: true, playTrigger: Date.now() });
+  }
+
+  function act(id, item) {
+    const surah = state.currentSurah;
+    const num = item.kufi;
+    switch (id) {
+      case 'play': playAyah(num); break;
+      case 'tafsir': setGlobal({ showTafsir: true, tafsirAyah: num, tafsirSurah: surah }); break;
+      case 'bookmark': toggleBookmark(num); break;
+      case 'copy': copyAyah(item); break;
+      case 'note':
+        window.dispatchEvent(new CustomEvent('openNote', { detail: { surah, ayah: num } }));
+        break;
+      case 'share':
+        window.dispatchEvent(new CustomEvent('shareAyah', { detail: { surah, ayah: num, text: item.fullText } }));
+        break;
+      case 'ask':
+        setGlobal({ currentAyah: num });
+        window.dispatchEvent(new CustomEvent('openAI', { detail: { surah, ayah: num, text: item.fullText } }));
+        break;
+      default:
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
-  const meta       = SURAHS_META[state.currentSurah - 1];
-  const hasBasmala = state.currentSurah !== 1 && state.currentSurah !== 9;
-  const quranFont  = state.fontStyle === 'uthmani' ? 'var(--font-quran)' : 'var(--font-ui)';
+  const surah      = state.currentSurah;
+  const meta       = SURAHS_META[surah - 1];
+  const [j1, j2]   = juzRange(surah);
+  const quranFont  = state.fontStyle === 'uthmani' ? 'var(--f-quran)' : 'var(--f-ui)';
   const transDir   = /^(ur|fa)\./.test(state.translation || '') ? 'rtl' : 'ltr';
+  const hasTrans   = state.translation && state.translation !== 'none';
+  const ready      = !loading && !error && loadedSurah === surah;
+  const audioOn    = state.showAudio;
+  const isBookmarked = (k) => state.bookmarks.some(b => b.surah === surah && b.ayah === k);
+  const isPlayingK = (k) => audioOn && state.audioAyah === k;
+  const showSel    = (uid) => sel && sel.uid === uid && (barOpen || state.highlightMode);
+  const selItem    = sel ? built.items.find(i => i.uid === sel.uid) : null;
+  const juzLabel   = j1 === j2 ? `الجزء ${toAr(j1)}` : `الجزء ${toAr(j1)}–${toAr(j2)}`;
+  const basmalaPlaying = built.basmalaKufi && isPlayingK(built.basmalaKufi);
+
+  const basmalaLine = built.basmala && (
+    <p className={`${styles.basm} ${basmalaPlaying ? styles.playing : ''}`}
+      id={built.basmalaKufi ? `ayah-${built.basmalaKufi}` : undefined}
+      data-kufi={built.basmalaKufi || undefined}
+      style={{ fontFamily: quranFont }}>
+      {BASMALA_TEXT}
+    </p>
+  );
+
+  function onAyahKey(e, item) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectAyah(item); }
+  }
 
   return (
-    <main className={styles.reader} ref={readerRef} onScroll={handleScroll}>
+    <main id="main" className={`${styles.center} ${audioOn ? styles.withDock : ''}`}>
+      <Toolbar view={view} onView={setView} onListen={listen}
+        onPrev={() => goToSurah(surah - 1)} onNext={() => goToSurah(surah + 1)} />
 
-      {loading && (
-        <div className={styles.loading}>
-          <div className={styles.spinner} />
-          <p>جاري تحميل السورة...</p>
-        </div>
+      {view === 'mushaf' && hasTrans && ready && (
+        <p className={styles.hint}>
+          <Icon name="globe" />
+          <span>الترجمة المختارة تظهر في عرض «آية بآية».</span>
+          <button type="button" onClick={() => setView('ayah')}>اعرضها</button>
+        </p>
       )}
 
-      {error && !loading && (
-        <div className={styles.errorBox}>
-          <p>⚠️ {error}</p>
-          <button onClick={() => setReloadKey(k => k + 1)}>
-            إعادة المحاولة
-          </button>
-        </div>
-      )}
+      {/* ── Mushaf view ── */}
+      {view === 'mushaf' && (
+        <article className={styles.page} aria-label={`سورة ${meta[0]}`} aria-busy={loading}>
+          <PageCorners />
+          <div className={styles.pageIn}>
+            <div className={styles.phead}><span>سورة {meta[0]}</span><span>{juzLabel}</span></div>
+            <Cartouche name={meta[0]} count={meta[2]} type={meta[3]} />
 
-      {!loading && !error && (
-        <>
-          {/* Surah Header */}
-          <div className={styles.surahHeader}>
-            <div className={styles.badge}>{state.currentSurah}</div>
-            <h1 className={styles.surahName}>{meta[0]}</h1>
-            <div className={styles.surahMeta}>
-              <span>📍 {meta[3]}</span>
-              <span className={styles.dot}>•</span>
-              <span>📖 {meta[2]} آية</span>
-              <span className={styles.dot}>•</span>
-              <span>{meta[1]}</span>
-            </div>
+            {loading && <Skeleton />}
+            {error && !loading && <ErrorBox msg={error} onRetry={() => setReloadKey(k => k + 1)} />}
+
+            {ready && (
+              <>
+                {basmalaLine}
+                <p className={styles.mtext} style={{ fontFamily: quranFont }}>
+                  {built.items.map(item => (
+                    <span key={item.uid}>
+                      <span
+                        id={item.anchor ? `ayah-${item.kufi}` : undefined}
+                        data-uid={item.uid}
+                        data-kufi={item.kufi}
+                        className={`${styles.ay} ${showSel(item.uid) ? styles.sel : ''} ${isPlayingK(item.kufi) ? styles.playing : ''}`}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={!!showSel(item.uid)}
+                        onClick={() => selectAyah(item)}
+                        onKeyDown={e => onAyahKey(e, item)}
+                      >
+                        {item.text}{' '}<AyahMark n={item.label} />
+                      </span>{' '}
+                    </span>
+                  ))}
+                </p>
+                <div className={styles.pfoot}><Divider /></div>
+              </>
+            )}
           </div>
+        </article>
+      )}
 
-          <div className={styles.ornament}>❧ ✦ ❧</div>
+      {/* ── Ayah-by-ayah view ── */}
+      {view === 'ayah' && (
+        <section className={styles.list} aria-label={`آيات سورة ${meta[0]}`} aria-busy={loading}>
+          <header className={`nq-card ${styles.listHead}`}>
+            <Cartouche name={meta[0]} count={meta[2]} type={meta[3]} />
+            {ready && basmalaLine}
+          </header>
 
-          {hasBasmala && (
-            <div className={styles.basmala}>
-              بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
-            </div>
-          )}
+          {loading && <div className={`nq-card ${styles.card}`}><Skeleton /></div>}
+          {error && !loading && <ErrorBox msg={error} onRetry={() => setReloadKey(k => k + 1)} />}
 
-          <div className={styles.ayahsWrap}>
-            {ayahs.map((ayah, idx) => {
-              const isHighlighted = highlightedAyah === ayah.number;
-              const isBookmarked  = state.bookmarks.some(
-                b => b.surah === state.currentSurah && b.ayah === ayah.number
-              );
-              return (
-                <div
-                  key={ayah.number}
-                  id={`ayah-${ayah.number}`}
-                  className={`${styles.ayah} ${isHighlighted ? styles.highlighted : ''}`}
-                  onClick={() => selectAyah(ayah.number)}
-                  style={{ animationDelay: `${Math.min(idx * 15, 300)}ms` }}
-                >
-                  <div className={styles.ayahNum}>{ayah.number}</div>
-                  <div className={styles.ayahContent}>
-                    <p className={styles.ayahText} style={{ fontFamily: quranFont }}>
-                      {ayah.text}
-                      <span className={styles.ayahMark}> ۝{toArabicNum(ayah.number)}</span>
-                    </p>
-                    {translations[ayah.number] && (
-                      <p className={styles.translationText} dir={transDir}>
-                        {translations[ayah.number]}
-                      </p>
-                    )}
-                    <div className={styles.actions}>
-                      <button className={styles.actBtn} onClick={e => copyAyah(e, ayah)}>📋 نسخ</button>
-                      <button className={styles.actBtn} onClick={e => toggleBookmark(e, ayah.number)}>
-                        {isBookmarked ? '🔖 محفوظ' : '🔖 حفظ'}
-                      </button>
-                      <button className={styles.actBtn} onClick={e => playAyah(e, ayah.number)}>🎧 استماع</button>
-                      <button className={`${styles.actBtn} ${styles.tafsirBtn}`} onClick={e => openTafsir(e, ayah.number)}>
-                        📖 تفسير
-                      </button>
-                      <button className={`${styles.actBtn} ${styles.aiBtn}`} onClick={e => {
-                        e.stopPropagation();
-                        setGlobal({ currentAyah: ayah.number });
-                        // trigger AI assistant open via custom event
-                        window.dispatchEvent(new CustomEvent('openAI', {
-                          detail: { surah: state.currentSurah, ayah: ayah.number, text: ayah.text }
-                        }));
-                      }}>
-                        ✦ AI
-                      </button>
-                      <button className={`${styles.actBtn} ${styles.noteBtn}`} onClick={e => {
-                        e.stopPropagation();
-                        window.dispatchEvent(new CustomEvent('openNote', {
-                          detail: { surah: state.currentSurah, ayah: ayah.number }
-                        }));
-                      }}>
-                        ✏️ ملاحظة
-                      </button>
-                      <button className={`${styles.actBtn} ${styles.shareBtn}`} onClick={e => {
-                        e.stopPropagation();
-                        window.dispatchEvent(new CustomEvent('shareAyah', {
-                          detail: { surah: state.currentSurah, ayah: ayah.number, text: ayah.text }
-                        }));
-                      }}>
-                        🔗 مشاركة
-                      </button>
-                      <span className={styles.ayahRef}>{ayah.key}</span>
-                    </div>
-                  </div>
+          {ready && built.items.map(item => {
+            const playing = isPlayingK(item.kufi);
+            const selected = sel && sel.uid === item.uid;
+            const trans = item.showTrans ? translations[item.kufi] : null;
+            return (
+              <article key={item.uid}
+                id={item.anchor ? `ayah-${item.kufi}` : undefined}
+                data-uid={item.uid} data-kufi={item.kufi}
+                className={`nq-card ${styles.card} ${selected ? styles.cardSel : ''} ${playing ? styles.cardPlay : ''}`}
+                tabIndex={0}
+                aria-label={`الآية ${item.label}`}
+                onClick={() => { selectAyah(item); setBarOpen(false); }}
+                onKeyDown={e => { if (e.target === e.currentTarget) onAyahKey(e, item); }}
+              >
+                <div className={styles.cardTop}>
+                  <Badge8 size={42}>{toAr(item.label)}</Badge8>
+                  <span className={styles.cardRef}>{meta[0]} · الآية {toAr(item.label)}</span>
+                  {playing && <span className={`nq-pill on ${styles.nowPill}`}><Icon name="head" />{state.isPlaying ? 'يُتلى الآن' : 'متوقف'}</span>}
                 </div>
-              );
-            })}
-          </div>
-        </>
+                <p className={styles.cardText} style={{ fontFamily: quranFont }}>
+                  {item.text}{' '}<AyahMark n={item.label} />
+                </p>
+                {trans && <p className={styles.trans} dir={transDir}>{trans}</p>}
+                <AyahActions variant="inline" refLabel={`الآية ${item.label}`}
+                  bookmarked={isBookmarked(item.kufi)} playing={playing && state.isPlaying}
+                  on={id => act(id, item)} />
+              </article>
+            );
+          })}
+        </section>
       )}
 
-      {state.showTafsir && <TafsirPanel />}
+      {/* ── Between surahs ── */}
+      {ready && (
+        <nav className={styles.endNav} aria-label="التنقل بين السور">
+          {surah > 1 ? (
+            <button type="button" className={`nq-card ${styles.endBtn}`} onClick={() => goToSurah(surah - 1)}>
+              <Icon name="back" />
+              <span><small>السورة السابقة</small><b>{SURAHS_META[surah - 2][0]}</b></span>
+            </button>
+          ) : <span />}
+          {surah < 114 ? (
+            <button type="button" className={`nq-card ${styles.endBtn} ${styles.endNext}`} onClick={() => goToSurah(surah + 1)}>
+              <span><small>السورة التالية</small><b>{SURAHS_META[surah][0]}</b></span>
+              <Icon name="back" className={styles.flip} />
+            </button>
+          ) : <span />}
+        </nav>
+      )}
+
+      {/* ── Ayah tools (mushaf view) ── */}
+      {view === 'mushaf' && barOpen && selItem && ready && (
+        <AyahActions variant="bar"
+          refLabel={`${meta[0]} · الآية ${toAr(selItem.label)}`}
+          bookmarked={isBookmarked(selItem.kufi)}
+          playing={isPlayingK(selItem.kufi) && state.isPlaying}
+          on={id => act(id, selItem)}
+          onClose={closeBar} />
+      )}
     </main>
+  );
+}
+
+function Skeleton() {
+  return (
+    <div className={styles.skel} role="status" aria-label="جاري تحميل السورة">
+      {[92, 100, 86, 97, 74, 100, 60].map((w, i) => <i key={i} style={{ width: w + '%' }} />)}
+      <span className="nq-sr">جاري تحميل السورة…</span>
+    </div>
+  );
+}
+
+function ErrorBox({ msg, onRetry }) {
+  return (
+    <div className={styles.errorBox} role="alert">
+      <p>{msg}</p>
+      <button type="button" className="nq-btn gold sm" onClick={onRetry}><Icon name="repeat" />إعادة المحاولة</button>
+    </div>
   );
 }
