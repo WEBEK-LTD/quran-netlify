@@ -40,6 +40,7 @@ import NotFoundPage    from './pages/NotFoundPage';
 const RadioPage = lazy(() => import('./pages/RadioPage'));
 const TasbihPage = lazy(() => import('./pages/TasbihPage'));
 const DailyAyahPage = lazy(() => import('./pages/DailyAyahPage'));
+const TadhkiraPage = lazy(() => import('./pages/TadhkiraPage'));
 const ReportPage = lazy(() => import('./pages/ReportPage'));
 import ErrorBoundary    from './components/ErrorBoundary';
 const PrayerTimesPage = lazy(() => import('./pages/PrayerTimesPage'));
@@ -235,6 +236,7 @@ export default function App() {
         <Route path="/radio"        element={<FullLayout><RadioPage /></FullLayout>} />
         <Route path="/tasbih"       element={<FullLayout><TasbihPage /></FullLayout>} />
         <Route path="/daily-ayah"   element={<FullLayout><DailyAyahPage /></FullLayout>} />
+        <Route path="/tadhkira"     element={<FullLayout><TadhkiraPage /></FullLayout>} />
         <Route path="/report"       element={<FullLayout><ReportPage /></FullLayout>} />
         <Route path="*"             element={<FullLayout><NotFoundPage /></FullLayout>} />
       </Routes>

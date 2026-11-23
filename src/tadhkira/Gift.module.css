@@ -1,0 +1,61 @@
+/* The gift's own palette: an emerald box and a gilded ribbon in every mode. */
+.gift {
+  --gift-a:#1E7A58; --gift-b:#0B3B2B; --gift-lid:#2A9670;
+  --gift-rib-a:var(--gold2); --gift-rib-b:var(--gold-deep); --gift-rib-c:var(--gold);
+  --gift-edge:var(--gold); --gift-in:#0B3B2B;
+  position:relative; display:inline-block; width:100%; aspect-ratio:1; line-height:0;
+}
+:global(:root[data-scheme="light"]) .gift { --gift-a:#157A57; --gift-b:#0A4532; --gift-lid:#1E8C66; --gift-rib-a:#E2BF6E; --gift-rib-b:#8C6A1E; --gift-rib-c:#C49A45; --gift-edge:#8C6A1E; }
+:global(:root[data-mode="sepia"]) .gift { --gift-a:#2C6B52; --gift-b:#163E2F; --gift-lid:#367C61; --gift-rib-a:#D7A955; --gift-rib-b:#6B4510; --gift-rib-c:#A8772C; --gift-edge:#6B4510; }
+:global(:root[data-mode="contrast"]) .gift { --gift-a:#000; --gift-b:#000; --gift-lid:#000; --gift-rib-a:#FFE14D; --gift-rib-b:#FFE14D; --gift-rib-c:#FFE14D; --gift-edge:#fff; --gift-in:#000; }
+
+.svg { width:100%; height:100%; overflow:visible; display:block; }
+.edge { stroke:var(--gift-edge); stroke-width:1.3; }
+.tiling { opacity:.28; }
+:global(:root[data-mode="contrast"]) .tiling { opacity:0; }
+.trim { stroke:var(--gift-edge); stroke-opacity:.45; stroke-width:.9; }
+.lidShade { fill:#000; opacity:.28; }
+.lidShine { fill:#fff; opacity:.14; }
+.bowEdge { stroke:var(--gift-rib-b); stroke-width:1; stroke-linejoin:round; }
+.bowIn { fill:var(--gift-rib-b); opacity:.45; }
+.seal { stroke:var(--gift-rib-b); stroke-width:1; }
+.sealIn { fill:var(--gift-in); stroke:var(--gift-rib-a); stroke-width:1.1; }
+.sealStar { fill:var(--gift-rib-a); }
+.shadow { fill:#000; opacity:.22; }
+:global(:root[data-scheme="light"]) .shadow { opacity:.12; }
+.glow { transform-box:fill-box; transform-origin:center; animation:giftBreathe 3.8s ease-in-out infinite; }
+:global(:root[data-mode="contrast"]) .glow { display:none; }
+
+/* closed: breathe + a slight wobble now and then */
+.svg { transform-origin:50% 92%; animation:giftWobble 5.2s ease-in-out infinite; }
+.lid { transform-box:fill-box; transform-origin:50% 100%; }
+.body { transform-box:fill-box; transform-origin:50% 100%; }
+
+@keyframes giftBreathe { 0%,100% { opacity:.55; transform:scale(.94); } 50% { opacity:1; transform:scale(1.04); } }
+@keyframes giftWobble {
+  0%, 62%, 100% { transform:rotate(0); }
+  66% { transform:rotate(-2.4deg); }
+  71% { transform:rotate(2deg); }
+  76% { transform:rotate(-1.2deg); }
+  81% { transform:rotate(.6deg); }
+  86% { transform:rotate(0); }
+}
+
+/* opening (~2.5 s with the card that rises after it) */
+.opening .svg { animation:giftShake .5s ease-in-out 1; }
+.opening .glow { animation:giftFlare 1.6s ease-out .3s 1 both; }
+.opening .lid { animation:giftLidOff .9s cubic-bezier(.3,.7,.3,1) .45s 1 both; }
+.opening .body { animation:giftSink .7s ease-in 1.15s 1 both; }
+.opening .shadow { animation:giftFade .6s ease-in 1.2s 1 both; }
+@keyframes giftShake {
+  0%,100% { transform:rotate(0); } 15% { transform:rotate(-4deg) scale(1.02); } 35% { transform:rotate(4deg) scale(1.03); }
+  55% { transform:rotate(-3deg) scale(1.03); } 75% { transform:rotate(2deg); }
+}
+@keyframes giftLidOff {
+  0% { transform:none; opacity:1; }
+  35% { transform:translateY(-34px) rotate(-6deg); opacity:1; }
+  100% { transform:translate(-46px,-120px) rotate(-26deg); opacity:0; }
+}
+@keyframes giftFlare { 0% { opacity:.7; transform:scale(1); } 45% { opacity:1; transform:scale(1.7); } 100% { opacity:0; transform:scale(2.1); } }
+@keyframes giftSink { to { transform:translateY(16px) scale(.92); opacity:0; } }
+@keyframes giftFade { to { opacity:0; } }
