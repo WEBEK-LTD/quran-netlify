@@ -39,9 +39,15 @@ awk -v key="$tmp/privkey.pem" -v crt="$tmp/fullchain.pem" '
   || { echo "key does not match certificate" >&2; exit 1; }
 openssl x509 -in "$tmp/fullchain.pem" -noout -checkend 0 >/dev/null || { echo "certificate expired: run AutoSSL" >&2; exit 1; }
 openssl x509 -in "$tmp/fullchain.pem" -noout -checkhost "$DOMAIN" | grep -q 'does match' || { echo "certificate is not for $DOMAIN" >&2; exit 1; }
+# cPanel puts a temporary self-signed certificate on a new subdomain until AutoSSL runs; apps reject it.
+if [ "$(openssl x509 -in "$tmp/fullchain.pem" -noout -issuer | sed 's/^issuer=//')" = "$(openssl x509 -in "$tmp/fullchain.pem" -noout -subject | sed 's/^subject=//')" ]; then
+  echo "WARNING: the certificate for $DOMAIN is self-signed (cPanel placeholder). Run AutoSSL for $DOMAIN, then run this script again." >&2
+  SELF_SIGNED=1
+fi
 
 if cmp -s "$tmp/fullchain.pem" "$DST/fullchain.pem" && cmp -s "$tmp/privkey.pem" "$DST/privkey.pem"; then
   echo "certificate unchanged ($(openssl x509 -in "$DST/fullchain.pem" -noout -enddate))"
+  [ "${SELF_SIGNED:-0}" = 1 ] && exit 2
   exit 0
 fi
 install -o root -g livekit -m 0640 "$tmp/fullchain.pem" "$DST/fullchain.pem"
@@ -51,3 +57,5 @@ echo "installed new certificate ($(openssl x509 -in "$DST/fullchain.pem" -noout 
 # the timer runs at 04:20, and the renewed certificate is valid for weeks anyway.
 if systemctl is-active --quiet caddy-rtc; then systemctl restart caddy-rtc; fi
 if systemctl is-active --quiet livekit; then systemctl restart livekit; fi
+[ "${SELF_SIGNED:-0}" = 1 ] && exit 2
+exit 0

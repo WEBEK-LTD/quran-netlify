@@ -95,7 +95,7 @@ install -m 0644 "$HERE/sysctl-livekit.conf" /etc/sysctl.d/90-livekit.conf
 sysctl -q --system
 
 echo "== certificate (AutoSSL → /etc/livekit/tls)"
-/opt/livekit/livekit-cert-sync.sh
+/opt/livekit/livekit-cert-sync.sh || [ $? = 2 ]   # 2 = self-signed placeholder: works, but run AutoSSL (README step 2)
 
 echo "== firewall"
 bash "$HERE/firewall.sh"
