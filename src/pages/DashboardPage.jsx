@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { loadProgress, loadBookmarks, loadNotes, loadStats, signOut, getBroadcasts } from '../supabase';
 import { SURAHS_META } from '../data';
-import { useHifz } from '../hifzStore';
+import { useHifz, localDateStr } from '../hifzStore';
 import styles from './DashboardPage.module.css';
 import { useT, useLang, useDir } from '../i18n';
 import LangSwitcher from '../components/LangSwitcher';
@@ -21,18 +21,12 @@ function StatCard({ icon, label, value, sub }) {
   );
 }
 
-function todayStr() {
-  const d = new Date();
-  return d.getFullYear() + '-' +
-    String(d.getMonth()+1).padStart(2,'0') + '-' +
-    String(d.getDate()).padStart(2,'0');
-}
+// All dates are LOCAL 'YYYY-MM-DD' strings
+function todayStr() { return localDateStr(); }
 function prevDay(dateStr) {
-  const d = new Date(dateStr + 'T12:00:00'); // noon to avoid DST issues
+  const d = new Date(dateStr + 'T12:00:00'); // local noon to avoid DST issues
   d.setDate(d.getDate() - 1);
-  return d.getFullYear() + '-' +
-    String(d.getMonth()+1).padStart(2,'0') + '-' +
-    String(d.getDate()).padStart(2,'0');
+  return localDateStr(d);
 }
 function calcStreak(sessions) {
   if (!sessions.length) return 0;
@@ -51,7 +45,7 @@ function calcStreak(sessions) {
 function last7Days(sessions) {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (6 - i));
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = localDateStr(d);
     const count = sessions.filter(s => s.date === dateStr).reduce((a, b) => a + (b.ayah_count || 0), 0);
     return { count, label: ['أح','اث','ثل','أر','خم','جم','سب'][d.getDay()] };
   });
@@ -83,7 +77,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (authLoading) return;
     // Fetch broadcasts for all users (logged in or not)
-    getBroadcasts().then(list => setBroadcasts(list || []));
+    getBroadcasts().then(list => setBroadcasts(list || [])).catch(() => {});
     // Works for both logged-in and guests
     if (user) {
       Promise.all([
@@ -93,9 +87,9 @@ export default function DashboardPage() {
         loadStats(user.id),
       ]).then(([prog, bkm, nts, sess]) => {
         setProgress(prog);
-        setBookmarks(bkm.length ? bkm : localBookmarks);
-        setNotes(nts.length ? nts : localNotes);
-        setSessions(sess);
+        setBookmarks(bkm?.length ? bkm : localBookmarks);
+        setNotes(nts?.length ? nts : localNotes);
+        setSessions(sess || []);
         setLoading(false);
       }).catch(() => {
         // Supabase error — fall back to local
@@ -130,8 +124,8 @@ export default function DashboardPage() {
   })();
   const chartDays = last7Days(mergedSessions);
   const chartMax      = Math.max(...chartDays.map(d => d.count), 1);
-  // حساب مجموع الآيات المقروءة من كل الجلسات
-  const totalAyahsRead = mergedSessions.reduce((sum, s) => sum + (s.ayah_count || 1), 0);
+  // عدد أيام القراءة (لا تتوفر أعداد آيات حقيقية — الجلسات تسجّل أياماً لا آيات)
+  const readingDays = new Set(mergedSessions.map(s => s.date).filter(Boolean)).size;
   const lastSurah        = progress
     ? SURAHS_META[progress.surah - 1]?.[0]
     : SURAHS_META[localLastRead.surah - 1]?.[0] || '—';
@@ -149,7 +143,7 @@ export default function DashboardPage() {
 
   const visibleBroadcasts = broadcasts.filter(b => !dismissedBC.includes(b.id));
 
-  if (authLoading) return <div className={styles.loadingPage}><div className={styles.spinner} /></div>;
+  if (authLoading || loading) return <div className={styles.loadingPage}><div className={styles.spinner} /></div>;
 
   const BC_ICONS = { info: 'ℹ️', warning: '⚠️', success: '✅', error: '🚨' };
   const BC_COLORS = { info: 'var(--gold)', warning: '#f59e0b', success: '#52b788', error: '#f87171' };
@@ -206,7 +200,7 @@ export default function DashboardPage() {
         <StatCard icon="📖" label={t('lastRead')}      value={lastSurah}       sub={`${t('ayah_label')} ${lastAyah}`} />
         <StatCard icon="🔥" label={t('streak')}       value={`${streak} ${t('day_unit')}`} />
         <StatCard icon="📚" label={t('hifzProgress')} value={completedSurahs} sub={`${progressPct}% ${t('of_quran')}`} />
-        <StatCard icon="✨" label={t('totalAyahs')}   value={totalAyahsRead.toLocaleString('ar')} />
+        <StatCard icon="✨" label="أيام القراءة"   value={readingDays.toLocaleString('ar')} />
         <StatCard icon="🔖" label={t('favoritesTitle')} value={displayBookmarks.length} />
         <StatCard icon="📝" label={t('notesTitle')}   value={displayNotes.length} />
       </div>
@@ -258,7 +252,7 @@ export default function DashboardPage() {
             {displayBookmarks.slice(0, 5).map((b, i) => {
               const meta = SURAHS_META[b.surah - 1];
               return (
-                <Link key={i} to="/reader" className={styles.bookmarkItem}>
+                <Link key={i} to={`/reader?surah=${b.surah}&ayah=${b.ayah}`} className={styles.bookmarkItem}>
                   <div className={styles.bmIcon}>🔖</div>
                   <div><strong>{meta?.[0]}</strong><span> — الآية {b.ayah}</span></div>
                   <span className={styles.bmRef}>{b.surah}:{b.ayah}</span>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { loadStats } from '../supabase';
-import { useHifz } from '../hifzStore';
+import { useHifz, localDateStr, parseLocalDate } from '../hifzStore';
 import { SURAHS_META } from '../data';
 import styles from './ReportPage.module.css';
 
@@ -13,10 +13,12 @@ function toAr(n) {
 const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو',
   'يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
+// 'YYYY-MM-DD' parsed as a LOCAL date (new Date('YYYY-MM-DD') is UTC midnight
+// and shifts to the previous day west of Greenwich)
 function getMonthSessions(sessions, year, month) {
   return sessions.filter(s => {
-    const d = new Date(s.date);
-    return d.getFullYear() === year && d.getMonth() === month;
+    const d = parseLocalDate(s.date);
+    return d && d.getFullYear() === year && d.getMonth() === month;
   });
 }
 
@@ -24,7 +26,7 @@ function calcStreak(sessions) {
   if (!sessions.length) return 0;
   const dates = new Set(sessions.map(s => s.date));
   let streak = 0, cur = new Date();
-  const fmt = d => d.toISOString().split('T')[0];
+  const fmt = d => localDateStr(d);
   if (!dates.has(fmt(cur))) { cur.setDate(cur.getDate() - 1); }
   while (dates.has(fmt(cur))) {
     streak++;
@@ -41,9 +43,24 @@ export default function ReportPage() {
   const [selMonth, setSelMonth] = useState(() => new Date().getMonth());
   const [selYear,  setSelYear]  = useState(() => new Date().getFullYear());
 
+  // Guests (and offline users) see local reading days from this device
+  const localSessions = (() => {
+    try {
+      const dates = JSON.parse(localStorage.getItem('nq_read_dates') || '[]');
+      return Array.isArray(dates) ? dates.map(date => ({ date, ayah_count: 0 })) : [];
+    } catch { return []; }
+  })();
+  const [loadErr, setLoadErr] = useState(false);
+
   useEffect(() => {
-    if (!user) { setLoading(false); return; }
-    loadStats(user.id).then(data => { setSessions(data || []); setLoading(false); });
+    if (!user) { setSessions(localSessions); setLoading(false); return; }
+    let alive = true;
+    setLoadErr(false);
+    loadStats(user.id)
+      .then(data => { if (alive) setSessions(data?.length ? data : localSessions); })
+      .catch(() => { if (alive) { setSessions(localSessions); setLoadErr(true); } })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
   }, [user]);
 
   // Month stats
@@ -75,13 +92,6 @@ export default function ReportPage() {
     <div className={styles.center}><div className={styles.spinner}/></div>
   );
 
-  if (!user) return (
-    <div className={styles.center}>
-      <div style={{fontSize:48,marginBottom:16}}>🔐</div>
-      <p style={{color:'var(--text3)',marginBottom:16}}>سجّل الدخول لعرض تقريرك الشهري</p>
-      <Link to="/login" className={styles.loginBtn}>تسجيل الدخول</Link>
-    </div>
-  );
 
   return (
     <div className={styles.page}>
@@ -90,6 +100,16 @@ export default function ReportPage() {
         <h1 className={styles.pageTitle}>📊 التقرير الشهري</h1>
         <button className={styles.printBtn} onClick={printReport}>🖨️</button>
       </div>
+
+      {!user && (
+        <div className={styles.notice}>
+          🔐 تعرض هذه الصفحة البيانات المحفوظة على هذا الجهاز فقط.{' '}
+          <Link to="/login" className={styles.noticeLink}>سجّل الدخول</Link> لمزامنة تقريرك.
+        </div>
+      )}
+      {loadErr && (
+        <div className={styles.notice}>⚠️ تعذّر تحميل بياناتك من الخادم — تُعرض البيانات المحلية</div>
+      )}
 
       {/* Month selector */}
       <div className={styles.monthSelector}>
@@ -153,7 +173,7 @@ export default function ReportPage() {
             const date = `${selYear}-${String(selMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
             const cnt  = dateMap[date] || 0;
             const pct  = cnt / maxAyahs;
-            const isToday = date === new Date().toISOString().split('T')[0];
+            const isToday = date === localDateStr();
             return (
               <div key={day} className={`${styles.calDay} ${isToday ? styles.calToday : ''}`}
                 title={cnt ? `${day} — ${cnt} آية` : String(day)}
@@ -171,7 +191,7 @@ export default function ReportPage() {
         </div>
         {bestDay && (
           <p className={styles.bestDay}>
-            🏆 أفضل يوم: {new Date(bestDay.date).toLocaleDateString('ar', {day:'numeric',month:'long'})} — {toAr(bestDay.ayah_count)} آية
+            🏆 أفضل يوم: {parseLocalDate(bestDay.date)?.toLocaleDateString('ar', {day:'numeric',month:'long'})} — {toAr(bestDay.ayah_count)} آية
           </p>
         )}
       </div>
@@ -207,7 +227,7 @@ export default function ReportPage() {
                 <div className={`${styles.wardBarFill} ${w.completed ? styles.wardDone : styles.wardMiss}`}
                   style={{ height: w.completed ? '100%' : '20%' }} />
                 <span className={styles.wardLabel}>
-                  {new Date(w.date).getDate()}
+                  {parseLocalDate(w.date)?.getDate()}
                 </span>
               </div>
             ))}

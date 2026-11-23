@@ -14,7 +14,19 @@ import styles from './KhatmaGroupPage.module.css';
 import { useT, useLang, useDir } from '../i18n';
 import LangSwitcher from '../components/LangSwitcher';
 // ─── helpers ─────────────────────────────────────────────────────────────────
-function shortUid() { return Math.random().toString(36).slice(2,7).toUpperCase(); }
+// 7-char room code from an unambiguous alphabet (no 0/O, 1/I/L) using a CSPRNG
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function shortUid(len = 7) {
+  const out = [];
+  const buf = new Uint32Array(len);
+  if (window.crypto?.getRandomValues) window.crypto.getRandomValues(buf);
+  else for (let i = 0; i < len; i++) buf[i] = Math.floor(Math.random() * 2 ** 32);
+  for (let i = 0; i < len; i++) out.push(CODE_ALPHABET[buf[i] % CODE_ALPHABET.length]);
+  return out.join('');
+}
+const PENDING_JOIN_KEY = 'nq_pending_join';
+function getPendingJoin() { try { return sessionStorage.getItem(PENDING_JOIN_KEY) || ''; } catch { return ''; } }
+function setPendingJoin(c) { try { c ? sessionStorage.setItem(PENDING_JOIN_KEY, c) : sessionStorage.removeItem(PENDING_JOIN_KEY); } catch {} }
 function shareUrl(code) { return `${window.location.origin}/khatma-group?join=${code}`; }
 function loadLocal() { try { return JSON.parse(localStorage.getItem('nq_gkhatmat')||'[]'); } catch { return []; } }
 function saveLocal(r) { try { localStorage.setItem('nq_gkhatmat', JSON.stringify(r)); } catch {} }
@@ -57,16 +69,27 @@ export default function KhatmaGroupPage() {
 
   useEffect(() => { loadRooms(); }, [loadRooms]);
 
-  // Handle ?join= in URL
-  useEffect(() => {
+  // Handle ?join= in URL — keep the code in sessionStorage so it survives the
+  // login redirect, then join once auth is resolved.
+  const [pendingJoin, setPendingJoinState] = useState(() => {
     const p = new URLSearchParams(window.location.search);
-    const code = p.get('join');
+    const code = (p.get('join') || '').trim().toUpperCase();
     if (code) {
+      setPendingJoin(code);
       window.history.replaceState({}, '', window.location.pathname);
-      // Delay slightly so state is settled
-      setTimeout(() => doJoin(code), 200);
+      return code;
     }
-  }, []);
+    return getPendingJoin();
+  });
+
+  useEffect(() => {
+    if (!pendingJoin) return;
+    if (configured && (authLoading || !user)) return; // wait for login
+    const code = pendingJoin;
+    setPendingJoin('');
+    setPendingJoinState('');
+    doJoin(code);
+  }, [pendingJoin, configured, authLoading, user]);
 
   // ── Join by code ──────────────────────────────────────────────────────────
   async function doJoin(rawCode) {
@@ -74,35 +97,67 @@ export default function KhatmaGroupPage() {
     if (!code) return;
     setJoinErr(''); setPageLoad(true);
 
-    // 1. Check localStorage first
     const local = loadLocal();
     const found = local.find(r => r.id === code);
-    if (found) {
-      setPageLoad(false);
-      openRoom(found); setJoinCode(''); return;
-    }
 
-    // 2. Try Supabase
+    // Not configured → only local rooms are available
     if (!configured) {
       setPageLoad(false);
+      if (found) { openRoom(found); setJoinCode(''); return; }
       setJoinErr('⚠️ لا يمكن الانضمام بالكود — افتح الرابط المُرسل إليك مباشرة');
       return;
     }
+
+    // Always refetch from the server so other members' progress shows
     try {
       const room = await getGroupKhatmaByCode(code);
       setPageLoad(false);
       if (!room) {
+        if (found) { openRoom(found); setJoinCode(''); return; }
         setJoinErr('لم يُعثر على هذا الكود — تأكد من الكود أو افتح الرابط مباشرة');
         return;
       }
-      const updated = [room, ...local];
-      saveLocal(updated);
-      setRooms(prev => prev.find(r=>r.id===room.id) ? prev : [room, ...prev]);
-      openRoom(room); setJoinCode('');
+      const fresh = mergeServerRoom(found, room);
+      rememberRoom(fresh);
+      openRoom(fresh); setJoinCode('');
     } catch {
       setPageLoad(false);
+      if (found) { openRoom(found); setJoinCode(''); showToast('⚠️ تعذّر التحديث — تُعرض نسخة محفوظة'); return; }
       setJoinErr('خطأ في الاتصال — تحقق من الإنترنت');
     }
+  }
+
+  // Prefer server data, but never replace local parts with an empty list
+  function mergeServerRoom(localRoom, serverRoom) {
+    if (!serverRoom) return localRoom;
+    const parts = serverRoom.parts?.length ? serverRoom.parts : (localRoom?.parts || []);
+    return { ...(localRoom || {}), ...serverRoom, parts };
+  }
+
+  function rememberRoom(room) {
+    const local = loadLocal();
+    const next = local.some(r => r.id === room.id)
+      ? local.map(r => r.id === room.id ? room : r)
+      : [room, ...local];
+    saveLocal(next);
+    setRooms(prev => prev.some(r => r.id === room.id)
+      ? prev.map(r => r.id === room.id ? room : r)
+      : [room, ...prev]);
+  }
+
+  async function openFromList(room) {
+    if (!configured) { openRoom(room); return; }
+    setPageLoad(true);
+    try {
+      const full = await getGroupKhatmaByCode(room.id);
+      const fresh = mergeServerRoom(room, full);
+      if (full) rememberRoom(fresh);
+      openRoom(fresh);
+    } catch {
+      openRoom(room);
+      showToast('⚠️ تعذّر التحديث — تُعرض نسخة محفوظة');
+    }
+    setPageLoad(false);
   }
 
   function openRoom(room) { setActiveRoom(room); setView('room'); }
@@ -124,11 +179,12 @@ export default function KhatmaGroupPage() {
       <p style={{color:'var(--text3)',fontSize:14,lineHeight:1.8,marginBottom:28}}>
         {t('soul_khatma_desc')}<br/>
         تحتاج إلى تسجيل الدخول للمتابعة.
+        {pendingJoin && <><br/><span style={{color:'var(--gold)'}}>سيتم انضمامك إلى الخاتمة ({pendingJoin}) بعد تسجيل الدخول والعودة إلى هذه الصفحة.</span></>}
       </p>
-      <Link to="/login" style={{display:'block',padding:'13px',borderRadius:12,textDecoration:'none',background:'linear-gradient(135deg,var(--green),var(--green2))',color:'white',fontWeight:700,fontSize:15,marginBottom:10}}>
+      <Link to="/login" onClick={() => { if (pendingJoin) setPendingJoin(pendingJoin); }} style={{display:'block',padding:'13px',borderRadius:12,textDecoration:'none',background:'linear-gradient(135deg,var(--green),var(--green2))',color:'white',fontWeight:700,fontSize:15,marginBottom:10}}>
         🔑 تسجيل الدخول
       </Link>
-      <Link to="/signup" style={{display:'block',padding:'12px',borderRadius:12,textDecoration:'none',border:'1px solid var(--border)',color:'var(--text2)',fontSize:14}}>
+      <Link to="/signup" onClick={() => { if (pendingJoin) setPendingJoin(pendingJoin); }} style={{display:'block',padding:'12px',borderRadius:12,textDecoration:'none',border:'1px solid var(--border)',color:'var(--text2)',fontSize:14}}>
         ✨ إنشاء حساب جديد
       </Link>
       <button onClick={()=>navigate(-1)} style={{marginTop:16,background:'none',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:13}}>
@@ -207,7 +263,7 @@ export default function KhatmaGroupPage() {
           </div>
           {joinErr && <p className={styles.joinErr}>{joinErr}</p>}
           <p style={{fontSize:11,color:'var(--text3)',marginTop:8,lineHeight:1.7}}>
-            💡 الكود يعمل مع الأشخاص على نفس الشبكة، أو شارك <strong>الرابط</strong> للانضمام من أي مكان
+            💡 شارك <strong>الكود</strong> أو <strong>الرابط</strong> — كلاهما يعمل للانضمام من أي مكان
           </p>
         </div>
       </div>
@@ -226,16 +282,7 @@ export default function KhatmaGroupPage() {
             const pct   = total > 0 ? Math.round((done/total)*100) : 0;
             return (
               <div key={room.id} className={styles.roomCard}
-                onClick={async () => {
-                  if (!room.parts || room.parts.length === 0) {
-                    setPageLoad(true);
-                    const full = configured ? await getGroupKhatmaByCode(room.id) : null;
-                    setPageLoad(false);
-                    openRoom(full || room);
-                  } else {
-                    openRoom(room);
-                  }
-                }}>
+                onClick={() => { if (!pageLoading) openFromList(room); }}>
                 <div className={styles.cardTop}>
                   <div>
                     <h3 className={styles.cardName}>{room.deceased_name || room.deceasedName}</h3>
@@ -279,6 +326,7 @@ function CreateRoom({ user, onBack, onCreated }) {
   const [members,   setMembers] = useState(['أنا']);
   const [newMember, setNew]     = useState('');
   const [assign,    setAssign]  = useState({});
+  const [nameErr,   setNameErr] = useState('');
 
   const parts = mode === 'juz'
     ? JUZ_DATA.map(j => ({ id: j.juz, label: `الجزء ${toArabicNum(j.juz)}` }))
@@ -295,7 +343,7 @@ function CreateRoom({ user, onBack, onCreated }) {
     setAssign(a);
   }
   function create() {
-    if (!name.trim()) { alert('أدخل اسم المتوفى'); return; }
+    if (!name.trim()) { setNameErr('أدخل اسم المتوفى'); setStep(1); return; }
     const id = shortUid();
     onCreated({
       id,
@@ -339,8 +387,9 @@ function CreateRoom({ user, onBack, onCreated }) {
         <div className={styles.form}>
           <label className={styles.lbl}>اسم المتوفى / المتوفاة</label>
           <input className={styles.inp} placeholder="مثال: الحاج محمد أحمد"
-            value={name} onChange={e=>setName(e.target.value)} dir="rtl"
+            value={name} onChange={e=>{ setName(e.target.value); setNameErr(''); }} dir="rtl"
             onKeyDown={e=>e.key==='Enter' && name.trim() && setStep(2)} autoFocus />
+          {nameErr && <p className={styles.joinErr} role="alert">{nameErr}</p>}
 
           <label className={styles.lbl}>نوع التقسيم</label>
           <div className={styles.modeRow}>
@@ -376,7 +425,7 @@ function CreateRoom({ user, onBack, onCreated }) {
           </div>
 
           <button className={styles.nextBtn}
-            onClick={()=>name.trim() ? setStep(2) : alert('أدخل اسم المتوفى')}>
+            onClick={()=>name.trim() ? setStep(2) : setNameErr('أدخل اسم المتوفى')}>
             التالي ←
           </button>
         </div>
@@ -440,10 +489,25 @@ function RoomView({ room, configured, onBack, onUpdate, showToast }) {
     ...parts.map(p => p.assignee).filter(Boolean),
   ])];
 
+  // ─── Refresh room parts from the server (other members' progress) ─────────
+  async function refreshParts() {
+    if (!configured) return;
+    try {
+      const full = await getGroupKhatmaByCode(room.id);
+      if (full?.parts?.length) {
+        setParts(full.parts);
+        if (typeof full.is_public === 'boolean') setPublic(full.is_public);
+        onUpdate({ ...room, ...full, parts: full.parts });
+      }
+    } catch {}
+  }
+
   // ─── Load takers + poll every 30s ─────────────────────────────────────────
   async function fetchTakers() {
     if (!configured) return;
-    const map = await getAllTakers(room.id);
+    let map;
+    try { map = await getAllTakers(room.id); } catch { return; }
+    if (!map) return;
     setTakers(map);
     // Detect my claims from localStorage token
     const myId = localStorage.getItem('nq_khatma_name');
@@ -459,7 +523,7 @@ function RoomView({ room, configured, onBack, onUpdate, showToast }) {
 
   useEffect(() => {
     fetchTakers();
-    const interval = setInterval(fetchTakers, 30_000);
+    const interval = setInterval(() => { fetchTakers(); refreshParts(); }, 30_000);
     return () => clearInterval(interval);
   }, [room.id, configured]);
 
@@ -479,13 +543,21 @@ function RoomView({ room, configured, onBack, onUpdate, showToast }) {
     if (!myName) { showToast('أدخل اسمك أولاً'); return; }
     if (!configured) { showToast('⚠️ يحتاج اتصال بالإنترنت'); return; }
 
-    // لو أنا ماشي على undo (عندي claim بالفعل)
+    // عندي claim بالفعل → تبديل حالة "خلّصت"
     if (myClaimIds[pi]) {
-      // حذف الـ claim بتاعتي
-      const sb_del = await import('../supabase').then(m => m);
-      // نعمل refresh بدل حذف — نكتشف الـ id ونعلّم done true/false
-      await markTakerDone(myClaimIds[pi], !takers[pi]?.find(tk=>tk.id===myClaimIds[pi])?.done);
-      await fetchTakers();
+      const nowDone = !takers[pi]?.find(tk=>tk.id===myClaimIds[pi])?.done;
+      setClaiming(pi);
+      try {
+        await markTakerDone(myClaimIds[pi], nowDone);
+        // اعكس الحالة على الجزء نفسه حتى يتحرك شريط التقدم
+        if (nowDone && !part.done) {
+          await togglePartDone(room.id, pi, myName, false);
+        } else if (!nowDone && part.done && (part.done_by || '') === myName) {
+          await togglePartDone(room.id, pi, myName, true);
+        }
+      } catch {}
+      setClaiming(null);
+      await Promise.all([fetchTakers(), refreshParts()]);
       showToast('✓ تم تحديث حالة الجزء');
       return;
     }
@@ -514,11 +586,13 @@ function RoomView({ room, configured, onBack, onUpdate, showToast }) {
     onUpdate({ ...room, parts: updated });
 
     if (configured) {
-      togglePartDone(room.id, key, myName || part.assignee, part.done).catch(() => {});
-      // لو عندي claim، اعلّم done
-      if (myClaimIds[key]) {
-        markTakerDone(myClaimIds[key], !part.done).catch(() => {});
-      }
+      try {
+        await togglePartDone(room.id, key, myName || part.assignee, part.done);
+        // لو عندي claim، اعلّم done
+        if (myClaimIds[key]) await markTakerDone(myClaimIds[key], !part.done);
+      } catch {}
+      fetchTakers();
+      refreshParts();
     }
   }
 
@@ -609,8 +683,8 @@ function RoomView({ room, configured, onBack, onUpdate, showToast }) {
       </div>
 
       {/* Progress */}
-      <div className={styles.progress}>
-        <div className={styles.progressBar} style={{ width: pct + '%' }} />
+      <div className={`${styles.progressBar} ${styles.progress}`}>
+        <div className={styles.progressFill} style={{ width: pct + '%' }} />
       </div>
       <div className={styles.progressLbl}>
         <span>{done} من {total} {room.mode === 'juz' ? 'جزء' : 'حزب'}</span>
@@ -620,6 +694,7 @@ function RoomView({ room, configured, onBack, onUpdate, showToast }) {
       {/* Complete banner */}
       {isComplete && (
         <div className={styles.completeBanner}>
+          <span>🏆</span>
           <div>
             <strong>اكتملت الخاتمة!</strong>
             {(room.completions || 0) > 0 && <span> — {toArabicNum(room.completions)} ختمة</span>}
