@@ -38,15 +38,36 @@ const TILES = [
   { path: '/search', icon: 'search', label: 'البحث', flag: 'search' },
 ];
 
-function hijriToday(lang) {
+// Today's dates. The first Islamic-calendar formatter of a launch loads ICU data
+// (tens of ms on a mid-range phone), so the strings are kept for the day and the
+// formatting itself runs after the first paint.
+const DATE_CACHE = 'nq_home_dates';
+function formatDates(lang) {
+  let hijri = '', greg = '';
   try {
-    const s = new Intl.DateTimeFormat(`${intlLocale(lang)}-u-ca-islamic-umalqura`, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
-    return lang === 'ar' ? s : num(s, lang);
-  } catch { return ''; }
+    hijri = new Intl.DateTimeFormat(`${intlLocale(lang)}-u-ca-islamic-umalqura`, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+    if (lang !== 'ar') hijri = num(hijri, lang);
+  } catch {}
+  try { greg = new Intl.DateTimeFormat(intlLocale(lang), { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date()); } catch {}
+  return { hijri, greg };
 }
-function gregorianToday(lang) {
-  try { return new Intl.DateTimeFormat(intlLocale(lang), { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date()); }
-  catch { return ''; }
+const dayKey = (lang) => { const d = new Date(); return `${lang}:${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+function useTodayDates(lang) {
+  const key = dayKey(lang);
+  const [v, setV] = useState(() => {
+    try { const c = JSON.parse(localStorage.getItem(DATE_CACHE) || 'null'); if (c && c.key === key) return c; } catch {}
+    return null;
+  });
+  useEffect(() => {
+    if (v && v.key === key) return;
+    const id = setTimeout(() => {
+      const next = { key, ...formatDates(lang) };
+      try { localStorage.setItem(DATE_CACHE, JSON.stringify(next)); } catch {}
+      setV(next);
+    }, 0);
+    return () => clearTimeout(id);
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  return v && v.key === key ? v : { hijri: '\u00a0', greg: '\u00a0' };
 }
 
 export default function AppHome() {
@@ -56,6 +77,7 @@ export default function AppHome() {
   const tiles = useMemo(() => TILES.filter(t => !t.flag || featureOn(settings, t.flag)), [settings]);
   const hour = new Date().getHours();
   const name = user ? displayNameOf(user, '').split(/\s+/)[0] : '';
+  const dates = useTodayDates(tr.lang);
 
   return (
     <div className={styles.home} data-home-ready="1">
@@ -66,8 +88,8 @@ export default function AppHome() {
           <p className={styles.salam} id="ah-hello">
             {name ? tr('السلام عليكم، {name}', { name }) : tr('السلام عليكم')}
           </p>
-          <p className={styles.hijri}>{hijriToday(tr.lang)}</p>
-          <p className={styles.greg}>{gregorianToday(tr.lang)} · {hour < 12 ? tr('صباح الخير') : tr('مساء الخير')}</p>
+          <p className={styles.hijri}>{dates.hijri}</p>
+          <p className={styles.greg}>{dates.greg}{dates.greg.trim() && ' · '}{hour < 12 ? tr('صباح الخير') : tr('مساء الخير')}</p>
         </div>
         <button type="button" className={styles.search} onClick={openPalette} aria-label={tr('ابحث عن سورة أو ميزة…')}>
           <Icon name="search" />

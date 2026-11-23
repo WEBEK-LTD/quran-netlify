@@ -35,10 +35,18 @@ export function savedCity() {
 }
 
 // Wall-clock now in the city's zone → { y, mo, d, secs }
+// (the formatter is cached per zone: building one every second costs far more than formatting)
+const fmtCache = new Map();
+function cityFormatter(tz) {
+  const k = tz || '';
+  let f = fmtCache.get(k);
+  if (!f) { f = new Intl.DateTimeFormat('en-US', { timeZone: tz || undefined, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }); fmtCache.set(k, f); }
+  return f;
+}
 export function cityNow(tz) {
   const date = new Date();
   try {
-    const p = new Intl.DateTimeFormat('en-US', { timeZone: tz || undefined, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })
+    const p = cityFormatter(tz)
       .formatToParts(date).reduce((o, x) => { o[x.type] = x.value; return o; }, {});
     return { y: +p.year, mo: +p.month, d: +p.day, secs: (+p.hour % 24) * 3600 + (+p.minute) * 60 + (+p.second) };
   } catch {

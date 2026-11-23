@@ -10,6 +10,9 @@ import QiblaRose, { calcQibla, calcDistance, fmtKm } from './qibla/QiblaRose';
 import { useCompass } from './qibla/useCompass';
 import { angleDiff, isAligned } from './qibla/compass';
 import { declination } from './qibla/wmm';
+import { isNative } from '../native/platform';
+
+const APP = isNative();
 import { useTr, surahName } from '../l10n';
 
 // المدينة المحفوظة في صفحة المواقيت — لعرض القبلة فوراً قبل طلب الموقع
@@ -115,23 +118,41 @@ export default function QiblaPage() {
 
   return (
     <div className={styles.page}>
-      <PageHero
-        eyebrow={tr('اتجاه الكعبة المشرّفة')}
-        title={tr('القبلة')}
-        ayah="فَوَلِّ وَجْهَكَ شَطْرَ ٱلْمَسْجِدِ ٱلْحَرَامِ"
-        ayahRef={heroRef}
-        sub={tr('حدّد موقعك ليُحسب اتجاه القبلة بالدرجة من الشمال الحقيقي، وفعّل البوصلة ليدور القرص مع هاتفك.')}
-      >
-        <button type="button" className="nq-btn gold sm" onClick={requestLocation} disabled={loading}>
-          {loading ? <span className={styles.spinner} aria-hidden="true" /> : <Icon name="pin" />}
-          {loading ? tr('جارٍ تحديد الموقع…') : location ? tr('تحديث موقعي') : tr('تحديد موقعي')}
-        </button>
-        {(compassStatus === 'needs-permission' || compassStatus === 'denied') && (
-          <button type="button" className="nq-btn ghost sm" onClick={handleRequestCompassPermission}>
-            <Icon name="compass" />{tr('تفعيل البوصلة')}
+      {APP ? (
+        // in the app the compass comes first: a compact title bar instead of the website hero
+        <header className={styles.appHead}>
+          <h1>{tr('القبلة')}</h1>
+          <div className={styles.appActs}>
+            <button type="button" className="nq-btn gold sm" onClick={requestLocation} disabled={loading}>
+              {loading ? <span className={styles.spinner} aria-hidden="true" /> : <Icon name="pin" />}
+              {loading ? tr('جارٍ تحديد الموقع…') : location ? tr('تحديث موقعي') : tr('تحديد موقعي')}
+            </button>
+            {(compassStatus === 'needs-permission' || compassStatus === 'denied') && (
+              <button type="button" className="nq-btn ghost sm" onClick={handleRequestCompassPermission}>
+                <Icon name="compass" />{tr('تفعيل البوصلة')}
+              </button>
+            )}
+          </div>
+        </header>
+      ) : (
+        <PageHero
+          eyebrow={tr('اتجاه الكعبة المشرّفة')}
+          title={tr('القبلة')}
+          ayah="فَوَلِّ وَجْهَكَ شَطْرَ ٱلْمَسْجِدِ ٱلْحَرَامِ"
+          ayahRef={heroRef}
+          sub={tr('حدّد موقعك ليُحسب اتجاه القبلة بالدرجة من الشمال الحقيقي، وفعّل البوصلة ليدور القرص مع هاتفك.')}
+        >
+          <button type="button" className="nq-btn gold sm" onClick={requestLocation} disabled={loading}>
+            {loading ? <span className={styles.spinner} aria-hidden="true" /> : <Icon name="pin" />}
+            {loading ? tr('جارٍ تحديد الموقع…') : location ? tr('تحديث موقعي') : tr('تحديد موقعي')}
           </button>
-        )}
-      </PageHero>
+          {(compassStatus === 'needs-permission' || compassStatus === 'denied') && (
+            <button type="button" className="nq-btn ghost sm" onClick={handleRequestCompassPermission}>
+              <Icon name="compass" />{tr('تفعيل البوصلة')}
+            </button>
+          )}
+        </PageHero>
+      )}
 
       <div className={`nq-wrap ${styles.wrap}`}>
         {error && <div className={styles.error} role="alert"><Icon name="x" />{tr(error)}</div>}

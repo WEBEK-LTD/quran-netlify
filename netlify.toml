@@ -17,6 +17,14 @@
   to = "/seo/app/reader.html"
   status = 200
 [[redirects]]
+  from = "/listen"
+  to = "/seo/app/listen.html"
+  status = 200
+[[redirects]]
+  from = "/tafsir"
+  to = "/seo/app/tafsir.html"
+  status = 200
+[[redirects]]
   from = "/prayer-times"
   to = "/seo/app/prayer-times.html"
   status = 200

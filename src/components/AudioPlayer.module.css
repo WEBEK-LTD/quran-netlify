@@ -33,8 +33,13 @@
 
 .track { position: relative; height: 6px; border-radius: 6px; background: var(--raise); cursor: pointer; overflow: visible; }
 .track::before { content: ""; position: absolute; inset: -8px 0; } /* bigger hit area */
-.track i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--gold2), var(--gold)); transition: width .25s linear; position: relative; }
-.track i::after { content: ""; position: absolute; inset-inline-end: -6px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: var(--gold2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 30%, transparent); }
+.track i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--gold2), var(--gold));
+  transform: scaleX(calc(var(--p, 0) / 100)); transform-origin: left center; transition: transform .25s linear; }
+:global([dir="rtl"]) .track i { transform-origin: right center; }
+/* the thumb rides on a full-width rail translated by the progress */
+.thumbRail { position: absolute; inset: 0; pointer-events: none; transform: translateX(calc((var(--p, 0) - 100) * 1%)); transition: transform .25s linear; }
+:global([dir="rtl"]) .thumbRail { transform: translateX(calc((100 - var(--p, 0)) * 1%)); }
+.thumbRail b { position: absolute; inset-inline-end: -6px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; background: var(--gold2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 30%, transparent); }
 .track:focus-visible { outline: 2px solid var(--gold); outline-offset: 6px; }
 :root[data-mode="contrast"] .track { outline: 1px solid #fff; }
 
@@ -172,6 +177,10 @@
 .metaLink:hover { color: var(--gold); }
 .metaLink:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
 :global(body.nq-has-dock) { padding-bottom: 110px; }
+/* phones: the dock is nearly opaque, so the blur is not worth repainting it on every scroll frame */
+@media (hover: none) and (pointer: coarse) {
+  .dock { backdrop-filter: none; -webkit-backdrop-filter: none; background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(150deg, var(--gold), var(--line2) 30%, var(--line2) 70%, var(--gold)) border-box; }
+}
 @media (max-width: 760px) {
   /* off the reader no layout sets --dock-bottom: sit above the tab bar */
   .dock { bottom: var(--dock-bottom, calc(78px + env(safe-area-inset-bottom, 0px))); }

@@ -99,3 +99,12 @@
 .fig8 { width:96px; height:48px; flex:none; color:var(--warn); }
 @media (prefers-reduced-motion: reduce) { .fig8Phone { display:none; } }
 :global(:root[data-reduce="on"]) .fig8Phone { display:none; }
+
+/* ── app: compact title bar, the compass right under it ── */
+.appHead { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  padding:14px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px)); border-bottom:var(--bw) solid var(--line);
+  background:radial-gradient(60% 140% at 50% 0%,var(--glow),transparent 72%),var(--bg2); }
+.appHead h1 { font-family:var(--f-brand); font-weight:600; font-size:1.6rem; line-height:1.2; }
+.appActs { display:flex; gap:8px; flex-wrap:wrap; }
+:global(.nq-native) .wrap { padding-top:16px; }
+:global(.nq-native) .roseCard { padding-top:30px; }

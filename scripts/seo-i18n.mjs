@@ -22,7 +22,7 @@ export const arDigits = n => String(n).replace(/\d/g, d => AR_DIGITS[d]);
 const urDigits = n => String(n).replace(/\d/g, d => UR_DIGITS[d]);
 
 // Routes of the app that are worth linking from the static pages.
-const SECTIONS = ['/reader', '/prayer-times', '/qibla', '/adhkar', '/tasbih', '/radio', '/daily-ayah', '/hifz', '/khatma-group', '/search', '/ijaza', '/docs', '/help'];
+const SECTIONS = ['/reader', '/listen', '/tafsir', '/prayer-times', '/qibla', '/adhkar', '/tasbih', '/radio', '/daily-ayah', '/hifz', '/khatma-group', '/search', '/ijaza', '/docs', '/help'];
 
 const base = {
   ar: {
@@ -56,7 +56,7 @@ const base = {
     ayahRef: (n, a) => `${arDigits(n)}:${arDigits(a)}`,
     skip: 'تخطَّ إلى المحتوى',
     sections: {
-      '/': 'الرئيسية', '/reader': 'المصحف', '/prayer-times': 'مواقيت الصلاة', '/qibla': 'اتجاه القبلة', '/adhkar': 'الأذكار',
+      '/': 'الرئيسية', '/reader': 'المصحف', '/listen': 'التلاوات', '/tafsir': 'التفسير', '/prayer-times': 'مواقيت الصلاة', '/qibla': 'اتجاه القبلة', '/adhkar': 'الأذكار',
       '/tasbih': 'المسبحة', '/radio': 'إذاعة القرآن', '/daily-ayah': 'آية اليوم', '/hifz': 'الحفظ', '/khatma-group': 'الختمة الجماعية',
       '/search': 'البحث في القرآن', '/ijaza': 'الإجازة والقراءات', '/docs': 'دليل المميزات', '/help': 'شرح الاستخدام',
       '/privacy': 'سياسة الخصوصية', '/terms': 'شروط الاستخدام',
@@ -109,7 +109,7 @@ const base = {
     ayahRef: (n, a) => `${n}:${a}`,
     skip: 'Skip to content',
     sections: {
-      '/': 'Home', '/reader': 'Mushaf', '/prayer-times': 'Prayer times', '/qibla': 'Qibla direction', '/adhkar': 'Adhkar',
+      '/': 'Home', '/reader': 'Mushaf', '/listen': 'Recitations', '/tafsir': 'Tafsir', '/prayer-times': 'Prayer times', '/qibla': 'Qibla direction', '/adhkar': 'Adhkar',
       '/tasbih': 'Tasbih counter', '/radio': 'Quran radio', '/daily-ayah': 'Ayah of the day', '/hifz': 'Memorisation (hifz)', '/khatma-group': 'Group khatm',
       '/search': 'Search the Quran', '/ijaza': 'Ijaza & qira’at', '/docs': 'Feature guide', '/help': 'How to use',
       '/privacy': 'Privacy policy', '/terms': 'Terms of use',
@@ -162,7 +162,7 @@ const base = {
     ayahRef: (n, a) => `${n}:${a}`,
     skip: 'İçeriğe geç',
     sections: {
-      '/': 'Ana sayfa', '/reader': 'Mushaf', '/prayer-times': 'Namaz vakitleri', '/qibla': 'Kıble yönü', '/adhkar': 'Zikirler',
+      '/': 'Ana sayfa', '/reader': 'Mushaf', '/listen': 'Tilavetler', '/tafsir': 'Tefsir', '/prayer-times': 'Namaz vakitleri', '/qibla': 'Kıble yönü', '/adhkar': 'Zikirler',
       '/tasbih': 'Tesbih sayacı', '/radio': "Kur'an radyosu", '/daily-ayah': 'Günün ayeti', '/hifz': 'Hıfz', '/khatma-group': 'Toplu hatim',
       '/search': "Kur'an'da ara", '/ijaza': 'İcazet ve kıraatler', '/docs': 'Özellik rehberi', '/help': 'Kullanım kılavuzu',
       '/privacy': 'Gizlilik politikası', '/terms': 'Kullanım koşulları',
@@ -215,7 +215,7 @@ const base = {
     ayahRef: (n, a) => `${n}:${a}`,
     skip: 'Aller au contenu',
     sections: {
-      '/': 'Accueil', '/reader': 'Mushaf', '/prayer-times': 'Heures de prière', '/qibla': 'Direction de la qibla', '/adhkar': 'Adhkar',
+      '/': 'Accueil', '/reader': 'Mushaf', '/listen': 'Récitations', '/tafsir': 'Tafsir', '/prayer-times': 'Heures de prière', '/qibla': 'Direction de la qibla', '/adhkar': 'Adhkar',
       '/tasbih': 'Compteur de tasbih', '/radio': 'Radio du Coran', '/daily-ayah': 'Verset du jour', '/hifz': 'Mémorisation', '/khatma-group': 'Khatm collectif',
       '/search': 'Rechercher dans le Coran', '/ijaza': 'Ijaza et lectures', '/docs': 'Guide des fonctions', '/help': 'Mode d’emploi',
       '/privacy': 'Politique de confidentialité', '/terms': 'Conditions d’utilisation',
@@ -268,7 +268,7 @@ const base = {
     ayahRef: (n, a) => `${urDigits(n)}:${urDigits(a)}`,
     skip: 'مواد پر جائیں',
     sections: {
-      '/': 'ہوم', '/reader': 'مصحف', '/prayer-times': 'نماز کے اوقات', '/qibla': 'قبلہ کی سمت', '/adhkar': 'اذکار',
+      '/': 'ہوم', '/reader': 'مصحف', '/listen': 'تلاوتیں', '/tafsir': 'تفسیر', '/prayer-times': 'نماز کے اوقات', '/qibla': 'قبلہ کی سمت', '/adhkar': 'اذکار',
       '/tasbih': 'تسبیح کاؤنٹر', '/radio': 'قرآن ریڈیو', '/daily-ayah': 'آج کی آیت', '/hifz': 'حفظ', '/khatma-group': 'اجتماعی ختم',
       '/search': 'قرآن میں تلاش', '/ijaza': 'اجازہ اور قراءات', '/docs': 'خصوصیات کی رہنمائی', '/help': 'استعمال کا طریقہ',
       '/privacy': 'رازداری کی پالیسی', '/terms': 'شرائطِ استعمال',
@@ -321,7 +321,7 @@ const base = {
     ayahRef: (n, a) => `${n}:${a}`,
     skip: 'Lewati ke konten',
     sections: {
-      '/': 'Beranda', '/reader': 'Mushaf', '/prayer-times': 'Jadwal salat', '/qibla': 'Arah kiblat', '/adhkar': 'Zikir',
+      '/': 'Beranda', '/reader': 'Mushaf', '/listen': 'Murattal', '/tafsir': 'Tafsir', '/prayer-times': 'Jadwal salat', '/qibla': 'Arah kiblat', '/adhkar': 'Zikir',
       '/tasbih': 'Penghitung tasbih', '/radio': 'Radio Al-Quran', '/daily-ayah': 'Ayat hari ini', '/hifz': 'Hafalan', '/khatma-group': 'Khatam bersama',
       '/search': 'Cari di Al-Quran', '/ijaza': 'Ijazah dan qiraat', '/docs': 'Panduan fitur', '/help': 'Cara penggunaan',
       '/privacy': 'Kebijakan privasi', '/terms': 'Ketentuan penggunaan',
@@ -350,7 +350,7 @@ const FEATURES = [
   ['/reader',
     ['المصحف الشريف', 'The Mushaf', 'Mushaf', 'Le Mushaf', 'مصحف', 'Mushaf'],
     ['المصحف كاملاً بالرسم العثماني، آية بآية مع ترجمة إن شئت، وتفاسير معتمدة ومعاني الكلمات.', 'The complete Mushaf in the Uthmani script, ayah by ayah with a translation if you wish, trusted tafsirs and word meanings.', 'Osmanî hatla tam Mushaf; dilerseniz mealiyle ayet ayet, güvenilir tefsirler ve kelime anlamları.', 'Le Mushaf complet en écriture uthmanie, verset par verset avec traduction si vous le souhaitez, des tafsirs reconnus et le sens des mots.', 'عثمانی رسم الخط میں مکمل مصحف، چاہیں تو ترجمے کے ساتھ آیت بہ آیت، معتبر تفاسیر اور الفاظ کے معانی۔', 'Mushaf lengkap dengan rasm Utsmani, ayat per ayat dengan terjemahan bila kamu mau, tafsir terpercaya, dan makna kata.']],
-  ['/reader',
+  ['/listen',
     ['التلاوة', 'Recitation', 'Tilavet', 'Récitation', 'تلاوت', 'Murattal'],
     ['١٦ قارئاً من كبار القرّاء، مع تظليل الآية أثناء التلاوة وتكرار المقطع للحفظ.', '16 renowned reciters, with the ayah highlighted during recitation and passage repeat for memorising.', '16 büyük kârî; tilavet sırasında ayet vurgulanır, ezber için bölüm tekrarı yapılır.', "16 grands récitateurs, avec le verset surligné pendant la récitation et la répétition d'un passage pour mémoriser.", '۱۶ بڑے قاری، تلاوت کے دوران آیت نمایاں، اور حفظ کے لیے حصے کی تکرار۔', '16 qari ternama, dengan ayat yang disorot saat dibacakan dan pengulangan bagian untuk menghafal.']],
   ['/hifz',
@@ -393,6 +393,10 @@ export function ui(lang) {
 // Arabic titles/descriptions for the app routes (the app's default language),
 // used for per-route copies of index.html so each route has its own canonical.
 export const APP_ROUTES = [
+  ['/listen', 'تلاوات القرآن الكريم بأصوات كبار القرّاء — استمع إلى السورة كاملة | نور القرآن',
+    'اختر قارئاً من ١٦ قارئاً، ثم استمع إلى أي سورة كاملة بالرسم العثماني مع متابعة الآية، والتلاوة مستمرة وأنت تتنقّل في التطبيق.'],
+  ['/tafsir', 'تفسير القرآن الكريم آية بآية — التفسير الميسّر وتفسير الجلالين | نور القرآن',
+    'اختر السورة والآية واقرأ تفسيرها من التفسير الميسّر أو تفسير الجلالين، مع نص الآية بالرسم العثماني والانتقال إلى الآية التالية والسابقة.'],
   ['/reader', 'المصحف التفاعلي — اقرأ القرآن الكريم بالرسم العثماني واستمع إليه | نور القرآن',
     'المصحف كاملاً بالرسم العثماني، آية بآية مع ترجمة إن شئت، وتفاسير معتمدة ومعاني الكلمات، وتلاوة ١٦ قارئاً مع تظليل الآية وتكرار المقطع للحفظ.'],
   ['/prayer-times', 'مواقيت الصلاة اليوم في مدينتك — مع تنبيه الأذان | نور القرآن',

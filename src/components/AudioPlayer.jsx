@@ -237,7 +237,9 @@ export default function AudioPlayer() {
           role="slider" tabIndex={0} aria-label={tr('موضع التلاوة')}
           aria-valuemin={0} aria-valuemax={Math.round(duration) || 0} aria-valuenow={Math.round(current) || 0}
           aria-valuetext={tr('{a} من {b}', { a: fmt(current), b: fmt(duration) })}>
-          <i style={{ width: `${progress}%` }} />
+          {/* fill and thumb move with transforms only (no layout while the recitation plays) */}
+          <i style={{ '--p': progress }} />
+          <span className={styles.thumbRail} style={{ '--p': progress }} aria-hidden="true"><b /></span>
         </div>
         <small className={`nq-num ${styles.timeRow}`}>
           <span>{toAr(fmt(current))} / {toAr(fmt(duration))}</span>
