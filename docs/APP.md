@@ -341,7 +341,7 @@ Modes → Audio, Remote notifications** are shown (they come from `App.entitleme
 otherwise `assembleDebug` → artifacts. Runs on tags `app-v*`, manual dispatch, and PRs that
 touch the app.
 
-`.github/workflows/app-ios.yml` (macos-26, latest stable Xcode, fails unless the iOS SDK is 27
+`.github/workflows/app-ios.yml` (runner label `xcode-27` — GitHub names macOS images after the Xcode major version; move to the next label when it is GA — latest stable Xcode, fails unless the iOS SDK is 27
 or newer): `npm ci` → tests →
 `npm run build:ios` → unsigned device build (always) → with secrets: archive + export a
 signed `.ipa` → optional TestFlight upload.

@@ -24,7 +24,8 @@ concurrency:
 jobs:
   ios:
     # Owner rule: every iOS build must use the iOS 27 SDK or newer (newest available preferred).
-    runs-on: macos-26
+    # GitHub keys macOS images to the Xcode major version: move to xcode-28 (etc.) when it is GA.
+    runs-on: xcode-27
     timeout-minutes: 60
     env:
       NQ_BUILD_NUMBER: ${{ github.run_number }}

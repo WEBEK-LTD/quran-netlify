@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Site tokens (src/styles/theme.css): --bg dark #060D0A, light #F4F5F0, gold #C9A84C -->
+    <!-- Site tokens (src/styles/theme.css): background dark #060D0A, light #F4F5F0, gold #C9A84C -->
     <color name="nq_bg">#060D0A</color>
     <color name="nq_bg_light">#F4F5F0</color>
     <color name="nq_gold">#C9A84C</color>

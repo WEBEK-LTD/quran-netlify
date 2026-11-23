@@ -15,6 +15,8 @@ const ok = (cond, msg) => { if (cond) console.log(`  ✓ ${msg}`); else { failed
 
 // Tiny XML well-formedness check (tags balanced, attributes quoted) — enough to catch editing mistakes.
 function wellFormed(xml) {
+  // XML forbids «--» inside comments (aapt fails the Android build on it)
+  for (const c of xml.match(/<!--[\s\S]*?-->/g) || []) if (c.slice(4, -3).includes('--')) return 'comment contains "--"';
   const body = xml.replace(/<\?[\s\S]*?\?>/g, '').replace(/<!--[\s\S]*?-->/g, '').replace(/<!DOCTYPE[\s\S]*?>/g, '').replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '');
   const stack = [];
   const re = /<(\/?)([A-Za-z_][\w:.-]*)((?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>/g;
