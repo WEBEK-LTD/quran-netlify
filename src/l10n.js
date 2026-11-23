@@ -16,7 +16,15 @@ import { SURAHS_META } from './data';
 
 const modules = import.meta.glob('./locales/*.js', { eager: true });
 const DICT = { en: {}, tr: {}, fr: {}, ur: {}, id: {} };
-for (const m of Object.values(modules)) {
+// Areas that read their own rows first (core, hifz, library) are merged first, so
+// the shared dictionary that plain useTr() reads prefers the other areas' wording.
+const SCOPED_FIRST = ['core', 'hifz', 'library'];
+const ordered = Object.entries(modules).sort(([a], [b]) => {
+  const ra = SCOPED_FIRST.some(n => a.endsWith('/' + n + '.js')) ? 0 : 1;
+  const rb = SCOPED_FIRST.some(n => b.endsWith('/' + n + '.js')) ? 0 : 1;
+  return ra - rb || a.localeCompare(b);
+});
+for (const [, m] of ordered) {
   const d = m.default || {};
   for (const lang of Object.keys(DICT)) Object.assign(DICT[lang], d[lang] || {});
 }

@@ -633,7 +633,7 @@ export default {
     "حان الآن موعد صلاة {p}": "C’est maintenant l’heure de la prière de {p}",
     "حان الآن موعد صلاة {p} في {city}": "C’est maintenant l’heure de la prière de {p} à {city}",
     "مسار الشمس اليوم: الشروق {sr} والمغرب {mg}": "Course du soleil aujourd’hui : lever {sr}, Maghrib {mg}",
-    "الإعدادات": "Réglages",
+    "الإعدادات": "Paramètres",
     "المدينة وطريقة الحساب": "Ville et méthode de calcul",
     "المدينة": "Ville",
     "اسم المدينة": "Nom de la ville",
