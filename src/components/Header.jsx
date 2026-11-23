@@ -2,15 +2,14 @@ import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore, setGlobal } from '../store';
 import { SURAHS_META } from '../data';
-import { useAuth } from '../hooks/useAuth';
-import { signOut } from '../supabase';
+import { useAuth, displayNameOf, avatarOf } from '../hooks/useAuth';
 import InstallPWA from './InstallPWA';
 import styles from './Header.module.css';
 import LangSwitcher from './LangSwitcher';
 
 export default function Header() {
   const [state] = useStore();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [query, setQuery]             = useState('');
   const [results, setResults]         = useState([]);
   const [showResults, setShowResults] = useState(false);
@@ -40,8 +39,8 @@ export default function Header() {
     else setGlobal({ currentSurah: r.surah, currentAyah: r.ayah, scrollToAyah: r.ayah });
   }
 
-  const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
-  const avatarUrl   = user?.user_metadata?.avatar_url || null;
+  const displayName = displayNameOf(user);
+  const avatarUrl   = avatarOf(user);
 
   return (
     <header className={styles.header}>

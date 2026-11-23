@@ -1,7 +1,8 @@
-import { useAuth } from '../hooks/useAuth';
-import { useState } from 'react';
+import { useAuth, displayNameOf, avatarOf } from '../hooks/useAuth';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signOut, updateUserName, updateUserPassword } from '../supabase';
+import { updateProfile, changePassword, resendVerification, errorMessage } from '../backend';
+import { authErrorText } from '../authErrors';
 import { useStore, setGlobal, savePref } from '../store';
 import { READERS, TRANSLATIONS } from '../data';
 import styles from './SettingsPage.module.css';
@@ -23,16 +24,30 @@ function Toggle({ checked, onChange }) {
 export default function SettingsPage() {
   const t = useT();
   const dir = useDir();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate  = useNavigate();
   const [state]   = useStore();
   const [saved,         setSaved]        = useState(false);
   const [editingName,   setEditingName]  = useState(false);
   const [editingPw,     setEditingPw]    = useState(false);
   const [newName,       setNewName]      = useState('');
+  const [curPw,         setCurPw]        = useState('');
   const [newPw,         setNewPw]        = useState('');
   const [profileLoading,setProfileLoading] = useState(false);
+  const [lbLoading,     setLbLoading]    = useState(false);
+  const [verifyState,   setVerifyState]  = useState(''); // '' | 'sending' | 'sent'
   const [profileMsg,    setProfileMsg]   = useState('');
+  const msgTimer = useRef(null);
+  useEffect(() => () => clearTimeout(msgTimer.current), []);
+
+  // Google-only accounts have no password yet (API may send has_password)
+  const hasPassword = user?.has_password !== false;
+
+  function flash(msg, ms = 3500) {
+    setProfileMsg(msg);
+    clearTimeout(msgTimer.current);
+    if (msg.startsWith('✅')) msgTimer.current = setTimeout(() => setProfileMsg(''), ms);
+  }
 
   async function handleSignOut() {
     await signOut();
@@ -42,29 +57,48 @@ export default function SettingsPage() {
   async function handleUpdateName() {
     if (!newName.trim()) return;
     setProfileLoading(true); setProfileMsg('');
-    const { error } = await updateUserName(newName.trim());
-    if (error) {
-      setProfileMsg('❌ ' + (error.message || error));
-    } else {
-      setProfileMsg(`✅ ${t('success')} — قد تحتاج لإعادة تسجيل الدخول لرؤية التغيير`);
+    try {
+      await updateProfile({ name: newName.trim() });
       setEditingName(false);
-      setTimeout(() => setProfileMsg(''), 4000);
+      flash('✅ تم تحديث الاسم');
+    } catch (e) {
+      flash('❌ ' + authErrorText(e));
     }
     setProfileLoading(false);
   }
 
   async function handleUpdatePw() {
-    if (newPw.length < 6) return;
+    if (newPw.length < 8) { flash('❌ كلمة المرور الجديدة يجب ألا تقل عن 8 أحرف'); return; }
+    if (hasPassword && !curPw) { flash('❌ اكتب كلمة المرور الحالية'); return; }
     setProfileLoading(true); setProfileMsg('');
-    const { error } = await updateUserPassword(newPw);
-    if (error) {
-      setProfileMsg('❌ ' + (error.message || error));
-    } else {
-      setProfileMsg('✅ تم تغيير كلمة المرور بنجاح');
-      setEditingPw(false); setNewPw('');
-      setTimeout(() => setProfileMsg(''), 3000);
+    try {
+      await changePassword(hasPassword ? curPw : null, newPw);
+      setEditingPw(false); setNewPw(''); setCurPw('');
+      flash('✅ تم تغيير كلمة المرور — سُجّل خروجك من الأجهزة الأخرى');
+    } catch (e) {
+      const f = e?.fields || {};
+      flash('❌ ' + (f.current_password
+        ? 'كلمة المرور الحالية غير صحيحة'
+        : authErrorText(e)));
     }
     setProfileLoading(false);
+  }
+
+  async function toggleLeaderboard(next) {
+    setLbLoading(true); setProfileMsg('');
+    try {
+      await updateProfile({ show_on_leaderboard: !!next });
+      flash(next ? '✅ سيظهر اسمك في لوحة المتصدرين' : '✅ لن يظهر اسمك في لوحة المتصدرين');
+    } catch (e) {
+      flash('❌ ' + errorMessage(e, 'تعذّر حفظ الإعداد'));
+    }
+    setLbLoading(false);
+  }
+
+  async function handleResendVerify() {
+    setVerifyState('sending');
+    try { await resendVerification(); setVerifyState('sent'); }
+    catch (e) { setVerifyState(''); flash('❌ ' + errorMessage(e, 'تعذّر إرسال رسالة التأكيد')); }
   }
 
   function saveSetting(key, val) {
@@ -103,13 +137,13 @@ export default function SettingsPage() {
               display:'flex', alignItems:'center', justifyContent:'center',
               fontSize:24, fontWeight:700, color:'var(--gold)', flexShrink:0,
             }}>
-              {user.user_metadata?.avatar_url
-                ? <img src={user.user_metadata.avatar_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                : (user.user_metadata?.full_name?.[0] || user.email?.[0] || '؟').toUpperCase()}
+              {avatarOf(user)
+                ? <img src={avatarOf(user)} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                : (displayNameOf(user, '؟')[0] || '؟').toUpperCase()}
             </div>
             <div>
               <div style={{ fontWeight:700, fontSize:15, color:'var(--text)' }}>
-                {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                {displayNameOf(user)}
               </div>
               <div style={{ fontSize:12, color:'var(--text3)', direction:'ltr' }}>{user.email}</div>
             </div>
@@ -131,36 +165,57 @@ export default function SettingsPage() {
                   style={{ padding:'8px 12px', borderRadius:8, background:'var(--border)',
                     color:'var(--text)', border:'none', cursor:'pointer' }}>✕</button>
               </div>
-            : <button className={styles.editBtn} onClick={()=>{ setEditingName(true); setNewName(user.user_metadata?.full_name||''); }}>
+            : <button className={styles.editBtn} onClick={()=>{ setEditingName(true); setNewName(user.name||''); }}>
                 ✏️ تعديل الاسم
               </button>
           }
 
-          {/* Change password (email users only) */}
-          {!user.app_metadata?.provider?.includes('google') && (
-            editingPw
+          {/* Change / set password */}
+          {editingPw
               ? <div style={{ marginTop:12 }}>
+                  {hasPassword && (
+                    <input type="password" value={curPw} onChange={e=>setCurPw(e.target.value)}
+                      placeholder="كلمة المرور الحالية" autoComplete="current-password"
+                      style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)',
+                        background:'var(--bg2)', color:'var(--text)', fontSize:14, direction:'ltr',
+                        marginBottom:8, boxSizing:'border-box' }}/>
+                  )}
                   <input type="password" value={newPw} onChange={e=>setNewPw(e.target.value)}
-                    {...{placeholder: t('new_password_ph')}}
+                    placeholder="كلمة المرور الجديدة (8 أحرف على الأقل)" autoComplete="new-password"
                     style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)',
                       background:'var(--bg2)', color:'var(--text)', fontSize:14, direction:'ltr',
                       marginBottom:8, boxSizing:'border-box' }}/>
                   <div style={{ display:'flex', gap:8 }}>
-                    <button onClick={handleUpdatePw} disabled={profileLoading || newPw.length < 6}
+                    <button onClick={handleUpdatePw} disabled={profileLoading || newPw.length < 8 || (hasPassword && !curPw)}
                       style={{ flex:1, padding:'8px', borderRadius:8, background:'var(--gold)',
                         color:'#000', fontWeight:700, border:'none', cursor:'pointer' }}>
-                      {profileLoading ? '...' : 'تغيير كلمة المرور'}
+                      {profileLoading ? '...' : hasPassword ? 'تغيير كلمة المرور' : 'تعيين كلمة المرور'}
                     </button>
-                    <button onClick={()=>setEditingPw(false)}
+                    <button onClick={()=>{ setEditingPw(false); setCurPw(''); setNewPw(''); }}
                       style={{ padding:'8px 12px', borderRadius:8, background:'var(--border)',
                         color:'var(--text)', border:'none', cursor:'pointer' }}>{t('cancel')}</button>
                   </div>
                 </div>
               : <button className={styles.editBtn} style={{ marginTop:8 }}
-                  onClick={()=>{ setEditingPw(true); setNewPw(''); }}>
-                  🔑 تغيير كلمة المرور
+                  onClick={()=>{ setEditingPw(true); setNewPw(''); setCurPw(''); }}>
+                  🔑 {hasPassword ? 'تغيير كلمة المرور' : 'تعيين كلمة مرور'}
                 </button>
-          )}
+          }
+
+          {/* Leaderboard opt-in */}
+          <div className={styles.settingRow} style={{ marginTop:12 }}>
+            <div className={styles.settingInfo}>
+              <div className={styles.settingLabel}>🏆 إظهار اسمي في لوحة المتصدرين</div>
+              <div className={styles.settingDesc}>
+                {user.show_on_leaderboard
+                  ? 'يظهر اسمك ونقاطك في لوحة المتصدرين العامة'
+                  : 'اسمك مخفي — لن تظهر في لوحة المتصدرين'}
+              </div>
+            </div>
+            {lbLoading
+              ? <span style={{ color:'var(--text3)', fontSize:13 }}>...</span>
+              : <Toggle checked={!!user.show_on_leaderboard} onChange={toggleLeaderboard} />}
+          </div>
 
           {profileMsg && (
             <div style={{ marginTop:10, padding:'8px 12px', borderRadius:8, fontSize:13,
@@ -175,6 +230,16 @@ export default function SettingsPage() {
               <span className={styles.infoLabel}>البريد</span>
               <span className={styles.infoVal} style={{ direction: 'ltr' }}>{user.email}</span>
             </div>
+            {user.email_verified === false && (
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel} style={{ color:'#f59e0b' }}>⚠️ البريد غير مؤكَّد</span>
+                {verifyState === 'sent'
+                  ? <span className={styles.infoVal}>✅ أُرسلت رسالة التأكيد</span>
+                  : <button className={styles.editBtn} onClick={handleResendVerify} disabled={verifyState === 'sending'}>
+                      {verifyState === 'sending' ? '...' : 'إعادة إرسال رسالة التأكيد'}
+                    </button>}
+              </div>
+            )}
           </div>
           <button className={styles.dangerBtn} onClick={handleSignOut}>{t('logout')}</button>
           {/* Web Push */}
@@ -193,7 +258,7 @@ export default function SettingsPage() {
           </div>
 
           <Link to="/delete-data" style={{ display:'block', marginTop:8, textAlign:'center',
-            fontSize:12, color:'var(--text3)' }}>🗑️ حذف الحساب والبيانات</Link>
+            fontSize:12, color:'var(--text3)' }}>🗑️ حذف الحساب والبيانات / تنزيل نسخة منها</Link>
         </div>
       )}
 

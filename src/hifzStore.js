@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { SURAH_AYAH_COUNT, TOTAL_AYAHS, ACHIEVEMENTS, isJuzAmmaDone } from './hifzData';
-import { syncHifzToCloud, loadHifzFromCloud } from './supabase';
+import { syncHifzToCloud, loadHifzFromCloud } from './backend';
 
 const KEY = 'nq_hifz';
 
@@ -65,7 +65,10 @@ export function saveHifzAndSync(data, userId) {
   if (!userId) return;
   // Debounce: sync to cloud 3 seconds after last change
   clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(() => syncHifzToCloud(userId, data), 3000);
+  _syncTimer = setTimeout(() => {
+    // Last write wins: the server keeps whichever copy has the newest updated_at
+    syncHifzToCloud(userId, data, data.updatedAt).catch(() => {});
+  }, 3000);
 }
 
 export function useHifz(userId = null) {
@@ -75,9 +78,16 @@ export function useHifz(userId = null) {
   // Load from cloud on mount (merge: cloud wins if newer)
   useEffect(() => {
     if (!userId || cloudLoaded) return;
+    let alive = true;
     loadHifzFromCloud(userId).then(cloudData => {
-      if (!cloudData || !cloudData.data) return;
+      if (!alive) return;
       setCloudLoaded(true);
+      const localNow = loadHifz();
+      if (!cloudData || !cloudData.data) {
+        // Nothing on the account yet → upload this device's progress once
+        if (localNow.updatedAt) syncHifzToCloud(userId, localNow, localNow.updatedAt).catch(() => {});
+        return;
+      }
       const local = loadHifz();
       // Compare real timestamps (ISO strings → ms). A missing/invalid local
       // timestamp means this device has never saved → cloud wins.
@@ -88,8 +98,12 @@ export function useHifz(userId = null) {
         const merged = { ...local, ...cloudData.data, updatedAt: cloudIso || new Date().toISOString() };
         saveHifz(merged);
         setHifzState(merged);
+      } else if (!Number.isNaN(localTime) && (Number.isNaN(cloudTime) || localTime > cloudTime)) {
+        // This device is newer → push it up
+        syncHifzToCloud(userId, local, local.updatedAt).catch(() => {});
       }
     }).catch(() => {});
+    return () => { alive = false; };
   }, [userId]);
 
   function update(updates) {

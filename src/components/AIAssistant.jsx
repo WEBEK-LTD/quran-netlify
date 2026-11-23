@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useStore } from '../store';
 import { SURAHS_META } from '../data';
+import { useAuth } from '../hooks/useAuth';
+import { aiChat, errorMessage } from '../backend';
 import styles from './AIAssistant.module.css';
 
 // ─── Suggested questions per context ─────────────────────────────────────────
@@ -12,44 +15,6 @@ function getSuggestions(surahNum, ayahNum) {
     `كيف أطبّق هذه الآية في حياتي؟`,
     `ما علاقة هذه الآية بما قبلها؟`,
   ];
-}
-
-// ─── System prompt ────────────────────────────────────────────────────────────
-function buildSystem(surahNum, ayahNum) {
-  const meta = SURAHS_META[surahNum - 1];
-  const name = meta?.[0] || '';
-  const type = meta?.[3] || '';
-  return `أنت مساعد إسلامي متخصص في علوم القرآن الكريم والفقه الإسلامي. 
-تتحدث بالعربية الفصحى السهلة، وتجيب بأسلوب علمي رصين وودود.
-
-السياق الحالي: المستخدم يقرأ سورة ${name} (${type})، الآية ${ayahNum}.
-
-قواعد:
-- أجب دائماً بالعربية
-- كن دقيقاً في النقل عن العلماء، وأشِر إلى المصادر عند الاقتباس
-- إذا سُئلت عن مسألة خلافية، اذكر أشهر الأقوال بموضوعية
-- لا تُفتِ في المسائل الخطيرة، وأحِل إلى العلماء المختصين
-- ابدأ إجاباتك مباشرة دون مقدمات طويلة
-- استخدم الآيات القرآنية والأحاديث الصحيحة لتدعيم إجاباتك`;
-}
-
-// ─── Call Claude API with streaming ──────────────────────────────────────────
-// ─── Secure proxy — API key lives server-side in process.env.OPENAI_KEY ──────
-// No VITE_ prefix = never bundled into client JS.
-async function callClaude(messages, system) {
-  const res = await fetch('/.netlify/functions/ai-chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      max_tokens: 1024,
-      system,
-      messages,
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-  return data.content?.[0]?.text || '';
 }
 
 // ─── Message bubble ───────────────────────────────────────────────────────────
@@ -68,9 +33,21 @@ function Bubble({ msg }) {
   );
 }
 
+// The server builds the system prompt (POST /ai/chat). We only send the
+// user/assistant turns (last 12) and the ayah being read.
+function aiErrorText(e) {
+  const code = e && e.code;
+  if (code === 'unauthenticated') return '🔐 سجّل الدخول لاستخدام المساعد الذكي';
+  if (code === 'ai_not_configured') return '🛠️ المساعد الذكي غير مُفعّل حالياً — لم تُضبط إعداداته بعد من الإدارة';
+  if (code === 'feature_disabled') return '⏸️ المساعد الذكي متوقف مؤقتاً من الإدارة';
+  if (code === 'rate_limited') return '⏳ وصلت للحد المسموح من الأسئلة هذه الساعة — حاول بعد قليل';
+  return '⚠️ ' + errorMessage(e, 'تعذّر الحصول على إجابة، حاول مرة أخرى');
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function AIAssistant() {
   const [state] = useStore();
+  const { user, loading: authLoading } = useAuth();
   const [open, setOpen]         = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput]       = useState('');
@@ -78,11 +55,22 @@ export default function AIAssistant() {
   const [error, setError]       = useState('');
   const bottomRef   = useRef(null);
   const inputRef    = useRef(null);
-  const abortRef    = useRef(false);
+  // Latest values for event handlers / async callbacks (no stale closures)
+  const messagesRef = useRef(messages);
+  const loadingRef  = useRef(false);
+  const userRef     = useRef(user);
+  const ctxRef      = useRef(null);   // { surah, ayah, text } from the Reader's ✦ AI button
+  const aliveRef    = useRef(true);
+  messagesRef.current = messages;
+  userRef.current = user;
 
   const surahNum = state.currentSurah;
   const ayahNum  = state.currentAyah;
   const surahName = SURAHS_META[surahNum - 1]?.[0] || '';
+  const posRef = useRef(null);
+  posRef.current = { surah: surahNum, ayah: ayahNum };
+
+  useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; }; }, []);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -94,52 +82,64 @@ export default function AIAssistant() {
     if (open) setTimeout(() => inputRef.current?.focus(), 100);
   }, [open]);
 
-  // Listen for openAI event from Reader ayah buttons
+  // Listen for openAI event from Reader ayah buttons. The event carries
+  // surah/ayah/text, so the handler never depends on stale render state.
   useEffect(() => {
+    let timer = null;
     function handler(e) {
       setOpen(true);
-      const ayah = e.detail?.ayah;
-      if (ayah) {
-        setTimeout(() => {
-          const q = `اشرح لي الآية ${ayah} من سورة ${SURAHS_META[state.currentSurah - 1]?.[0]}`;
-          sendMessage(q);
-        }, 200);
-      }
+      const d = e.detail || {};
+      if (!d.ayah) return;
+      const surah = d.surah || null;
+      ctxRef.current = { surah, ayah: d.ayah, text: d.text || '' };
+      if (!userRef.current) return;   // the panel shows the sign-in prompt
+      const name = SURAHS_META[(surah || 1) - 1]?.[0] || '';
+      clearTimeout(timer);
+      timer = setTimeout(() => sendMessage(`اشرح لي الآية ${d.ayah} من سورة ${name}`), 200);
     }
     window.addEventListener('openAI', handler);
-    return () => window.removeEventListener('openAI', handler);
-  }, [state.currentSurah, open]);
+    return () => { window.removeEventListener('openAI', handler); clearTimeout(timer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Reset on surah change (keep last 2 msgs for context)
+  // Reset on surah change
   useEffect(() => {
     setMessages([]);
     setError('');
+    if (ctxRef.current && ctxRef.current.surah !== surahNum) ctxRef.current = null;
   }, [surahNum]);
 
   async function sendMessage(text) {
-    const q = (text || input).trim();
-    if (!q || loading) return;
+    const q = (text ?? input).trim();
+    if (!q || loadingRef.current) return;
+    if (!userRef.current) { setError(aiErrorText({ code: 'unauthenticated' })); return; }
     setInput('');
     setError('');
-    abortRef.current = false;
 
-    const userMsg = { role: 'user', content: q };
-    const history = [...messages, userMsg];
-    // Show typing indicator
+    const history = [...messagesRef.current.filter(m => !m.streaming), { role: 'user', content: q }];
     setMessages([...history, { role: 'assistant', content: '...', streaming: true }]);
+    loadingRef.current = true;
     setLoading(true);
 
-    const apiMsgs = history.map(m => ({ role: m.role, content: m.content }));
-    const system  = buildSystem(surahNum, ayahNum);
+    // Context: the ayah from the Reader button if it is the one being read, else the current position
+    const pos = posRef.current;
+    const ctx = ctxRef.current && ctxRef.current.surah === pos.surah
+      ? ctxRef.current
+      : { surah: pos.surah, ayah: pos.ayah, text: '' };
+    const context = { surah: ctx.surah, ayah: ctx.ayah };
+    if (ctx.text) context.text = String(ctx.text).slice(0, 2000);
 
     try {
-      const reply = await callClaude(apiMsgs, system);
-      setMessages([...history, { role: 'assistant', content: reply, streaming: false }]);
+      const reply = await aiChat(history.map(m => ({ role: m.role, content: m.content })), context);
+      if (!aliveRef.current) return;
+      setMessages([...history, { role: 'assistant', content: reply || '—', streaming: false }]);
     } catch (e) {
-      setError(`⚠️ ${e.message}`);
+      if (!aliveRef.current) return;
+      setError(aiErrorText(e));
       setMessages(history); // remove typing indicator
     } finally {
-      setLoading(false);
+      loadingRef.current = false;
+      if (aliveRef.current) setLoading(false);
     }
   }
 
@@ -187,7 +187,21 @@ export default function AIAssistant() {
 
           {/* Messages */}
           <div className={styles.messages}>
-            {isEmpty && (
+            {isEmpty && !user && !authLoading && (
+              <div className={styles.emptyState}>
+                <div className={styles.emptyIcon}>🔐</div>
+                <p className={styles.emptyTitle}>سجّل الدخول لاستخدام المساعد</p>
+                <p className={styles.emptySub}>المساعد الذكي متاح للمستخدمين المسجّلين فقط</p>
+                <div className={styles.suggestions}>
+                  <Link to="/login" className={styles.suggestion} onClick={() => setOpen(false)}
+                    style={{ textAlign: 'center', textDecoration: 'none' }}>🔑 تسجيل الدخول</Link>
+                  <Link to="/signup" className={styles.suggestion} onClick={() => setOpen(false)}
+                    style={{ textAlign: 'center', textDecoration: 'none' }}>✨ إنشاء حساب</Link>
+                </div>
+              </div>
+            )}
+
+            {isEmpty && (user || authLoading) && (
               <div className={styles.emptyState}>
                 <div className={styles.emptyIcon}>✦</div>
                 <p className={styles.emptyTitle}>اسألني عن القرآن الكريم</p>
@@ -236,7 +250,7 @@ export default function AIAssistant() {
               placeholder="اسأل عن الآية، التفسير، الفقه..."
               rows={2}
               dir="rtl"
-              disabled={loading}
+              disabled={loading || !user}
             />
             <div className={styles.inputActions}>
               <span className={styles.hint}>Enter للإرسال • Shift+Enter لسطر جديد</span>
@@ -245,7 +259,7 @@ export default function AIAssistant() {
                 : <button
                     className={styles.sendBtn}
                     onClick={() => sendMessage()}
-                    disabled={!input.trim()}
+                    disabled={!input.trim() || !user}
                   >إرسال ↩</button>
               }
             </div>

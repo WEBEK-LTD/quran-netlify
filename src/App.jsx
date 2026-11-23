@@ -1,6 +1,6 @@
-import { useEffect, useRef, lazy, Suspense, Component } from 'react';
+import { useEffect, useState, lazy, Suspense, Component } from 'react';
 import { useLang, LANGS } from './i18n';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, Link } from 'react-router-dom';
 import { useStore, setGlobal } from './store';
 import { SURAHS_META } from './data';
 import Toolbar from './components/Toolbar';
@@ -45,7 +45,9 @@ const PrayerTimesPage = lazy(() => import('./pages/PrayerTimesPage'));
 const QiblaPage = lazy(() => import('./pages/QiblaPage'));
 const AdhkarPage = lazy(() => import('./pages/AdhkarPage'));
 import styles from './App.module.css';
-import { joinPresence } from './supabase';
+import { pingPresence } from './backend';
+import { useAuth } from './hooks/useAuth';
+import { usePublicSettings, featureOn } from './hooks/usePublicSettings';
 
 // Silent boundary for floating extras: if one widget crashes it disappears
 // instead of taking down the whole app (or the other widgets).
@@ -80,6 +82,52 @@ function FullLayout({ children }) {
   return <div className={styles.fullPage}>{children}</div>;
 }
 
+// Shown in place of a page whose feature the admin switched off.
+function FeatureOff() {
+  return (
+    <div className={styles.notice}>
+      <div className={styles.noticeIcon}>🔒</div>
+      <h2>هذه الميزة متوقفة حالياً</h2>
+      <p>أوقفت الإدارة هذه الصفحة مؤقتاً. يمكنك متابعة القراءة وبقية الميزات كالمعتاد.</p>
+      <Link to="/" className={styles.noticeBtn}>العودة للرئيسية</Link>
+    </div>
+  );
+}
+
+function MaintenancePage({ settings }) {
+  return (
+    <div className={styles.notice} style={{ minHeight: '100vh' }}>
+      <div className={styles.noticeIcon}>🛠️</div>
+      <h2>{settings.app_name || 'نور القرآن'} في صيانة مؤقتة</h2>
+      <p>نعمل على تحسين التطبيق، وسنعود قريباً بإذن الله. شكراً لصبرك.</p>
+      {settings.announcement && <p className={styles.noticeSub}>{settings.announcement}</p>}
+      <Link to="/login" className={styles.noticeLink}>دخول المشرفين</Link>
+    </div>
+  );
+}
+
+const ANN_KEY = 'nq_dismissed_announcement';
+function AnnouncementBanner({ text }) {
+  const [dismissed, setDismissed] = useState(() => { try { return localStorage.getItem(ANN_KEY) || ''; } catch { return ''; } });
+  if (!text || dismissed === text) return null;
+  return (
+    <div className={styles.announcement} role="status">
+      <span className={styles.announcementIcon}>📢</span>
+      <span className={styles.announcementText}>{text}</span>
+      <button className={styles.announcementClose} title="إغلاق" onClick={() => {
+        setDismissed(text);
+        try { localStorage.setItem(ANN_KEY, text); } catch {}
+      }}>×</button>
+    </div>
+  );
+}
+
+// route path → feature flag in /settings/public
+const ROUTE_FEATURES = {
+  '/hifz': 'hifz', '/khatma': 'khatma', '/khatma-group': 'khatma_group',
+  '/leaderboard': 'leaderboard', '/ijaza': 'ijaza', '/notes': 'notes', '/search': 'search',
+};
+
 export default function App() {
   const location = useLocation();
   const lang = useLang();
@@ -90,16 +138,16 @@ export default function App() {
     document.documentElement.setAttribute('lang', lang);
     document.documentElement.setAttribute('dir', l?.dir || 'rtl');
   }, [lang]);
-  const presenceChannel = useRef(null);
+  const { user, loading: authLoading } = useAuth();
+  const settings = usePublicSettings();
 
-  // ─── Track visitor presence (مسجل أو لا) ─────────────────────────────────
+  // ─── Presence: on route change + every 60 s (signed-in or guest) ─────────
+  useEffect(() => { pingPresence(location.pathname); }, [location.pathname]);
   useEffect(() => {
-    joinPresence(null).then(ch => {
-      presenceChannel.current = ch;
-    });
-    return () => {
-      if (presenceChannel.current) presenceChannel.current.unsubscribe();
-    };
+    const t = setInterval(() => {
+      if (!document.hidden) pingPresence(window.location.pathname);
+    }, 60_000);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -126,8 +174,24 @@ export default function App() {
     '/login', '/signup', '/auth/callback', '/reset-password',
   ].some(p => location.pathname === p || location.pathname.startsWith('/admin'));
 
+  const path = location.pathname;
+  const isAdmin = !!user?.is_admin;
+  const maintenanceExempt = path === '/login' || path === '/auth/callback' || path === '/admin' || path.startsWith('/admin/');
+  if (settings.maintenance_mode && !isAdmin && !maintenanceExempt) {
+    if (authLoading) return (
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'50vh'}}>
+        <div style={{width:36,height:36,borderRadius:'50%',border:'3px solid var(--border)',borderTopColor:'var(--gold)',animation:'spin .7s linear infinite'}}/>
+      </div>
+    );
+    return <MaintenancePage settings={settings} />;
+  }
+
+  // Feature-flagged pages
+  const gate = (route, el) => (featureOn(settings, ROUTE_FEATURES[route]) ? el : <FullLayout><FeatureOff /></FullLayout>);
+
   return (
     <>
+      {!path.startsWith('/admin') && <AnnouncementBanner text={(settings.announcement || '').trim()} />}
       <ErrorBoundary>
       <Suspense fallback={
         <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'50vh'}}>
@@ -142,17 +206,17 @@ export default function App() {
         <Route path="/dashboard"    element={<FullLayout><DashboardPage /></FullLayout>} />
         <Route path="/favorites"    element={<FullLayout><FavoritesPage /></FullLayout>} />
         <Route path="/settings"     element={<FullLayout><SettingsPage /></FullLayout>} />
-        <Route path="/hifz"         element={<FullLayout><HifzPage /></FullLayout>} />
-        <Route path="/notes"        element={<FullLayout><NotesPage /></FullLayout>} />
-        <Route path="/search"       element={<FullLayout><SearchPage /></FullLayout>} />
-        <Route path="/khatma"       element={<FullLayout><KhatmaPage /></FullLayout>} />
-        <Route path="/khatma-group" element={<FullLayout><KhatmaGroupPage /></FullLayout>} />
+        <Route path="/hifz"         element={gate('/hifz', <FullLayout><HifzPage /></FullLayout>)} />
+        <Route path="/notes"        element={gate('/notes', <FullLayout><NotesPage /></FullLayout>)} />
+        <Route path="/search"       element={gate('/search', <FullLayout><SearchPage /></FullLayout>)} />
+        <Route path="/khatma"       element={gate('/khatma', <FullLayout><KhatmaPage /></FullLayout>)} />
+        <Route path="/khatma-group" element={gate('/khatma-group', <FullLayout><KhatmaGroupPage /></FullLayout>)} />
         <Route path="/help"         element={<FullLayout><HelpPage /></FullLayout>} />
         <Route path="/docs"         element={<FullLayout><DocsPage /></FullLayout>} />
-        <Route path="/leaderboard"  element={<FullLayout><LeaderboardPage /></FullLayout>} />
+        <Route path="/leaderboard"  element={gate('/leaderboard', <FullLayout><LeaderboardPage /></FullLayout>)} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/reset-password" element={<FullLayout><ResetPasswordPage /></FullLayout>} />
-        <Route path="/ijaza"        element={<FullLayout><IjazaPage /></FullLayout>} />
+        <Route path="/ijaza"        element={gate('/ijaza', <FullLayout><IjazaPage /></FullLayout>)} />
         <Route path="/admin"        element={<AdminPage />} />
         <Route path="/support"       element={<FullLayout><SupportPage /></FullLayout>} />
         <Route path="/admin/support" element={<AdminPage defaultTab="support" />} />
@@ -173,7 +237,7 @@ export default function App() {
 
       {!hideExtras && (
         <>
-          <ExtraBoundary><AIAssistant /></ExtraBoundary>
+          {featureOn(settings, 'ai_assistant') && <ExtraBoundary><AIAssistant /></ExtraBoundary>}
           <ExtraBoundary><QuickNoteWidget /></ExtraBoundary>
           <ExtraBoundary><ShareCard /></ExtraBoundary>
           <ExtraBoundary><BottomNav /></ExtraBoundary>

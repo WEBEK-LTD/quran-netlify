@@ -4,7 +4,7 @@ import { useStore, setGlobal } from '../store';
 import { useAuth } from '../hooks/useAuth';
 import { SURAHS_META, toArabicNum } from '../data';
 import { fetchSurahAyahs, fetchSurahTranslation } from '../api';
-import { incrementUserScore, saveProgress, loadBookmarks, syncBookmarks } from '../supabase';
+import { logReading, saveProgress, addBookmark, removeBookmark, errorMessage } from '../backend';
 import TafsirPanel from './TafsirPanel';
 import styles from './Reader.module.css';
 
@@ -43,6 +43,10 @@ export default function Reader() {
   const [translations, setTranslations] = useState({});
   const readerRef  = useRef(null);
   const initDone   = useRef(false);
+  const progressTimer = useRef(null);
+
+  // Debounced PUT /me/progress — cleared on unmount
+  useEffect(() => () => clearTimeout(progressTimer.current), []);
 
   // Deep links (/reader?surah=X&ayah=Y) + restore last-read position on first mount
   useEffect(() => {
@@ -158,8 +162,10 @@ export default function Reader() {
       }
     } catch {}
     if (user) {
-      incrementUserScore(user.id); // نقاط + reading_sessions
-      saveProgress(user.id, state.currentSurah, num); // حفظ آخر موضع
+      const surah = state.currentSurah;
+      logReading(surah, num); // سجل القراءة اليومي (fire-and-forget)
+      clearTimeout(progressTimer.current);
+      progressTimer.current = setTimeout(() => { saveProgress(user.id, surah, num); }, 1500); // آخر موضع
     }
   }
 
@@ -181,25 +187,18 @@ export default function Reader() {
       : [...state.bookmarks, { surah: state.currentSurah, ayah: ayahNum }];
     setGlobal({ bookmarks: next, toast: exists ? '🗑️ تم الحذف من المفضلة' : '🔖 تم الحفظ في المفضلة' });
     try { localStorage.setItem('nq_bookmarks', JSON.stringify(next)); } catch {}
-    if (user) syncBookmarkChange(user.id, state.currentSurah, ayahNum, !exists, next);
+    if (user) syncBookmarkChange(state.currentSurah, ayahNum, !exists);
   }
 
-  // Keep the account in step with this device without dropping bookmarks
-  // saved from another device: merge the server list, apply this one change.
-  async function syncBookmarkChange(userId, surah, ayah, added, localList) {
+  // One change on the account; the server answers with the full list.
+  async function syncBookmarkChange(surah, ayah, added) {
     try {
-      const server = await loadBookmarks(userId);
-      const key = b => `${b.surah}:${b.ayah}`;
-      const merged = new Map([...(server || []), ...localList].map(b => [key(b), b]));
-      if (added) merged.set(`${surah}:${ayah}`, { surah, ayah });
-      else merged.delete(`${surah}:${ayah}`);
-      const list = [...merged.values()];
-      const ok = await syncBookmarks(userId, list);
-      if (ok) {
-        setGlobal({ bookmarks: list });
-        try { localStorage.setItem('nq_bookmarks', JSON.stringify(list)); } catch {}
-      }
-    } catch {}
+      const list = added ? await addBookmark(surah, ayah) : await removeBookmark(surah, ayah);
+      setGlobal({ bookmarks: list });
+      try { localStorage.setItem('nq_bookmarks', JSON.stringify(list)); } catch {}
+    } catch (e) {
+      setGlobal({ toast: '⚠️ ' + errorMessage(e, 'تعذّرت مزامنة المفضلة مع حسابك') + ' — حُفظ التغيير على هذا الجهاز' });
+    }
   }
 
   function playAyah(e, num) {
@@ -298,7 +297,9 @@ export default function Reader() {
                         e.stopPropagation();
                         setGlobal({ currentAyah: ayah.number });
                         // trigger AI assistant open via custom event
-                        window.dispatchEvent(new CustomEvent('openAI', { detail: { ayah: ayah.number } }));
+                        window.dispatchEvent(new CustomEvent('openAI', {
+                          detail: { surah: state.currentSurah, ayah: ayah.number, text: ayah.text }
+                        }));
                       }}>
                         ✦ AI
                       </button>

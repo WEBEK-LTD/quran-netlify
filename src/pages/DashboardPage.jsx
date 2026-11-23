@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { loadProgress, loadBookmarks, loadNotes, loadStats, signOut, getBroadcasts } from '../supabase';
+import { useAuth, displayNameOf, avatarOf } from '../hooks/useAuth';
+import { loadProgress, loadBookmarks, loadNotes, loadStats, getBroadcasts } from '../backend';
 import { SURAHS_META } from '../data';
 import { useHifz, localDateStr } from '../hifzStore';
 import styles from './DashboardPage.module.css';
@@ -54,7 +54,7 @@ function last7Days(sessions) {
 export default function DashboardPage() {
   const t = useT();
   const dir = useDir();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const { completedSurahs, memorizedAyahs, progressPct, streak: hifzStreak } = useHifz(user?.id);
 
@@ -63,6 +63,7 @@ export default function DashboardPage() {
   const [notes,     setNotes]     = useState([]);
   const [sessions,    setSessions]    = useState([]);
   const [loading,     setLoading]     = useState(true);
+  const [syncErr,     setSyncErr]     = useState(false);
   const [broadcasts,  setBroadcasts]  = useState([]);
   const [dismissedBC, setDismissedBC] = useState(() => {
     try { return JSON.parse(localStorage.getItem('nq_dismissed_bc') || '[]'); } catch { return []; }
@@ -76,25 +77,25 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    // Fetch broadcasts for all users (logged in or not)
-    getBroadcasts().then(list => setBroadcasts(list || [])).catch(() => {});
-    // Works for both logged-in and guests
+    let alive = true;
+    // Broadcasts for everyone (signed in or not)
+    getBroadcasts().then(list => { if (alive) setBroadcasts(list || []); }).catch(() => {});
     if (user) {
-      Promise.all([
+      setSyncErr(false);
+      Promise.allSettled([
         loadProgress(user.id),
         loadBookmarks(user.id),
         loadNotes(user.id),
         loadStats(user.id),
       ]).then(([prog, bkm, nts, sess]) => {
-        setProgress(prog);
-        setBookmarks(bkm?.length ? bkm : localBookmarks);
-        setNotes(nts?.length ? nts : localNotes);
-        setSessions(sess || []);
-        setLoading(false);
-      }).catch(() => {
-        // Supabase error — fall back to local
-        setBookmarks(localBookmarks);
-        setNotes(localNotes);
+        if (!alive) return;
+        const val = (r, d) => (r.status === 'fulfilled' ? r.value : d);
+        setProgress(val(prog, null));
+        const b = val(bkm, []), n = val(nts, []);
+        setBookmarks(b?.length ? b : localBookmarks);
+        setNotes(n?.length ? n : localNotes);
+        setSessions(val(sess, []) || []);
+        setSyncErr([prog, bkm, nts, sess].some(r => r.status === 'rejected'));
         setLoading(false);
       });
     } else {
@@ -102,6 +103,7 @@ export default function DashboardPage() {
       setNotes(localNotes);
       setLoading(false);
     }
+    return () => { alive = false; };
   }, [user, authLoading]);
 
   const displayBookmarks = bookmarks.length ? bookmarks : localBookmarks;
@@ -131,8 +133,8 @@ export default function DashboardPage() {
     : SURAHS_META[localLastRead.surah - 1]?.[0] || '—';
   const lastAyah         = progress?.ayah || localLastRead.ayah;
 
-  const displayName  = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'الزائر';
-  const avatarUrl    = user?.user_metadata?.avatar_url || null;
+  const displayName  = displayNameOf(user, 'الزائر');
+  const avatarUrl    = avatarOf(user);
   const avatarLetter = displayName[0]?.toUpperCase() || '؟';
 
   function dismissBroadcast(id) {
@@ -166,8 +168,8 @@ export default function DashboardPage() {
           margin:'0 0 12px',
           padding:'12px 16px',
           borderRadius:10,
-          background: BC_COLORS[bc.type] + '18',
-          border: `1px solid ${BC_COLORS[bc.type]}44`,
+          background: (BC_COLORS[bc.type] || BC_COLORS.info) + '18',
+          border: `1px solid ${BC_COLORS[bc.type] || BC_COLORS.info}44`,
           display:'flex', alignItems:'flex-start', gap:10,
           direction:'rtl',
         }}>
@@ -183,6 +185,12 @@ export default function DashboardPage() {
           >×</button>
         </div>
       ))}
+
+      {syncErr && (
+        <p role="alert" style={{ color:'#f87171', fontSize:13, textAlign:'center', margin:'0 0 12px' }}>
+          ⚠️ تعذّر تحميل بعض بيانات حسابك — تُعرض البيانات المحفوظة على هذا الجهاز
+        </p>
+      )}
 
       {/* Greeting */}
       <div className={styles.greeting}>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { loadStats } from '../supabase';
+import { loadStats } from '../backend';
 import { useHifz, localDateStr, parseLocalDate } from '../hifzStore';
 import { SURAHS_META } from '../data';
 import styles from './ReportPage.module.css';

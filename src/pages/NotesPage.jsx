@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { saveNote, loadNotes, deleteNote } from '../supabase';
+import { saveNote, loadNotes, deleteNote } from '../backend';
 import { SURAHS_META } from '../data';
 import { setGlobal } from '../store';
 import styles from './NotesPage.module.css';

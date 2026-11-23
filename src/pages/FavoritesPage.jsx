@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { loadBookmarks, syncBookmarks } from '../supabase';
+import { loadBookmarks, syncBookmarks, removeBookmark as apiRemoveBookmark, errorMessage } from '../backend';
 import { SURAHS_META } from '../data';
 import { setGlobal } from '../store';
 import styles from './FavoritesPage.module.css';
@@ -49,8 +49,8 @@ export default function FavoritesPage() {
           writeLocal(merged);
           setGlobal({ bookmarks: merged });
           // ارفع المحفوظات المحلية التي لم تصل للحساب بعد.
-          // (loadBookmarks يعيد [] عند الخطأ أيضاً — لا نكتب فوق الحساب إلا إن قرأنا قائمته فعلاً)
-          if ((server || []).length > 0 && merged.length !== server.length) {
+          // (loadBookmarks يرمي خطأ عند الفشل — فلا نصل هنا إلا إن قرأنا قائمة الحساب فعلاً)
+          if (merged.length !== (server || []).length) {
             syncBookmarks(user.id, merged).catch(() => {});
           }
           setLoading(false);
@@ -78,8 +78,11 @@ export default function FavoritesPage() {
     setGlobal({ bookmarks: localNext });
     setSyncError('');
     if (user) {
-      const ok = await syncBookmarks(user.id, localNext).catch(() => false);
-      if (ok === false) setSyncError('تعذّرت مزامنة الحذف مع حسابك — حُذفت من هذا الجهاز فقط');
+      try {
+        await apiRemoveBookmark(surah, ayah);
+      } catch (e) {
+        setSyncError(errorMessage(e, 'تعذّرت مزامنة الحذف مع حسابك') + ' — حُذفت من هذا الجهاز فقط');
+      }
     }
   }
 

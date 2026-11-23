@@ -4,44 +4,16 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useT, useLang, useDir } from '../i18n';
 import LangSwitcher from '../components/LangSwitcher';
 import { afterLoginPath } from '../store';
-async function waitForAuth(timeoutMs = 12000) {
-  const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-  const url  = import.meta.env.VITE_SUPABASE_URL      || '';
-  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-  if (!url || url.includes('placeholder')) return { type: 'error' };
+import { refreshAuth } from '../hooks/useAuth';
+import { verifyEmail } from '../backend';
+import { googleErrorText, authErrorText } from '../authErrors';
 
-  const sb = createClient(url, anon, {
-    auth: {
-      persistSession:     true,
-      storageKey:         'nq_sb_auth',
-      storage:            window.localStorage,
-      autoRefreshToken:   true,
-      detectSessionInUrl: true,
-    },
-  });
-
-  // Check existing session first
-  const { data: { session: existing } } = await sb.auth.getSession();
-  if (existing?.user) return { type: 'signed_in', session: existing };
-
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve({ type: 'timeout' }), timeoutMs);
-
-    const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        clearTimeout(timer); subscription.unsubscribe();
-        resolve({ type: 'signed_in', session });
-      }
-      if (event === 'PASSWORD_RECOVERY') {
-        clearTimeout(timer); subscription.unsubscribe();
-        resolve({ type: 'recovery', session });
-      }
-      if (event === 'SIGNED_OUT') {
-        clearTimeout(timer); subscription.unsubscribe();
-        resolve({ type: 'error' });
-      }
-    });
-  });
+// Only same-site relative paths are accepted as ?next= (no open redirects)
+function safeNext(next) {
+  if (!next || typeof next !== 'string') return null;
+  if (!next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return null;
+  if (next.startsWith('/auth/callback') || next.startsWith('/login') || next.startsWith('/signup')) return null;
+  return next;
 }
 
 export default function AuthCallbackPage() {
@@ -49,36 +21,68 @@ export default function AuthCallbackPage() {
   const dir = useDir();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [step, setStep] = useState(0); // 0=waiting 1=success 2=error 3=recovery
+  const [step, setStep] = useState(0); // 0=waiting 1=success 2=error 3=verified
+  const [errMsg, setErrMsg] = useState('');
   const done = useRef(false);
+  const mounted = useRef(false);
+
+  // Timers below only navigate while the page is still mounted
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   useEffect(() => {
-    if (done.current) return;
+    if (done.current) return;   // run once (tokens are single-use)
     done.current = true;
+    const later = (fn, ms) => setTimeout(() => { if (mounted.current) fn(); }, ms);
+    const status = searchParams.get('status');
+    const type   = searchParams.get('type');
+    const token  = searchParams.get('token');
+    const reason = searchParams.get('reason');
+    const next   = safeNext(searchParams.get('next'));
+    // Don't leave tokens in the address bar / history
+    window.history.replaceState(null, '', window.location.pathname);
 
-    waitForAuth(12000).then(result => {
-      window.history.replaceState(null, '', window.location.pathname);
-      if (result.type === 'recovery') {
-        setStep(3);
-        setTimeout(() => navigate('/reset-password', { replace: true }), 600);
-      } else if (result.type === 'signed_in') {
-        setStep(1);
-        setTimeout(() => navigate(afterLoginPath(), { replace: true }), 400);
-      } else {
-        setStep(2);
-        setTimeout(() => navigate('/login?error=auth_failed', { replace: true }), 2000);
-      }
-    }).catch(() => {
+    if (type === 'verify' && token) {
+      verifyEmail(token)
+        .then(() => refreshAuth())
+        .then(user => {
+          setStep(3);
+          later(() => navigate(user ? afterLoginPath() : '/login', { replace: true }), 1800);
+        })
+        .catch(err => {
+          setErrMsg(err && (err.code === 'validation' || err.code === 'not_found')
+            ? 'رابط التأكيد غير صالح أو انتهت صلاحيته — اطلب رابطاً جديداً من الإعدادات'
+            : authErrorText(err));
+          setStep(2);
+          later(() => navigate('/login', { replace: true }), 4000);
+        });
+    } else if (status === 'ok') {
+      refreshAuth().then(user => {
+        if (user) {
+          setStep(1);
+          later(() => navigate(next || afterLoginPath(), { replace: true }), 400);
+        } else {
+          setErrMsg('تعذّر إكمال تسجيل الدخول — تأكد من تفعيل ملفات تعريف الارتباط (Cookies) وحاول مجدداً');
+          setStep(2);
+          later(() => navigate('/login', { replace: true }), 3000);
+        }
+      });
+    } else if (status === 'error') {
+      setErrMsg(googleErrorText(reason));
       setStep(2);
-      setTimeout(() => navigate('/login', { replace: true }), 2000);
-    });
+      later(() => navigate('/login', { replace: true }), 3500);
+    } else {
+      setErrMsg('رابط غير صالح');
+      setStep(2);
+      later(() => navigate('/login', { replace: true }), 2000);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const STEPS = [
     { icon: '✦', msg: t('processing'), color: 'var(--gold)' },
     { icon: '✓', msg: t('auth_success'),          color: '#52b788'     },
-    { icon: '✕', msg: 'حدث خطأ — جارٍ التوجيه...', color: '#f87171'     },
-    { icon: '🔑', msg: 'جارٍ فتح صفحة إعادة التعيين...', color: '#60a5fa' },
+    { icon: '✕', msg: (errMsg || 'حدث خطأ') + ' — جارٍ التوجيه...', color: '#f87171' },
+    { icon: '✓', msg: 'تم تأكيد بريدك الإلكتروني بنجاح', color: '#52b788' },
   ];
 
   const current = STEPS[step];
@@ -95,7 +99,7 @@ export default function AuthCallbackPage() {
         fontSize:32, fontWeight:700,
         background: step===0 ? 'rgba(201,168,76,.1)'
           : step===1 ? 'rgba(82,183,136,.1)'
-          : step===3 ? 'rgba(96,165,250,.1)'
+          : step===3 ? 'rgba(82,183,136,.1)'
           : 'rgba(248,113,113,.1)',
         border:`2px solid ${current.color}`,
         color: current.color,
@@ -104,7 +108,7 @@ export default function AuthCallbackPage() {
         {current.icon}
       </div>
 
-      <p style={{ color:'var(--text2)', fontSize:16, margin:0 }}>
+      <p style={{ color:'var(--text2)', fontSize:16, margin:0, maxWidth:340, textAlign:'center', lineHeight:1.7, padding:'0 16px' }}>
         {current.msg}
       </p>
 

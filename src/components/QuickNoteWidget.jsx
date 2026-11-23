@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { saveNote, loadNotes } from '../supabase';
+import { saveNote, loadNotes } from '../backend';
 import { SURAHS_META } from '../data';
 import styles from './QuickNoteWidget.module.css';
 

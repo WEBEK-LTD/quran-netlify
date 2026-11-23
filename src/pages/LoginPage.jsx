@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { signInWithEmail, signInWithGoogle, resetPasswordEmail, isConfigured } from '../supabase';
+import { signInWithEmail, googleStartUrl, forgotPassword } from '../backend';
+import { usePublicSettings } from '../hooks/usePublicSettings';
 import { afterLoginPath } from '../store';
+import { authErrorText, googleErrorText } from '../authErrors';
 import styles from './AuthPage.module.css';
 import { useT, useLang, useDir } from '../i18n';
 import LangSwitcher from '../components/LangSwitcher';
@@ -13,34 +15,42 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError]       = useState(
-    searchParams.get('error') === 'auth_failed' ? t('error') : ''
-  );
+  const settings = usePublicSettings();
+  const [error, setError]       = useState(() => {
+    const e = searchParams.get('error');
+    if (!e) return '';
+    return e === 'auth_failed' ? 'تعذّر إكمال تسجيل الدخول، حاول مرة أخرى' : googleErrorText(e);
+  });
   const [loading, setLoading]   = useState(false);
   const [view, setView]         = useState('login'); // 'login' | 'forgot' | 'forgot_sent'
-  const supabaseReady = isConfigured();
 
   async function handleEmail(e) {
     e.preventDefault();
     setLoading(true); setError('');
-    const { error } = await signInWithEmail(email, password);
-    if (error) { setError(error.message); setLoading(false); }
-    else navigate(afterLoginPath());
+    try {
+      await signInWithEmail(email, password);
+      navigate(afterLoginPath());
+    } catch (err) {
+      setError(authErrorText(err));
+      setLoading(false);
+    }
   }
 
-  async function handleGoogle() {
+  function handleGoogle() {
     setLoading(true); setError('');
-    const { error } = await signInWithGoogle();
-    if (error) { setError(error.message); setLoading(false); }
+    window.location.href = googleStartUrl(afterLoginPath());
   }
 
   async function handleForgot(e) {
     e.preventDefault();
     setLoading(true); setError('');
-    const { error } = await resetPasswordEmail(email);
+    try {
+      await forgotPassword(email);
+      setView('forgot_sent');
+    } catch (err) {
+      setError(authErrorText(err));
+    }
     setLoading(false);
-    if (error) setError(error.message);
-    else setView('forgot_sent');
   }
 
   // ─── Forgot sent confirmation ──────────────────────────────────────────────
@@ -50,8 +60,8 @@ export default function LoginPage() {
         <div style={{ fontSize:48 }}>📧</div>
         <h2 style={{ color:'var(--gold)', marginTop:16 }}>{t('resetSent')}</h2>
         <p style={{ color:'var(--text3)', fontSize:14, marginTop:8 }}>
-          {t('verify_email')} <strong style={{ color:'var(--text)' }}>{email}</strong>
-          <br/>{t('sendReset')}
+          إن كان هناك حساب مسجّل بالبريد <strong style={{ color:'var(--text)' }}>{email}</strong>
+          فستصلك رسالة فيها رابط لتعيين كلمة مرور جديدة. تحقق من صندوق الوارد والرسائل غير المرغوبة.
         </p>
         <button
           className={styles.submitBtn}
@@ -102,17 +112,11 @@ export default function LoginPage() {
         <h1 className={styles.title}>{t('loginTitle')}</h1>
         <p className={styles.sub}>{t('loginSubtitle')}</p>
 
-        {!supabaseReady ? (
-          <div className={styles.notConfigured}>
-            <span>🔧</span>
-            <p>{t('error')}</p>
-            <small>يمكنك استخدام التطبيق كاملاً بدون حساب — ستُحفظ بياناتك محلياً</small>
-            <Link to="/" className={styles.submitBtn} style={{ display:'block', textAlign:'center', marginTop:16 }}>
-              متابعة بدون حساب ←
-            </Link>
-          </div>
-        ) : (
-          <>
+        {settings.maintenance_mode && (
+          <div className={styles.error} style={{ marginBottom: 12 }}>🛠️ التطبيق في صيانة مؤقتة — الدخول متاح للمشرفين فقط حالياً</div>
+        )}
+        <>
+            {settings.google_login && (<>
             <button className={styles.googleBtn} onClick={handleGoogle} disabled={loading}>
               <svg width="18" height="18" viewBox="0 0 48 48">
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -124,6 +128,7 @@ export default function LoginPage() {
             </button>
 
             <div className={styles.divider}><span>{t('orGoogle')}</span></div>
+            </>)}
 
             <form onSubmit={handleEmail} className={styles.form}>
               <div className={styles.field}>
@@ -158,8 +163,7 @@ export default function LoginPage() {
               <Link to="/signup" className={styles.link}>{t('signup')}</Link>
             </p>
             <Link to="/" className={styles.skip}>{t('back')}</Link>
-          </>
-        )}
+        </>
       </div>
     </div>
   );

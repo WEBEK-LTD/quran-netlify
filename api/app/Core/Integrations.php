@@ -1,0 +1,90 @@
+<?php
+declare(strict_types=1);
+
+namespace NQ\Core;
+
+/** Third-party integration settings. Every value is encrypted at rest (AES-256-GCM). */
+final class Integrations
+{
+    /** key => [label, secret] */
+    public const KEYS = [
+        'google_client_id'     => ['Google OAuth — Client ID', false],
+        'google_client_secret' => ['Google OAuth — Client Secret', true],
+        'ai_provider'          => ['مزوّد الذكاء الاصطناعي (openai | anthropic)', false],
+        'ai_model'             => ['نموذج الذكاء الاصطناعي (اختياري)', false],
+        'openai_api_key'       => ['OpenAI API Key', true],
+        'anthropic_api_key'    => ['Anthropic API Key', true],
+        'mail_from_address'    => ['عنوان المرسل للبريد', false],
+        'mail_from_name'       => ['اسم المرسل للبريد', false],
+    ];
+
+    /** @var array<string,string>|null */
+    private static ?array $cache = null;
+
+    /** @return array<string,string> */
+    private static function load(): array
+    {
+        if (self::$cache !== null) {
+            return self::$cache;
+        }
+        $out = [];
+        foreach (Db::all('SELECT name, value_encrypted FROM integrations') as $row) {
+            $pt = Crypto::decrypt((string) $row['value_encrypted']);
+            if ($pt !== null && $pt !== '') {
+                $out[(string) $row['name']] = $pt;
+            }
+        }
+        return self::$cache = $out;
+    }
+
+    public static function get(string $key): string
+    {
+        return self::load()[$key] ?? '';
+    }
+
+    public static function set(string $key, string $value): void
+    {
+        if ($value === '') {
+            Db::exec('DELETE FROM integrations WHERE name = ?', [$key]);
+        } else {
+            Db::exec(
+                'INSERT INTO integrations (name, value_encrypted, updated_at) VALUES (?, ?, ?)
+                 ON DUPLICATE KEY UPDATE value_encrypted = VALUES(value_encrypted), updated_at = VALUES(updated_at)',
+                [$key, Crypto::encrypt($value), Db::now()]
+            );
+        }
+        self::$cache = null;
+    }
+
+    /** Public listing: secrets are never returned, only a masked preview. @return list<array<string,mixed>> */
+    public static function listing(): array
+    {
+        $vals = self::load();
+        $items = [];
+        foreach (self::KEYS as $key => [$label, $secret]) {
+            $v = $vals[$key] ?? '';
+            $items[] = [
+                'key' => $key,
+                'label' => $label,
+                'set' => $v !== '',
+                'preview' => $v === '' ? null : ($secret ? self::mask($v) : $v),
+                'secret' => $secret,
+            ];
+        }
+        return $items;
+    }
+
+    public static function mask(string $v): string
+    {
+        $len = strlen($v);
+        if ($len >= 12) {
+            return substr($v, 0, 3) . '…' . substr($v, -4);
+        }
+        return '••••' . ($len >= 8 ? substr($v, -2) : '');
+    }
+
+    public static function googleConfigured(): bool
+    {
+        return self::get('google_client_id') !== '' && self::get('google_client_secret') !== '';
+    }
+}

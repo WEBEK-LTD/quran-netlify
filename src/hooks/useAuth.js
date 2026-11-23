@@ -29,7 +29,7 @@ export function refreshAuth() {
   inflight = api.get('/auth/me')
     .then(d => { setAuthUser(d && d.user ? d.user : null); return authState.user; })
     .catch(e => {
-      if (e && (e.status === 401 || e.code === 'unauthenticated' || e.code === 'banned')) setAuthUser(null);
+      if (e && (e.status === 401 || e.code === 'unauthenticated' || e.code === 'banned')) { setToken(null); setAuthUser(null); }
       else if (authState.loading) setAuthUser(null);   // offline on first load → act as guest
       return authState.user;
     })
@@ -43,9 +43,12 @@ export async function signOutAuth() {
   setAuthUser(null);
 }
 
+// apiClient fires 'nq-auth-expired' on any 401. Some 401s are a wrong password
+// on a form (not an expired session), so confirm with GET /auth/me before
+// clearing the user; refreshAuth clears it if the session is really gone.
 function onExpired() {
-  setToken(null);
-  if (authState.user || authState.loading) setAuthUser(null);
+  if (!authState.user) return;
+  refreshAuth();
 }
 
 export function ensureAuthStarted() {
