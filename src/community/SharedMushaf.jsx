@@ -154,7 +154,7 @@ export default function SharedMushaf({ shared, canSet, onMove }) {
             const basmalaCur = curKey === `${seg.surah}:1` && b.basmalaKufi === 1;
             return (
               <div key={seg.surah} className={s.mSeg}>
-                {head && <div className={s.mSurah}><span>{t('سورة {name}', { name: surahName(seg.surah, 'ar') })}</span></div>}
+                {head && <div className={s.mSurah}><span>{`سورة ${surahName(seg.surah, 'ar')}`}</span></div>}
                 {head && b.basmala && (
                   <p className={`${s.mBasmala}${basmalaCur ? ' ' + s.mCur : ''}`} data-cur={basmalaCur ? '1' : undefined}>{BASMALA_TEXT}</p>
                 )}

@@ -539,6 +539,32 @@ const ROWS = [
   ["إلغاء", "Cancel", "İptal", "Annuler", "منسوخ کریں", "Batal"],
   ["تأكيد", "Confirm", "Onayla", "Confirmer", "تصدیق کریں", "Konfirmasi"],
   ["الغرف والمجتمع متوقفة حالياً.", "Rooms and the community are paused right now.", "Odalar ve topluluk şu an kapalı.", "Les salons et la communauté sont suspendus pour le moment.", "رومز اور کمیونٹی فی الحال بند ہیں۔", "Ruang dan komunitas sedang dihentikan."],
+  // shared mushaf (whole page, follow the host)
+  ["تتابع المضيف", "Following the host", "Sunucuyu takip ediyorsunuz", "Vous suivez l'hôte", "آپ میزبان کے ساتھ ہیں", "Mengikuti tuan rumah"],
+  ["اسحب أو استخدم الأسهم لتتصفح وحدك", "swipe or use the arrows to browse on your own", "kendi başınıza gezinmek için kaydırın veya okları kullanın", "balayez ou utilisez les flèches pour parcourir seul", "خود ورق پلٹنے کے لیے سوائپ کریں یا تیر استعمال کریں", "geser atau pakai panah untuk menjelajah sendiri"],
+  ["المضيف انتقل إلى {ref}", "The host moved to {ref}", "Sunucu {ref} konumuna geçti", "L'hôte est passé à {ref}", "میزبان {ref} پر چلے گئے", "Tuan rumah pindah ke {ref}"],
+  ["تتصفح وحدك · المضيف عند {ref}", "Browsing on your own · the host is at {ref}", "Kendi başınıza geziniyorsunuz · sunucu {ref} konumunda", "Vous parcourez seul · l'hôte est à {ref}", "آپ خود پڑھ رہے ہیں · میزبان {ref} پر ہیں", "Menjelajah sendiri · tuan rumah di {ref}"],
+  ["تابع المضيف", "Follow the host", "Sunucuyu takip et", "Suivre l'hôte", "میزبان کے ساتھ چلیں", "Ikuti tuan rumah"],
+  ["العودة لموضع المضيف", "Back to the host", "Sunucunun yerine dön", "Revenir à l'hôte", "میزبان کے مقام پر واپس", "Kembali ke posisi tuan rumah"],
+  ["صفحة {n} من المصحف", "Mushaf page {n}", "Mushaf sayfası {n}", "Page {n} du Mushaf", "مصحف کا صفحہ {n}", "Halaman mushaf {n}"],
+  ["اعرض هذه الآية للجميع", "Show this ayah to everyone", "Bu ayeti herkese göster", "Afficher ce verset pour tous", "یہ آیت سب کو دکھائیں", "Tampilkan ayat ini untuk semua"],
+  ["الصفحة السابقة", "Previous page", "Önceki sayfa", "Page précédente", "پچھلا صفحہ", "Halaman sebelumnya"],
+  ["الصفحة التالية", "Next page", "Sonraki sayfa", "Page suivante", "اگلا صفحہ", "Halaman berikutnya"],
+  ["السابقة", "Previous", "Önceki", "Précédente", "پچھلا", "Sebelumnya"],
+  ["التالية", "Next", "Sonraki", "Suivante", "اگلا", "Berikutnya"],
+  ["اختر سورة وآية", "Pick a surah and ayah", "Sure ve ayet seçin", "Choisir une sourate et un verset", "سورت اور آیت چنیں", "Pilih surah dan ayat"],
+  ["تحريك الموضع للجميع", "Move the position for everyone", "Konumu herkes için taşı", "Déplacer la position pour tous", "سب کے لیے مقام بدلیں", "Pindahkan posisi untuk semua"],
+  ["اضغط على أي آية لتظهر لكل من في الغرفة", "Tap any ayah to show it to everyone in the room", "Odadaki herkese göstermek için bir ayete dokunun", "Touchez un verset pour l'afficher à tout le salon", "روم میں سب کو دکھانے کے لیے کسی آیت پر ٹیپ کریں", "Ketuk ayat mana pun agar terlihat oleh semua di ruang"],
+  ["تظهر لكل من في الغرفة", "Shown to everyone in the room", "Odadaki herkese gösterilir", "Affiché pour tout le salon", "روم میں سب کو نظر آئے گی", "Ditampilkan untuk semua di ruang"],
+  ["للتصفح وحدك — لا يتغيّر شيء عند الآخرين", "Just for you — nothing changes for the others", "Yalnızca sizin için — başkaları için hiçbir şey değişmez", "Pour vous seul — rien ne change pour les autres", "صرف آپ کے لیے — دوسروں کے ہاں کچھ نہیں بدلے گا", "Hanya untukmu — tidak ada yang berubah bagi yang lain"],
+  ["اذهب إليها", "Go there", "Oraya git", "Y aller", "وہاں جائیں", "Buka"],
+  // microphone
+  ["جارٍ فتح الميكروفون…", "Turning the mic on…", "Mikrofon açılıyor…", "Activation du micro…", "مائیک کھل رہا ہے…", "Menyalakan mikrofon…"],
+  ["الميكروفون غير مسموح", "Microphone not allowed", "Mikrofona izin verilmedi", "Micro non autorisé", "مائیکروفون کی اجازت نہیں", "Mikrofon tidak diizinkan"],
+  ["لم يُسمح للتطبيق باستخدام الميكروفون. اضغط «افتح الإعدادات» واسمح لنور القرآن بالميكروفون، ثم ارجع واضغط «افتح الميكروفون». يمكنك متابعة الاستماع كالمعتاد.", "The app isn't allowed to use the microphone. Tap “Open settings”, allow the microphone for Nur Al-Quran, then come back and tap “Mic on”. You can keep listening as usual.", "Uygulamanın mikrofonu kullanmasına izin verilmedi. “Ayarları aç”a dokunun, Nur Al-Kuran için mikrofona izin verin, sonra geri dönüp “Mikrofonu aç”a dokunun. Dinlemeye her zamanki gibi devam edebilirsiniz.", "L'application n'a pas accès au micro. Touchez « Ouvrir les réglages », autorisez le micro pour Nur Al-Coran, puis revenez et touchez « Activer le micro ». Vous pouvez continuer à écouter normalement.", "ایپ کو مائیکروفون استعمال کرنے کی اجازت نہیں ملی۔ «سیٹنگز کھولیں» پر ٹیپ کریں، نور القرآن کو مائیکروفون کی اجازت دیں، پھر واپس آ کر «مائیک کھولیں» دبائیں۔ آپ معمول کے مطابق سنتے رہ سکتے ہیں۔", "Aplikasi tidak diizinkan memakai mikrofon. Ketuk “Buka pengaturan”, izinkan mikrofon untuk Nur Al-Quran, lalu kembali dan ketuk “Nyalakan mikrofon”. Kamu tetap bisa mendengarkan seperti biasa."],
+  ["لم نجد ميكروفوناً في هذا الجهاز.", "No microphone was found on this device.", "Bu cihazda mikrofon bulunamadı.", "Aucun micro n'a été trouvé sur cet appareil.", "اس ڈیوائس میں مائیکروفون نہیں ملا۔", "Tidak ada mikrofon di perangkat ini."],
+  ["استغرق فتح الميكروفون وقتاً أطول من المعتاد. تحقّق من الاتصال ثم حاول مرة أخرى.", "Turning the mic on took longer than usual. Check your connection and try again.", "Mikrofonun açılması normalden uzun sürdü. Bağlantınızı kontrol edip tekrar deneyin.", "L'activation du micro a pris plus de temps que prévu. Vérifiez la connexion et réessayez.", "مائیک کھلنے میں معمول سے زیادہ وقت لگا۔ کنکشن چیک کر کے دوبارہ کوشش کریں۔", "Menyalakan mikrofon butuh waktu lebih lama dari biasanya. Periksa koneksi lalu coba lagi."],
+  ["افتح الإعدادات", "Open settings", "Ayarları aç", "Ouvrir les réglages", "سیٹنگز کھولیں", "Buka pengaturan"],
 ];
 
 const LANGS = ['en', 'tr', 'fr', 'ur', 'id'];
