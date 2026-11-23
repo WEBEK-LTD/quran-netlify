@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   name                VARCHAR(100) NOT NULL DEFAULT '',
   lang                VARCHAR(5) NOT NULL DEFAULT 'ar',
   avatar_url          VARCHAR(500) NULL,
+  avatar_file         VARCHAR(100) NULL,
   gender              ENUM('male','female') NULL,
   birthdate           DATE NULL,
   is_admin            TINYINT(1) NOT NULL DEFAULT 0,
@@ -306,6 +307,12 @@ DEALLOCATE PREPARE nq_stmt;
 
 -- oauth_states.lang: UI language carried through Google sign-in (for the welcome email of new accounts)
 SET @nq_sql = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE oauth_states ADD COLUMN lang VARCHAR(5) NULL AFTER client', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'oauth_states' AND COLUMN_NAME = 'lang');
+PREPARE nq_stmt FROM @nq_sql;
+EXECUTE nq_stmt;
+DEALLOCATE PREPARE nq_stmt;
+
+-- users.avatar_file: uploaded profile photo (file name in storage/avatars; avatar_url keeps the Google picture)
+SET @nq_sql = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE users ADD COLUMN avatar_file VARCHAR(100) NULL AFTER avatar_url', 'DO 0') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'avatar_file');
 PREPARE nq_stmt FROM @nq_sql;
 EXECUTE nq_stmt;
 DEALLOCATE PREPARE nq_stmt;

@@ -187,7 +187,7 @@ export function PageHero({ eyebrow, title, sub, ayah, ayahRef, children }) {
       <PageArch />
       {eyebrow && <span className="nq-eyebrow">{eyebrow}</span>}
       <h1>{title}</h1>
-      {ayah && <p className="ph-ayah">﴿{ayah}﴾</p>}
+      {ayah && <p className="ph-ayah" lang="ar" dir="rtl">﴿{ayah}﴾</p>}
       {ayah && ayahRef && <p className="ph-ref">{ayahRef}</p>}
       {sub && <p className="ph-sub">{sub}</p>}
       {children && <div className="ph-acts">{children}</div>}

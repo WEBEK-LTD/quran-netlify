@@ -103,3 +103,8 @@ a.meta { color:var(--gold); text-decoration:underline; text-underline-offset:3px
   .noPrint { display:none !important; }
   .card, .kpi { break-inside:avoid; box-shadow:none; }
 }
+
+/* Month arrows: the "back" chevron points right in RTL; mirror it in LTR */
+:global(html[dir="ltr"]) .icoBack { transform:scaleX(-1); }
+.icoNext { transform:scaleX(-1); }
+:global(html[dir="ltr"]) .icoNext { transform:none; }

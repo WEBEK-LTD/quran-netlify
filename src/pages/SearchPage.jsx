@@ -7,6 +7,8 @@ import { setGlobal } from '../store';
 import { SURAHS_META } from '../data';
 import { normalizeArabic, highlightSegments } from '../arabic';
 import { PageHero, Icon, Badge8, Divider, toAr } from '../components/ornaments/Ornaments';
+import { useTr, surahName, revelationLabel } from '../l10n';
+import { trCount } from '../locales/library';
 import styles from './SearchPage.module.css';
 
 // ─── Local index: fetch & cache all surahs ───────────────────────────────────
@@ -124,9 +126,13 @@ function searchSurahs(query) {
     ).slice(0, 4);
 }
 
+// Quick words stay Arabic (the search runs on the Arabic text); their meaning is shown in other languages.
 const QUICK = ['الرحمن', 'الصبر', 'الجنة', 'الصلاة', 'التقوى', 'الرحمة', 'النور', 'البر'];
+const hasLatin = s => /[A-Za-z]/.test(String(s || ''));
 
 export default function SearchPage() {
+  const tr = useTr();
+  const trc = (key, n, vars) => trCount(tr, key, n, vars);
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [query,      setQuery]      = useState('');
@@ -220,8 +226,8 @@ export default function SearchPage() {
 
   return (
     <div className={styles.page}>
-      <PageHero eyebrow="البحث في القرآن الكريم" title="ابحث في الآيات"
-        sub="ابحث بلا تشكيل، أو باسم السورة، أو برقم الآية مثل ٢:٢٥٥." />
+      <PageHero eyebrow={tr('البحث في القرآن الكريم')} title={tr('ابحث في الآيات')}
+        sub={tr('ابحث بلا تشكيل، أو باسم السورة، أو برقم الآية مثل ٢:٢٥٥.')} />
 
       <div className={`nq-wrap ${styles.body}`}>
         {/* ── the search field ── */}
@@ -229,82 +235,89 @@ export default function SearchPage() {
           <div className={styles.searchRow}>
             <label className={styles.searchBox}>
               <Icon name="search" className={styles.searchIcon} />
-              <span className="nq-sr">ابحث في آيات القرآن الكريم</span>
-              <input ref={inputRef} type="search" value={query} dir="rtl" autoFocus enterKeyHint="search"
-                placeholder="ابحث في آيات القرآن الكريم…"
+              <span className="nq-sr">{tr('ابحث في آيات القرآن الكريم')}</span>
+              <input ref={inputRef} type="search" value={query} dir={tr.dir === 'rtl' ? 'rtl' : 'auto'} autoFocus enterKeyHint="search"
+                placeholder={tr('ابحث في آيات القرآن الكريم…')}
                 onChange={e => handleInput(e.target.value)} />
               {query && (
-                <button type="button" className={styles.clearBtn} onClick={clearAll} aria-label="مسح البحث"><Icon name="x" /></button>
+                <button type="button" className={styles.clearBtn} onClick={clearAll} aria-label={tr('مسح البحث')}><Icon name="x" /></button>
               )}
             </label>
             <button type="submit" className={`nq-btn gold ${styles.searchBtn}`} disabled={building || !query.trim()}>
-              {building ? <span className="nq-num">{toAr(progress)}٪</span> : <><Icon name="search" />ابحث</>}
+              {building ? <span className="nq-num">{tr.lang === 'ar' ? `${toAr(progress)}٪` : `${toAr(progress)}%`}</span> : <><Icon name="search" />{tr('ابحث')}</>}
             </button>
           </div>
           <div className={styles.hintRow}>
-            <span className={styles.hint}><Icon name="check" />بلا تشكيل: «الصبر» تجد «ٱلصَّبْرِ»</span>
-            <span className={styles.hint}><Icon name="check" />الهمزات والتاء المربوطة سواء</span>
+            <span className={styles.hint}><Icon name="check" />{tr('بلا تشكيل: «الصبر» تجد «ٱلصَّبْرِ»')}</span>
+            <span className={styles.hint}><Icon name="check" />{tr('الهمزات والتاء المربوطة سواء')}</span>
             <button type="button" className={`${styles.filterToggle} ${filtersOn ? styles.filterOn : ''}`}
               aria-expanded={showFilters} aria-controls="search-filters" onClick={() => setShowFilters(v => !v)}>
-              <Icon name="list" />تصفية{filtersOn ? ' (مفعّلة)' : ''}<Icon name="chev" className={showFilters ? styles.chevUp : ''} />
+              <Icon name="list" />{tr('تصفية')}{filtersOn ? tr(' (مفعّلة)') : ''}<Icon name="chev" className={showFilters ? styles.chevUp : ''} />
             </button>
           </div>
           {showFilters && (
             <div id="search-filters" className={styles.filters}>
               <div className={styles.fGroup}>
-                <span className={styles.fLabel}>نوع السورة</span>
-                <div className="nq-seg" role="group" aria-label="نوع السورة">
-                  {[['all', 'الكل'], ['مكية', 'مكية'], ['مدنية', 'مدنية']].map(([v, l]) => (
+                <span className={styles.fLabel}>{tr('نوع السورة')}</span>
+                <div className="nq-seg" role="group" aria-label={tr('نوع السورة')}>
+                  {[['all', tr('الكل')], ['مكية', revelationLabel('مكية', tr.lang)], ['مدنية', revelationLabel('مدنية', tr.lang)]].map(([v, l]) => (
                     <button key={v} type="button" aria-pressed={kind === v} onClick={() => setKind(v)}>{l}</button>
                   ))}
                 </div>
               </div>
               <label className={styles.fGroup}>
-                <span className={styles.fLabel}>في سورة</span>
+                <span className={styles.fLabel}>{tr('في سورة')}</span>
                 <select className={styles.select} value={inSurah} onChange={e => setInSurah(+e.target.value)}>
-                  <option value={0}>كل السور</option>
-                  {SURAHS_META.map((m, i) => <option key={i} value={i + 1}>{toAr(i + 1)}. {m[0]}</option>)}
+                  <option value={0}>{tr('كل السور')}</option>
+                  {SURAHS_META.map((m, i) => <option key={i} value={i + 1}>{toAr(i + 1)}. {surahName(i + 1, tr.lang)}</option>)}
                 </select>
               </label>
               <div className={styles.fGroup}>
-                <span className={styles.fLabel}>المطابقة</span>
-                <div className="nq-seg" role="group" aria-label="طريقة المطابقة">
-                  <button type="button" aria-pressed={!whole} onClick={() => setWhole(false)}>جزء من كلمة</button>
-                  <button type="button" aria-pressed={whole} onClick={() => setWhole(true)}>كلمة كاملة</button>
+                <span className={styles.fLabel}>{tr('المطابقة')}</span>
+                <div className="nq-seg" role="group" aria-label={tr('طريقة المطابقة')}>
+                  <button type="button" aria-pressed={!whole} onClick={() => setWhole(false)}>{tr('جزء من كلمة')}</button>
+                  <button type="button" aria-pressed={whole} onClick={() => setWhole(true)}>{tr('كلمة كاملة')}</button>
                 </div>
               </div>
               {filtersOn && (
                 <button type="button" className="nq-btn ghost sm" onClick={() => { setKind('all'); setInSurah(0); setWhole(false); }}>
-                  <Icon name="x" />إزالة التصفية
+                  <Icon name="x" />{tr('إزالة التصفية')}
                 </button>
               )}
             </div>
           )}
         </form>
 
+        {/* ── Latin query: the search runs on the Arabic text ── */}
+        {hasLatin(query || searched) && !refHit && (
+          <p className={styles.latinHint} role="note" dir="auto">
+            <Icon name="bell" />{tr('البحث يعمل على النص العربي للقرآن: اكتب كلمة عربية، أو اسم السورة، أو رقم الآية مثل ٢:٢٥٥.')}
+          </p>
+        )}
+
         {/* ── building index ── */}
         {building && (
           <div className={`nq-card ${styles.building}`} role="status" aria-live="polite">
             <Badge8 icon="download" />
             <div className={styles.buildText}>
-              <b>نحضّر فهرس البحث على جهازك…</b>
-              <small>مرة واحدة فقط، ثم يصبح البحث فورياً ويعمل دون اتصال.</small>
+              <b>{tr('نحضّر فهرس البحث على جهازك…')}</b>
+              <small>{tr('مرة واحدة فقط، ثم يصبح البحث فورياً ويعمل دون اتصال.')}</small>
               <div className={styles.bar} aria-hidden="true"><i style={{ width: `${progress}%` }} /></div>
             </div>
-            <span className={`nq-num ${styles.pct}`}>{toAr(progress)}٪</span>
+            <span className={`nq-num ${styles.pct}`}>{tr.lang === 'ar' ? `${toAr(progress)}٪` : `${toAr(progress)}%`}</span>
           </div>
         )}
 
         {/* ── direct jump + surah names ── */}
         {(refHit || surahHits.length > 0) && (
-          <section className={styles.hitsSec} aria-label="انتقال سريع">
+          <section className={styles.hitsSec} aria-label={tr('انتقال سريع')}>
             <div className={styles.hits}>
               {refHit && (
                 <button type="button" className={`nq-card ${styles.hit} ${styles.hitRef}`} onClick={() => goToAyah(refHit.s, refHit.a)}>
                   <Badge8 icon="book" size={46} />
                   <span>
-                    <span className={styles.hitName}>سورة {SURAHS_META[refHit.s - 1][0]}</span>
-                    <span className={styles.hitSub}>انتقل إلى الآية {toAr(refHit.a)}</span>
+                    <span className={styles.hitName}>{tr('سورة {name}', { name: surahName(refHit.s, tr.lang) })}</span>
+                    <span className={styles.hitSub}>{tr('انتقل إلى الآية {n}', { n: toAr(refHit.a) })}</span>
                   </span>
                   <Icon name="back" className={styles.hitGo} />
                 </button>
@@ -313,8 +326,8 @@ export default function SearchPage() {
                 <button key={num} type="button" className={`nq-card ${styles.hit}`} onClick={() => goToAyah(num, 1)}>
                   <Badge8 size={46}>{toAr(num)}</Badge8>
                   <span>
-                    <span className={styles.hitName}>سورة {meta[0]}</span>
-                    <span className={styles.hitSub}>{meta[3]} · {toAr(meta[2])} آية</span>
+                    <span className={styles.hitName}>{tr('سورة {name}', { name: surahName(num, tr.lang) })}</span>
+                    <span className={styles.hitSub}>{revelationLabel(meta[3], tr.lang)} · {trc('{n} آية', meta[2], { n: toAr(meta[2]) })}</span>
                   </span>
                   <Icon name="back" className={styles.hitGo} />
                 </button>
@@ -327,21 +340,23 @@ export default function SearchPage() {
         {!query && !searched && (
           <section className={styles.start} aria-labelledby="quick-h">
             <Divider />
-            <h2 id="quick-h" className={styles.h2}>ابدأ بكلمة</h2>
+            <h2 id="quick-h" className={styles.h2}>{tr('ابدأ بكلمة')}</h2>
             <div className={styles.quick}>
               {QUICK.map(q => (
-                <button key={q} type="button" className={styles.quickBtn} onClick={() => handleSearch(q)}>{q}</button>
+                <button key={q} type="button" className={styles.quickBtn} onClick={() => handleSearch(q)}>
+                  <span lang="ar">{q}</span>{tr.lang !== 'ar' && <small className={styles.quickMean}>{tr(q)}</small>}
+                </button>
               ))}
             </div>
             {indexState !== 'ready' && !building && (
               <div className={`nq-card ${styles.prep}`}>
                 <Badge8 icon="download" />
                 <div>
-                  <b>البحث يعمل على جهازك</b>
-                  <small>عند أول بحث نحمّل نص المصحف كاملاً مرة واحدة، ثم تظهر النتائج فوراً أثناء الكتابة، حتى دون اتصال.</small>
+                  <b>{tr('البحث يعمل على جهازك')}</b>
+                  <small>{tr('عند أول بحث نحمّل نص المصحف كاملاً مرة واحدة، ثم تظهر النتائج فوراً أثناء الكتابة، حتى دون اتصال.')}</small>
                 </div>
                 <button type="button" className="nq-btn ghost sm" onClick={() => handleSearch('الله')}>
-                  <Icon name="download" />حضّر الفهرس الآن
+                  <Icon name="download" />{tr('حضّر الفهرس الآن')}
                 </button>
               </div>
             )}
@@ -354,10 +369,10 @@ export default function SearchPage() {
             {results.length > 0 ? (
               <>
                 <span className={styles.resCount}>
-                  {hasMore && 'أكثر من '}<b className="nq-num">{toAr(results.length)}</b> نتيجة لـ «{searched}»
-                  <span className={styles.resIn}> في {toAr(grouped.length)} سورة</span>
+                  {hasMore && tr('أكثر من ')}<b className="nq-num">{toAr(results.length)}</b> {trc('نتيجة لـ «{q}»', hasMore ? 2 : results.length, { q: searched })}
+                  <span className={styles.resIn}> {trc('في {n} سورة', grouped.length, { n: toAr(grouped.length) })}</span>
                 </span>
-                {filtersOn && <span className="nq-pill on">مع التصفية</span>}
+                {filtersOn && <span className="nq-pill on">{tr('مع التصفية')}</span>}
               </>
             ) : null}
           </div>
@@ -366,9 +381,9 @@ export default function SearchPage() {
         {searched && !building && results.length === 0 && (
           <div className={`nq-card ${styles.noRes}`}>
             <Badge8 icon="search" size={64} />
-            <h2 className={styles.h2}>لا توجد نتائج لـ «{searched}»</h2>
-            <p>جرّب كلمة أقصر أو جذراً منها، وتأكد من الإملاء.{filtersOn ? ' التصفية مفعّلة وقد تُخفي نتائج.' : ''}</p>
-            {filtersOn && <button type="button" className="nq-btn ghost sm" onClick={() => { setKind('all'); setInSurah(0); setWhole(false); }}>إزالة التصفية</button>}
+            <h2 className={styles.h2}>{tr('لا توجد نتائج لـ «{q}»', { q: searched })}</h2>
+            <p>{tr('جرّب كلمة أقصر أو جذراً منها، وتأكد من الإملاء.')}{filtersOn ? tr(' التصفية مفعّلة وقد تُخفي نتائج.') : ''}</p>
+            {filtersOn && <button type="button" className="nq-btn ghost sm" onClick={() => { setKind('all'); setInSurah(0); setWhole(false); }}>{tr('إزالة التصفية')}</button>}
           </div>
         )}
 
@@ -376,20 +391,21 @@ export default function SearchPage() {
           <div className={styles.groups}>
             {grouped.map(({ s, items }) => {
               const meta = SURAHS_META[s - 1];
+              const name = surahName(s, tr.lang);
               return (
-                <section key={s} className={`nq-card ${styles.group}`} aria-label={`سورة ${meta?.[0]}`}>
+                <section key={s} className={`nq-card ${styles.group}`} aria-label={tr('سورة {name}', { name })}>
                   <header className={styles.groupHead}>
                     <Badge8 size={44}>{toAr(s)}</Badge8>
-                    <h3 className={styles.groupName}>سورة {meta?.[0]}</h3>
-                    <span className={styles.groupMeta}>{meta?.[3]} · {toAr(items.length)} نتيجة</span>
+                    <h3 className={styles.groupName}>{tr('سورة {name}', { name })}</h3>
+                    <span className={styles.groupMeta}>{meta?.[3] && revelationLabel(meta[3], tr.lang)} · {trc('{n} نتيجة', items.length, { n: toAr(items.length) })}</span>
                   </header>
                   <ul className={styles.ayahs}>
                     {items.map(r => (
                       <li key={`${r.s}:${r.a}`}>
                         <button type="button" className={styles.ayahRow} onClick={() => goToAyah(r.s, r.a)}
-                          aria-label={`الآية ${toAr(r.a)} من سورة ${meta?.[0]}: افتحها في المصحف`}>
+                          aria-label={tr('الآية {n} من سورة {name}: افتحها في المصحف', { n: toAr(r.a), name })}>
                           <span className={styles.ayahNum}><svg aria-hidden="true"><use href="#nq-rosette" /></svg><b className="nq-num">{toAr(r.a)}</b></span>
-                          <span className={styles.arabicText} lang="ar">{highlightText(r.t, searched)}</span>
+                          <span className={styles.arabicText} lang="ar" dir="rtl">{highlightText(r.t, searched)}</span>
                           <Icon name="back" className={styles.go} />
                         </button>
                       </li>
@@ -401,7 +417,7 @@ export default function SearchPage() {
             {hasMore && (
               <div className={styles.more}>
                 <button type="button" className="nq-btn ghost" onClick={() => runSearch(searched, opts, limit + PAGE_SIZE)}>
-                  عرض نتائج أخرى
+                  {tr('عرض نتائج أخرى')}
                 </button>
               </div>
             )}

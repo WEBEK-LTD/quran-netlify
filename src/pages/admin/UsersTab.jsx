@@ -5,7 +5,7 @@ import { Icon, Badge8 } from '../../components/ornaments/Ornaments';
 import {
   styles, errMsg, useLoader, useDebounced, useNotice, useTimers,
   TabHeader, Pill, Avatar, Ico, Modal, ConfirmDialog, FormError, Toast, ErrorBox, Empty,
-  Pagination, PageLoader, fmt, fmtFull, fmtDate, timeAgo, localDay,
+  Pagination, PageLoader, Portal, fmt, fmtFull, fmtDate, timeAgo, localDay,
 } from './shared';
 
 const USERS_PER_PAGE = 25;
@@ -245,7 +245,7 @@ function UserDrawer({ user: u, onClose, escDisabled, children }) {
   const ban = banInfo(u);
   const GENDER = { male: 'ذكر', female: 'أنثى' };
   return (
-    <>
+    <Portal>
       <div className={styles.drawerScrim} onClick={onClose} aria-hidden="true"/>
       <aside className={styles.drawer} role="dialog" aria-labelledby={titleId}>
         <div className={styles.drawerHead}>
@@ -292,7 +292,7 @@ function UserDrawer({ user: u, onClose, escDisabled, children }) {
           <div className={styles.drawerActions}>{children}</div>
         </div>
       </aside>
-    </>
+    </Portal>
   );
 }
 

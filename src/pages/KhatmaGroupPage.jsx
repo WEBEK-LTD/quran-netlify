@@ -17,6 +17,8 @@ import {
   errorMessage,
 } from '../backend';
 import { PageHero, Icon, Badge8, Pattern, Corners, Rosette, Divider, toAr } from '../components/ornaments/Ornaments';
+import { useTr, trNow, surahName, intlLocale, num, isRtl } from '../l10n';
+import { getLang } from '../i18n';
 import styles from './KhatmaGroupPage.module.css';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -31,7 +33,9 @@ try { localStorage.removeItem('nq_gkhatmat'); } catch {}
 
 const POLL_MS = 10_000;
 const AYAH = 'رَبَّنَا ٱغْفِرْ لَنَا وَلِإِخْوَٰنِنَا ٱلَّذِينَ سَبَقُونَا بِٱلْإِيمَٰنِ';
-const AYAH_REF = 'سورة الحشر · ١٠';
+const AYAH_REF_AR = 'سورة الحشر · ١٠';
+// Arabic reference line, plus a transliterated reference in LTR languages
+const ayahRef = () => (isRtl() ? AYAH_REF_AR : `${AYAH_REF_AR} — ${surahName(59)} 59:10`);
 const DUA = 'اللَّهُمَّ ارْحَمْ مَوْتَانَا وَمَوْتَى الْمُسْلِمِينَ، وَاجْعَلِ الْقُرْآنَ نُورًا لَهُمْ';
 
 function roomProgress(room) {
@@ -40,8 +44,14 @@ function roomProgress(room) {
   const done  = room.done_count ?? parts.filter(p => p.done).length;
   return { done, total, pct: total > 0 ? Math.round((done / total) * 100) : 0 };
 }
-const modeLabel = mode => (mode === 'juz' ? '٣٠ جزءاً' : '٦٠ حزباً');
-const unitOf = mode => (mode === 'juz' ? 'جزء' : 'حزب');
+const modeLabel = mode => (mode === 'juz' ? trNow('{n} جزءاً', { n: toAr(30) }) : trNow('{n} حزباً', { n: toAr(60) }));
+const unitOf = mode => (mode === 'juz' ? trNow('جزء') : trNow('حزب'));
+const pctText = n => trNow('{n}٪', { n: toAr(n) });
+// Part label for display: the stored (Arabic) label in Arabic, rebuilt from the index otherwise
+function partLabel(part, mode) {
+  if (getLang() === 'ar' || !part?.part_index) return part?.label || '';
+  return mode === 'juz' ? trNow('الجزء {n}', { n: toAr(part.part_index) }) : trNow('الحزب {n}', { n: toAr(part.part_index) });
+}
 
 function partState(p) {
   if (p.done) return 'done';
@@ -50,6 +60,9 @@ function partState(p) {
   return tk.length ? 'taken' : 'free';
 }
 const STATE_TEXT = { done: 'تمّت قراءته', mine: 'تقرؤه أنت', taken: 'يُقرأ الآن', free: 'متاح' };
+
+// Stored part labels stay in Arabic-Indic digits whatever the UI language
+const arDigits = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
 
 function Tick() {
   return <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.4 5 8.8 9.6 3.6" /></svg>;
@@ -61,6 +74,7 @@ function Toast({ msg }) {
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function KhatmaGroupPage() {
+  const tr = useTr();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -91,7 +105,7 @@ export default function KhatmaGroupPage() {
     if (!user) return;
     setListLoading(true); setListErr('');
     try { const l = await getMyGroupKhatmat(); if (aliveRef.current) setMine(l); }
-    catch (e) { if (aliveRef.current) setListErr(errorMessage(e, 'تعذّر تحميل ختماتك')); }
+    catch (e) { if (aliveRef.current) setListErr(errorMessage(e, trNow('تعذّر تحميل ختماتك'))); }
     if (aliveRef.current) setListLoading(false);
   }, [user?.id]);
 
@@ -105,7 +119,7 @@ export default function KhatmaGroupPage() {
         items: page === 1 ? d.items : [...prev.items, ...d.items.filter(r => !prev.items.some(x => x.code === r.code))],
         page: d.page || page, total: d.total || 0,
       }));
-    } catch (e) { if (aliveRef.current) setListErr(errorMessage(e, 'تعذّر تحميل الختمات العامة')); }
+    } catch (e) { if (aliveRef.current) setListErr(errorMessage(e, trNow('تعذّر تحميل الختمات العامة'))); }
     if (aliveRef.current) setListLoading(false);
   }, [user?.id]);
 
@@ -149,8 +163,8 @@ export default function KhatmaGroupPage() {
     } catch (e) {
       if (!aliveRef.current) return;
       setJoinErr(e?.code === 'not_found'
-        ? 'لم يُعثر على هذا الكود. تأكّد من الكود أو افتح رابط الدعوة مباشرة.'
-        : errorMessage(e, 'خطأ في الاتصال، تحقّق من الإنترنت'));
+        ? trNow('لم يُعثر على هذا الكود. تأكّد من الكود أو افتح رابط الدعوة مباشرة.')
+        : errorMessage(e, trNow('خطأ في الاتصال، تحقّق من الإنترنت')));
     }
     if (aliveRef.current) setPageLoad(false);
   }
@@ -161,7 +175,7 @@ export default function KhatmaGroupPage() {
       const full = await getGroupKhatmaByCode(room.code);
       if (aliveRef.current) openRoom(full);
     } catch (e) {
-      if (aliveRef.current) showToast(errorMessage(e, 'تعذّر فتح الختمة'));
+      if (aliveRef.current) showToast(errorMessage(e, trNow('تعذّر فتح الختمة')));
     }
     if (aliveRef.current) setPageLoad(false);
   }
@@ -174,14 +188,14 @@ export default function KhatmaGroupPage() {
 
   // ── Conditional renders — AFTER all hooks ────────────────────────────────
   const hero = (
-    <PageHero eyebrow="ختمة الروح" title="ختمة تُهدى لروح من تحب" ayah={AYAH} ayahRef={AYAH_REF}
-      sub="ختمة يجتمع عليها الأهل والأحباب: يأخذ كلٌّ منهم جزءاً، حتى تكتمل الختمة ويُرفع الدعاء." />
+    <PageHero eyebrow={tr('ختمة الروح')} title={tr('ختمة تُهدى لروح من تحب')} ayah={AYAH} ayahRef={ayahRef()}
+      sub={tr('ختمة يجتمع عليها الأهل والأحباب: يأخذ كلٌّ منهم جزءاً، حتى تكتمل الختمة ويُرفع الدعاء.')} />
   );
 
   if (authLoading) return (
     <div className={styles.page}>
       {hero}
-      <div className="nq-wrap"><p className={styles.wait}>جارٍ التحقق…</p></div>
+      <div className="nq-wrap"><p className={styles.wait}>{tr('جارٍ التحقق…')}</p></div>
     </div>
   );
 
@@ -193,24 +207,24 @@ export default function KhatmaGroupPage() {
         <div className={`nq-card ${styles.gate}`}>
           <Corners />
           <Badge8 icon="users" size={64} />
-          <h2 className={styles.h2}>سجّل الدخول لتشارك في الختمة</h2>
+          <h2 className={styles.h2}>{tr('سجّل الدخول لتشارك في الختمة')}</h2>
           <p className={styles.muted}>
-            تحتاج إلى حساب لتأخذ جزءاً وتتابع تقدّم الختمة مع أهلك وأحبابك.
+            {tr('تحتاج إلى حساب لتأخذ جزءاً وتتابع تقدّم الختمة مع أهلك وأحبابك.')}
           </p>
           {pendingJoin && (
             <p className={styles.pending}>
-              ستنضمّ إلى الختمة <bdi className={styles.codeInline} dir="ltr">{pendingJoin}</bdi> تلقائياً بعد تسجيل الدخول والعودة إلى هذه الصفحة.
+              {tr('ستنضمّ إلى الختمة')} <bdi className={styles.codeInline} dir="ltr">{pendingJoin}</bdi> {tr('تلقائياً بعد تسجيل الدخول والعودة إلى هذه الصفحة.')}
             </p>
           )}
           <div className={styles.gateActs}>
             <Link className="nq-btn gold" to="/login" onClick={() => { if (pendingJoin) setPendingJoin(pendingJoin); }}>
-              <Icon name="user" />تسجيل الدخول
+              <Icon name="user" />{tr('تسجيل الدخول')}
             </Link>
             <Link className="nq-btn ghost" to="/signup" onClick={() => { if (pendingJoin) setPendingJoin(pendingJoin); }}>
-              <Icon name="plus" />إنشاء حساب جديد
+              <Icon name="plus" />{tr('إنشاء حساب جديد')}
             </Link>
           </div>
-          <button type="button" className={styles.linkBtn} onClick={() => navigate(-1)}>رجوع</button>
+          <button type="button" className={styles.linkBtn} onClick={() => navigate(-1)}>{tr('رجوع')}</button>
         </div>
       </div>
     </div>
@@ -225,10 +239,10 @@ export default function KhatmaGroupPage() {
           const room = await createGroupKhatma(payload);
           if (!aliveRef.current) return null;
           openRoom(room);
-          showToast('تم إنشاء الختمة، شارك رابطها مع أحبابك');
+          showToast(tr('تم إنشاء الختمة، شارك رابطها مع أحبابك'));
           return null;
         } catch (e) {
-          return errorMessage(e, 'تعذّر إنشاء الختمة، حاول مجدداً');
+          return errorMessage(e, tr('تعذّر إنشاء الختمة، حاول مجدداً'));
         }
       }}
     />
@@ -255,9 +269,9 @@ export default function KhatmaGroupPage() {
   return (
     <div className={styles.page}>
       <Toast msg={toast} />
-      <PageHero eyebrow="ختمة الروح" title="ختمة تُهدى لروح من تحب" ayah={AYAH} ayahRef={AYAH_REF}
-        sub="ختمة يجتمع عليها الأهل والأحباب: يأخذ كلٌّ منهم جزءاً، حتى تكتمل الختمة ويُرفع الدعاء.">
-        <button type="button" className="nq-btn gold" onClick={() => setView('create')}><Icon name="plus" />ختمة جديدة</button>
+      <PageHero eyebrow={tr('ختمة الروح')} title={tr('ختمة تُهدى لروح من تحب')} ayah={AYAH} ayahRef={ayahRef()}
+        sub={tr('ختمة يجتمع عليها الأهل والأحباب: يأخذ كلٌّ منهم جزءاً، حتى تكتمل الختمة ويُرفع الدعاء.')}>
+        <button type="button" className="nq-btn gold" onClick={() => setView('create')}><Icon name="plus" />{tr('ختمة جديدة')}</button>
       </PageHero>
 
       <div className="nq-wrap">
@@ -266,19 +280,19 @@ export default function KhatmaGroupPage() {
             <div className={styles.cardHead}>
               <Badge8 icon="users" size={48} />
               <div>
-                <h2 className={styles.h3}>انضمّ إلى ختمة</h2>
-                <p className={styles.muted}>أدخل الكود الذي وصلك، أو افتح رابط الدعوة مباشرة.</p>
+                <h2 className={styles.h3}>{tr('انضمّ إلى ختمة')}</h2>
+                <p className={styles.muted}>{tr('أدخل الكود الذي وصلك، أو افتح رابط الدعوة مباشرة.')}</p>
               </div>
             </div>
             <form className={styles.joinRow} onSubmit={e => { e.preventDefault(); doJoin(); }}>
               <label className={`nq-input ${styles.codeInput}`}>
-                <span className="nq-sr">كود الختمة</span>
+                <span className="nq-sr">{tr('كود الختمة')}</span>
                 <input dir="ltr" placeholder="K7MQ2PX" autoComplete="off" spellCheck="false"
                   value={joinCode} maxLength={7}
                   onChange={e => { setJoinCode(e.target.value.toUpperCase()); setJoinErr(''); }} />
               </label>
               <button type="submit" className="nq-btn gold" disabled={pageLoading || !joinCode.trim()}>
-                {pageLoading ? 'جارٍ الفتح…' : 'انضمّ'}
+                {pageLoading ? tr('جارٍ الفتح…') : tr('انضمّ')}
               </button>
             </form>
             {joinErr && <p className={styles.err} role="alert">{joinErr}</p>}
@@ -287,22 +301,22 @@ export default function KhatmaGroupPage() {
           <div className={`nq-card ${styles.newCard}`}>
             <Pattern />
             <div className={styles.newTxt}>
-              <span className="nq-eyebrow">ابدأ ختمة</span>
-              <h2 className={styles.h3}>ختمة لروح من فقدت</h2>
-              <p className={styles.muted}>سمِّ من تُهدى إليه، واختر التقسيم بالأجزاء أو الأحزاب، ثم شارك الرابط.</p>
-              <div><button type="button" className="nq-btn gold" onClick={() => setView('create')}><Icon name="plus" />ختمة جديدة</button></div>
+              <span className="nq-eyebrow">{tr('ابدأ ختمة')}</span>
+              <h2 className={styles.h3}>{tr('ختمة لروح من فقدت')}</h2>
+              <p className={styles.muted}>{tr('سمِّ من تُهدى إليه، واختر التقسيم بالأجزاء أو الأحزاب، ثم شارك الرابط.')}</p>
+              <div><button type="button" className="nq-btn gold" onClick={() => setView('create')}><Icon name="plus" />{tr('ختمة جديدة')}</button></div>
             </div>
             <Rosette states={Array.from({ length: 30 }, (_, i) => (i < 11 ? 'done' : i < 16 ? 'taken' : 'free'))}
-              label="مثال لوردة ختمة جماعية" hideCount className={styles.newRose} />
+              label={tr('مثال لوردة ختمة جماعية')} hideCount className={styles.newRose} />
           </div>
         </div>
 
         <section className={styles.sec} aria-labelledby="kg-rooms">
           <div className={styles.secHead}>
-            <h2 id="kg-rooms" className={styles.h2}>{tab === 'mine' ? 'ختماتي' : 'الختمات العامة'}</h2>
-            <div className="nq-seg" role="group" aria-label="القائمة">
-              <button type="button" aria-pressed={tab === 'mine'} onClick={() => setTab('mine')}>ختماتي</button>
-              <button type="button" aria-pressed={tab === 'public'} onClick={() => setTab('public')}>الختمات العامة</button>
+            <h2 id="kg-rooms" className={styles.h2}>{tab === 'mine' ? tr('ختماتي') : tr('الختمات العامة')}</h2>
+            <div className="nq-seg" role="group" aria-label={tr('القائمة')}>
+              <button type="button" aria-pressed={tab === 'mine'} onClick={() => setTab('mine')}>{tr('ختماتي')}</button>
+              <button type="button" aria-pressed={tab === 'public'} onClick={() => setTab('public')}>{tr('الختمات العامة')}</button>
             </div>
           </div>
 
@@ -311,7 +325,7 @@ export default function KhatmaGroupPage() {
               <Badge8 icon="x" size={54} />
               <p>{listErr}</p>
               <button type="button" className="nq-btn ghost sm" onClick={() => (tab === 'mine' ? loadMine() : loadPublic(1))}>
-                <Icon name="repeat" />إعادة المحاولة
+                <Icon name="repeat" />{tr('إعادة المحاولة')}
               </button>
             </div>
           )}
@@ -325,8 +339,8 @@ export default function KhatmaGroupPage() {
           {!listLoading && !listErr && rooms.length === 0 && (
             <div className={`nq-card ${styles.empty}`}>
               <Badge8 icon="beads" size={58} />
-              <p className={styles.emptyT}>{tab === 'mine' ? 'لا ختمات لك بعد' : 'لا ختمات عامة حالياً'}</p>
-              <p className={styles.muted}>{tab === 'mine' ? 'أنشئ ختمة جديدة، أو انضمّ إلى ختمة بالكود.' : 'الختمات التي يجعلها أصحابها عامة تظهر هنا.'}</p>
+              <p className={styles.emptyT}>{tab === 'mine' ? tr('لا ختمات لك بعد') : tr('لا ختمات عامة حالياً')}</p>
+              <p className={styles.muted}>{tab === 'mine' ? tr('أنشئ ختمة جديدة، أو انضمّ إلى ختمة بالكود.') : tr('الختمات التي يجعلها أصحابها عامة تظهر هنا.')}</p>
             </div>
           )}
 
@@ -337,19 +351,19 @@ export default function KhatmaGroupPage() {
                 const states = Array.from({ length: total || 30 }, (_, i) => (i < done ? 'done' : 'free'));
                 return (
                   <button key={room.code} type="button" className={`nq-card ${styles.roomCard}`}
-                    onClick={() => { if (!pageLoading) openFromList(room); }} aria-label={`افتح ختمة ${room.deceased_name}`}>
-                    <Rosette states={states} label={`تمّت قراءة ${toAr(done)} من ${toAr(total)}`} hideCount className={styles.miniRose} />
+                    onClick={() => { if (!pageLoading) openFromList(room); }} aria-label={tr('افتح ختمة {name}', { name: room.deceased_name })}>
+                    <Rosette states={states} label={tr('تمّت قراءة {a} من {b}', { a: toAr(done), b: toAr(total) })} hideCount className={styles.miniRose} />
                     <span className={styles.roomTxt}>
                       <span className={styles.roomName}>{room.deceased_name}</span>
                       <span className={styles.pills}>
                         <bdi className={`nq-pill ${styles.codePill}`} dir="ltr">{room.code}</bdi>
                         <span className="nq-pill">{modeLabel(room.mode)}</span>
-                        <span className="nq-pill"><Icon name={room.is_public ? 'globe' : 'lock'} />{room.is_public ? 'عامة' : 'خاصة'}</span>
-                        {room.is_owner && <span className="nq-pill on"><Icon name="shieldUser" />أنشأتها</span>}
-                        {(room.completions || 0) > 0 && <span className="nq-pill on"><Icon name="trophy" />{toAr(room.completions)} ختمات</span>}
+                        <span className="nq-pill"><Icon name={room.is_public ? 'globe' : 'lock'} />{room.is_public ? tr('عامة') : tr('خاصة')}</span>
+                        {room.is_owner && <span className="nq-pill on"><Icon name="shieldUser" />{tr('أنشأتها')}</span>}
+                        {(room.completions || 0) > 0 && <span className="nq-pill on"><Icon name="trophy" />{tr('{n} ختمات', { n: toAr(room.completions) })}</span>}
                       </span>
                       <span className={styles.bar} aria-hidden="true"><i style={{ width: `${pct}%` }} /></span>
-                      <span className={styles.roomMeta}>{toAr(pct)}٪ · {toAr(done)} من {toAr(total)} {unitOf(room.mode)}</span>
+                      <span className={styles.roomMeta}>{pctText(pct)} · {tr('{a} من {b}', { a: toAr(done), b: toAr(total) })} {unitOf(room.mode)}</span>
                     </span>
                   </button>
                 );
@@ -360,7 +374,7 @@ export default function KhatmaGroupPage() {
           {tab === 'public' && pub.items.length < pub.total && (
             <div className={styles.more}>
               <button type="button" className="nq-btn ghost" disabled={listLoading} onClick={() => loadPublic((pub.page || 1) + 1)}>
-                {listLoading ? 'جارٍ التحميل…' : 'عرض المزيد'}
+                {listLoading ? tr('جارٍ التحميل…') : tr('عرض المزيد')}
               </button>
             </div>
           )}
@@ -372,11 +386,12 @@ export default function KhatmaGroupPage() {
 
 // ─── Create Room ──────────────────────────────────────────────────────────────
 function CreateRoom({ onBack, onCreated }) {
+  const tr = useTr();
   const [step,      setStep]    = useState(1);
   const [name,      setName]    = useState('');
   const [mode,      setMode]    = useState('juz');
   const [isPublic,  setPublic]  = useState(false);
-  const [members,   setMembers] = useState(['أنا']);
+  const [members,   setMembers] = useState(() => [trNow('أنا')]);
   const [newMember, setNew]     = useState('');
   const [assign,    setAssign]  = useState({});
   const [nameErr,   setNameErr] = useState('');
@@ -384,8 +399,8 @@ function CreateRoom({ onBack, onCreated }) {
   const [createErr, setCreateErr] = useState('');
 
   const parts = mode === 'juz'
-    ? JUZ_DATA.map(j => ({ id: j.juz, label: `الجزء ${toAr(j.juz)}` }))
-    : Array.from({ length: 60 }, (_, i) => ({ id: i + 1, label: `الحزب ${toAr(i + 1)}` }));
+    ? JUZ_DATA.map(j => ({ id: j.juz, label: `الجزء ${arDigits(j.juz)}`, shown: tr('الجزء {n}', { n: toAr(j.juz) }) }))
+    : Array.from({ length: 60 }, (_, i) => ({ id: i + 1, label: `الحزب ${arDigits(i + 1)}`, shown: tr('الحزب {n}', { n: toAr(i + 1) }) }));
 
   function addMember() {
     const m = newMember.trim();
@@ -398,7 +413,7 @@ function CreateRoom({ onBack, onCreated }) {
     setAssign(a);
   }
   async function create() {
-    if (!name.trim()) { setNameErr('أدخل اسم المتوفّى'); setStep(1); return; }
+    if (!name.trim()) { setNameErr(tr('أدخل اسم المتوفّى')); setStep(1); return; }
     setCreating(true); setCreateErr('');
     const err = await onCreated({
       deceased_name: name.trim(),
@@ -413,14 +428,14 @@ function CreateRoom({ onBack, onCreated }) {
 
   return (
     <div className={styles.page}>
-      <PageHero eyebrow="ختمة جديدة" title="أنشئ ختمة لروح من تحب"
-        sub="سمِّ من تُهدى إليه الختمة، واختر التقسيم، ثم وزّع الأجزاء أو اتركها لمن يشارك.">
-        <button type="button" className="nq-btn ghost" onClick={onBack}><Icon name="back" />كل الختمات</button>
+      <PageHero eyebrow={tr('ختمة جديدة')} title={tr('أنشئ ختمة لروح من تحب')}
+        sub={tr('سمِّ من تُهدى إليه الختمة، واختر التقسيم، ثم وزّع الأجزاء أو اتركها لمن يشارك.')}>
+        <button type="button" className="nq-btn ghost" onClick={onBack}><Icon name="back" className={styles.icoBack} />{tr('كل الختمات')}</button>
       </PageHero>
 
       <div className={`nq-wrap ${styles.narrow}`}>
-        <ol className={styles.steps} aria-label="خطوات الإنشاء">
-          {[[1, 'البيانات'], [2, 'التوزيع']].map(([n, l]) => (
+        <ol className={styles.steps} aria-label={tr('خطوات الإنشاء')}>
+          {[[1, tr('البيانات')], [2, tr('التوزيع')]].map(([n, l]) => (
             <li key={n} className={step >= n ? styles.stepOn : ''} aria-current={step === n ? 'step' : undefined}>
               <Badge8 size={40}>{toAr(n)}</Badge8><span>{l}</span>
             </li>
@@ -430,10 +445,10 @@ function CreateRoom({ onBack, onCreated }) {
         {step === 1 && (
           <div className={`nq-card ${styles.form}`}>
             <div className={styles.field}>
-              <label htmlFor="kg-name" className={styles.lbl}>اسم المتوفّى أو المتوفّاة</label>
+              <label htmlFor="kg-name" className={styles.lbl}>{tr('اسم المتوفّى أو المتوفّاة')}</label>
               <span className="nq-input">
                 <Icon name="heart" />
-                <input id="kg-name" placeholder="مثال: الحاج محمد أحمد" dir="rtl" autoFocus
+                <input id="kg-name" placeholder={tr('مثال: الحاج محمد أحمد')} dir="auto" autoFocus
                   value={name} onChange={e => { setName(e.target.value); setNameErr(''); }}
                   onKeyDown={e => e.key === 'Enter' && name.trim() && setStep(2)} />
               </span>
@@ -441,33 +456,33 @@ function CreateRoom({ onBack, onCreated }) {
             </div>
 
             <div className={styles.field}>
-              <span className={styles.lbl} id="kg-mode">نوع التقسيم</span>
+              <span className={styles.lbl} id="kg-mode">{tr('نوع التقسيم')}</span>
               <div className="nq-seg" role="group" aria-labelledby="kg-mode">
-                <button type="button" aria-pressed={mode === 'juz'} onClick={() => setMode('juz')}>٣٠ جزءاً</button>
-                <button type="button" aria-pressed={mode === 'hizb'} onClick={() => setMode('hizb')}>٦٠ حزباً</button>
+                <button type="button" aria-pressed={mode === 'juz'} onClick={() => setMode('juz')}>{modeLabel('juz')}</button>
+                <button type="button" aria-pressed={mode === 'hizb'} onClick={() => setMode('hizb')}>{modeLabel('hizb')}</button>
               </div>
             </div>
 
             <div className={styles.field}>
-              <span className={styles.lbl} id="kg-vis">الخصوصية</span>
+              <span className={styles.lbl} id="kg-vis">{tr('الخصوصية')}</span>
               <div className={styles.visGrid} role="group" aria-labelledby="kg-vis">
                 <button type="button" className={styles.visOpt} aria-pressed={!isPublic} onClick={() => setPublic(false)}>
-                  <Icon name="lock" /><b>خاصة</b><small>لا يدخلها إلا من معه الكود أو الرابط</small>
+                  <Icon name="lock" /><b>{tr('خاصة')}</b><small>{tr('لا يدخلها إلا من معه الكود أو الرابط')}</small>
                 </button>
                 <button type="button" className={styles.visOpt} aria-pressed={isPublic} onClick={() => setPublic(true)}>
-                  <Icon name="globe" /><b>عامة</b><small>تظهر في قائمة الختمات العامة للجميع</small>
+                  <Icon name="globe" /><b>{tr('عامة')}</b><small>{tr('تظهر في قائمة الختمات العامة للجميع')}</small>
                 </button>
               </div>
             </div>
 
             <div className={styles.field}>
-              <label htmlFor="kg-mem" className={styles.lbl}>المشاركون (اختياري، لتوزيع الأجزاء مسبقاً)</label>
+              <label htmlFor="kg-mem" className={styles.lbl}>{tr('المشاركون (اختياري، لتوزيع الأجزاء مسبقاً)')}</label>
               <div className={styles.chips}>
                 {members.map((m, i) => (
                   <span key={m + i} className={`nq-pill on ${styles.chip}`}>
                     {m}
                     {members.length > 1 && (
-                      <button type="button" onClick={() => setMembers(p => p.filter((_, j) => j !== i))} aria-label={`حذف ${m}`}><Icon name="x" /></button>
+                      <button type="button" onClick={() => setMembers(p => p.filter((_, j) => j !== i))} aria-label={tr('حذف {name}', { name: m })}><Icon name="x" /></button>
                     )}
                   </span>
                 ))}
@@ -475,17 +490,17 @@ function CreateRoom({ onBack, onCreated }) {
               <div className={styles.addRow}>
                 <span className="nq-input">
                   <Icon name="user" />
-                  <input id="kg-mem" placeholder="اسم مشارك" dir="rtl"
+                  <input id="kg-mem" placeholder={tr('اسم مشارك')} dir="auto"
                     value={newMember} onChange={e => setNew(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMember(); } }} />
                 </span>
-                <button type="button" className="nq-btn ghost" onClick={addMember} disabled={!newMember.trim()}><Icon name="plus" />إضافة</button>
+                <button type="button" className="nq-btn ghost" onClick={addMember} disabled={!newMember.trim()}><Icon name="plus" />{tr('إضافة')}</button>
               </div>
             </div>
 
             <div className={styles.formActs}>
-              <button type="button" className="nq-btn gold" onClick={() => (name.trim() ? setStep(2) : setNameErr('أدخل اسم المتوفّى'))}>
-                التالي: توزيع {mode === 'juz' ? 'الأجزاء' : 'الأحزاب'}<Icon name="back" style={{ transform: 'scaleX(-1)' }} />
+              <button type="button" className="nq-btn gold" onClick={() => (name.trim() ? setStep(2) : setNameErr(tr('أدخل اسم المتوفّى')))}>
+                {mode === 'juz' ? tr('التالي: توزيع الأجزاء') : tr('التالي: توزيع الأحزاب')}<Icon name="back" className={styles.icoNext} />
               </button>
             </div>
           </div>
@@ -495,21 +510,21 @@ function CreateRoom({ onBack, onCreated }) {
           <div className={`nq-card ${styles.form}`}>
             <div className={styles.assignHead}>
               <div>
-                <h2 className={styles.h3}>توزيع {mode === 'juz' ? 'الأجزاء' : 'الأحزاب'}</h2>
-                <p className={styles.muted}>لروح {name} · وُزّع {toAr(assigned)} من {toAr(parts.length)}. ما لم يُوزّع يأخذه من يشارك.</p>
+                <h2 className={styles.h3}>{mode === 'juz' ? tr('توزيع الأجزاء') : tr('توزيع الأحزاب')}</h2>
+                <p className={styles.muted}>{tr('لروح {name}', { name })} · {tr('وُزّع {a} من {b}. ما لم يُوزّع يأخذه من يشارك.', { a: toAr(assigned), b: toAr(parts.length) })}</p>
               </div>
               <div className={styles.assignActs}>
-                <button type="button" className="nq-btn ghost sm" onClick={autoDistribute}><Icon name="users" />وزّع تلقائياً</button>
-                <button type="button" className="nq-btn ghost sm" onClick={() => setAssign({})}>مسح</button>
+                <button type="button" className="nq-btn ghost sm" onClick={autoDistribute}><Icon name="users" />{tr('وزّع تلقائياً')}</button>
+                <button type="button" className="nq-btn ghost sm" onClick={() => setAssign({})}>{tr('مسح')}</button>
               </div>
             </div>
             <div className={styles.partGrid}>
               {parts.map(p => (
                 <label key={p.id} className={`${styles.partCard} ${assign[p.id] ? styles.partA : ''}`}>
-                  <span className={styles.partLbl}>{p.label}</span>
+                  <span className={styles.partLbl}>{p.shown}</span>
                   <select className={styles.sel} value={assign[p.id] || ''}
                     onChange={e => setAssign(a => ({ ...a, [p.id]: e.target.value }))}>
-                    <option value="">غير محدّد</option>
+                    <option value="">{tr('غير محدّد')}</option>
                     {members.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </label>
@@ -517,9 +532,9 @@ function CreateRoom({ onBack, onCreated }) {
             </div>
             {createErr && <p className={styles.err} role="alert">{createErr}</p>}
             <div className={styles.formActs}>
-              <button type="button" className="nq-btn ghost" onClick={() => setStep(1)}><Icon name="back" />السابق</button>
+              <button type="button" className="nq-btn ghost" onClick={() => setStep(1)}><Icon name="back" className={styles.icoBack} />{tr('السابق')}</button>
               <button type="button" className="nq-btn gold" onClick={create} disabled={creating}>
-                <Icon name="check" />{creating ? 'جارٍ الإنشاء…' : 'إنشاء الختمة'}
+                <Icon name="check" />{creating ? tr('جارٍ الإنشاء…') : tr('إنشاء الختمة')}
               </button>
             </div>
           </div>
@@ -531,6 +546,8 @@ function CreateRoom({ onBack, onCreated }) {
 
 // ─── Room View ────────────────────────────────────────────────────────────────
 function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
+  const tr = useTr();
+  const labelOf = part => partLabel(part, room.mode);
   const [myName,       setMyName]  = useState(() => {
     try { return localStorage.getItem('nq_khatma_name') || displayNameOf(user); } catch { return displayNameOf(user); }
   });
@@ -574,7 +591,7 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
         onUpdate(fresh); setSyncErr(false);
       } catch (e) {
         if (!aliveRef.current) return;
-        if (e?.code === 'not_found') { onGone('حُذفت هذه الختمة'); return; }
+        if (e?.code === 'not_found') { onGone(trNow('حُذفت هذه الختمة')); return; }
         setSyncErr(true);
       }
     }
@@ -592,7 +609,7 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
       if (updated && updated.parts) onUpdate(updated);
       if (okMsg) showToast(okMsg);
     } catch (e) {
-      if (aliveRef.current) showToast(errorMessage(e, 'حدث خطأ، حاول مرة أخرى'));
+      if (aliveRef.current) showToast(errorMessage(e, trNow('حدث خطأ، حاول مرة أخرى')));
     }
     if (aliveRef.current) setClaiming(null);
   }
@@ -603,7 +620,7 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
     setMyName(n);
     try { localStorage.setItem('nq_khatma_name', n); } catch {}
     setNameInp('');
-    showToast('تم حفظ اسمك: ' + n);
+    showToast(tr('تم حفظ اسمك: {name}', { name: n }));
   }
 
   // ─── Claim a part / toggle my "done" ──────────────────────────────────────
@@ -611,25 +628,25 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
     const pi = part.part_index;
     const mine = (part.takers || []).find(tk => tk.is_me);
     if (mine) {
-      act(pi, () => setPartDone(room.code, pi, !mine.done), 'تم تحديث حالة ' + part.label);
+      act(pi, () => setPartDone(room.code, pi, !mine.done), tr('تم تحديث حالة {p}', { p: labelOf(part) }));
       return;
     }
     if (!myName) {
-      showToast('أدخل اسمك أولاً');
+      showToast(tr('أدخل اسمك أولاً'));
       nameRef.current?.focus();
       return;
     }
-    act(pi, () => claimPart(room.code, pi, myName), 'أخذت ' + part.label + '، تقبّل الله منك');
+    act(pi, () => claimPart(room.code, pi, myName), tr('أخذت {p}، تقبّل الله منك', { p: labelOf(part) }));
   }
 
   function handleRelease(part) {
-    act(part.part_index, () => releasePart(room.code, part.part_index), 'تركت ' + part.label);
+    act(part.part_index, () => releasePart(room.code, part.part_index), tr('تركت {p}', { p: labelOf(part) }));
   }
 
   // ─── Done toggle: only a taker of the part, or the owner ──────────────────
   function togglePart(part) {
     const iTook = (part.takers || []).some(tk => tk.is_me);
-    if (!iTook && !isOwner) { showToast('خذ الجزء أولاً بزر «سآخذه»'); return; }
+    if (!iTook && !isOwner) { showToast(tr('خذ الجزء أولاً بزر «سآخذه»')); return; }
     act(part.part_index, () => setPartDone(room.code, part.part_index, !part.done));
   }
 
@@ -656,20 +673,20 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
         const updated = await startNewRound(room.code);
         if (!aliveRef.current) return;
         if (updated) onUpdate(updated);
-        showToast('بدأت ختمة جديدة');
+        showToast(trNow('بدأت ختمة جديدة'));
       } else if (what === 'delete') {
         await deleteGroupKhatma(room.code);
         if (!aliveRef.current) return;
-        onGone('تم حذف الختمة');
+        onGone(trNow('تم حذف الختمة'));
         return;
       } else if (what === 'leave') {
         await leaveGroupKhatma(room.code);
         if (!aliveRef.current) return;
-        onGone('خرجت من الختمة');
+        onGone(trNow('خرجت من الختمة'));
         return;
       }
     } catch (e) {
-      if (aliveRef.current) showToast(errorMessage(e, 'تعذّر تنفيذ الإجراء'));
+      if (aliveRef.current) showToast(errorMessage(e, trNow('تعذّر تنفيذ الإجراء')));
     }
     if (aliveRef.current) { setBusy(false); setConfirm(null); }
   }
@@ -680,9 +697,9 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
       const updated = await updateKhatmaVisibility(room.code, next);
       if (!aliveRef.current) return;
       onUpdate({ ...room, ...(updated || {}), is_public: updated?.is_public ?? next, parts: updated?.parts || room.parts });
-      showToast(next ? 'أصبحت الختمة عامة' : 'أصبحت الختمة خاصة');
+      showToast(next ? trNow('أصبحت الختمة عامة') : trNow('أصبحت الختمة خاصة'));
     } catch (e) {
-      if (aliveRef.current) showToast(errorMessage(e, 'تعذّر تغيير الخصوصية'));
+      if (aliveRef.current) showToast(errorMessage(e, trNow('تعذّر تغيير الخصوصية')));
     }
   }
 
@@ -694,17 +711,17 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
   function copyCode() {
     navigator.clipboard?.writeText(room.code)?.catch?.(() => {});
     flashCopied('code');
-    showToast('تم نسخ الكود: ' + room.code);
+    showToast(tr('تم نسخ الكود: {code}', { code: room.code }));
   }
   function copyLink() {
     navigator.clipboard?.writeText(shareUrl(room.code))?.catch?.(() => {});
     flashCopied('link');
-    showToast('تم نسخ رابط الدعوة');
+    showToast(trNow('تم نسخ رابط الدعوة'));
   }
   async function invite() {
     const data = {
-      title: 'ختمة الروح',
-      text: `شاركنا ختمة القرآن الكريم لروح ${room.deceased_name}. خذ جزءاً واقرأه، والكود: ${room.code}`,
+      title: tr('ختمة الروح'),
+      text: tr('شاركنا ختمة القرآن الكريم لروح {name}. خذ جزءاً واقرأه، والكود: {code}', { name: room.deceased_name, code: room.code }),
       url: shareUrl(room.code),
     };
     if (navigator.share) {
@@ -722,26 +739,26 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
       });
 
   const states = parts.map(partState);
-  const titles = parts.map((p, i) => `${p.label}: ${STATE_TEXT[states[i]]}`);
+  const titles = parts.map((p, i) => `${labelOf(p)}: ${tr(STATE_TEXT[states[i]])}`);
 
   const CONFIRMS = {
-    round:  { title: 'بدء ختمة جديدة؟', body: 'يبقى التوزيع كما هو، ويبدأ العدّ من جديد.', ok: 'نعم، ابدأ' },
-    delete: { title: 'حذف الختمة نهائياً؟', body: 'ستُحذف الختمة وكل تقدّم المشاركين فيها، ولا يمكن التراجع.', ok: 'نعم، احذف' },
-    leave:  { title: 'الخروج من الختمة؟', body: 'ستختفي من «ختماتي»، ويمكنك العودة لاحقاً بالكود.', ok: 'نعم، اخرج' },
+    round:  { title: tr('بدء ختمة جديدة؟'), body: tr('يبقى التوزيع كما هو، ويبدأ العدّ من جديد.'), ok: tr('نعم، ابدأ') },
+    delete: { title: tr('حذف الختمة نهائياً؟'), body: tr('ستُحذف الختمة وكل تقدّم المشاركين فيها، ولا يمكن التراجع.'), ok: tr('نعم، احذف') },
+    leave:  { title: tr('الخروج من الختمة؟'), body: tr('ستختفي من «ختماتي»، ويمكنك العودة لاحقاً بالكود.'), ok: tr('نعم، اخرج') },
   };
   const round = (room.completions || 0) + 1;
 
   return (
     <div className={styles.page}>
-      <PageHero eyebrow={`ختمة الروح · الختمة ${toAr(round)}`} title="ختمة الروح"
-        sub={`${modeLabel(room.mode)} · ${room.is_public ? 'ختمة عامة' : 'ختمة خاصة'}${isOwner ? ' · أنت منشئها' : ''}`}>
-        <button type="button" className="nq-btn ghost" onClick={onBack}><Icon name="list" />كل الختمات</button>
-        <button type="button" className="nq-btn gold" onClick={onNew}><Icon name="plus" />ختمة جديدة</button>
+      <PageHero eyebrow={`${tr('ختمة الروح')} · ${tr('الختمة {n}', { n: toAr(round) })}`} title={tr('ختمة الروح')}
+        sub={`${modeLabel(room.mode)} · ${room.is_public ? tr('ختمة عامة') : tr('ختمة خاصة')}${isOwner ? ` · ${tr('أنت منشئها')}` : ''}`}>
+        <button type="button" className="nq-btn ghost" onClick={onBack}><Icon name="list" />{tr('كل الختمات')}</button>
+        <button type="button" className="nq-btn gold" onClick={onNew}><Icon name="plus" />{tr('ختمة جديدة')}</button>
       </PageHero>
 
       <div className="nq-wrap">
         {syncErr && (
-          <p className={`${styles.err} ${styles.syncErr}`} role="status">تعذّر تحديث الختمة، تُعرض آخر نسخة محمّلة.</p>
+          <p className={`${styles.err} ${styles.syncErr}`} role="status">{tr('تعذّر تحديث الختمة، تُعرض آخر نسخة محمّلة.')}</p>
         )}
 
         <div className={styles.kgrid}>
@@ -749,35 +766,35 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
           <div className={`nq-card ${styles.roseCard}`}>
             <Pattern />
             <Corners />
-            <p className={styles.dname}>لروح {room.deceased_name}</p>
-            <p className={styles.dua}>{DUA}</p>
+            <p className={styles.dname}>{tr('لروح {name}', { name: room.deceased_name })}</p>
+            <p className={styles.dua} dir="rtl" lang="ar">{DUA}</p>
             <Rosette states={states} titles={titles} onPetal={onPetal} className={styles.rose}
-              label={`تقدّم الختمة: تمّت قراءة ${toAr(done)} من ${toAr(total)} ${unit}`} />
+              label={`${tr('تقدّم الختمة:')} ${tr('تمّت قراءة {a} من {b}', { a: toAr(done), b: toAr(total) })} ${unit}`} />
             <div className={styles.lgd}>
-              <span><i className={styles.lgDone} />تمّت قراءته</span>
-              <span><i className={styles.lgMine} />تقرؤه أنت</span>
-              <span><i className={styles.lgTaken} />يُقرأ الآن</span>
-              <span><i className={styles.lgFree} />متاح</span>
+              <span><i className={styles.lgDone} />{tr('تمّت قراءته')}</span>
+              <span><i className={styles.lgMine} />{tr('تقرؤه أنت')}</span>
+              <span><i className={styles.lgTaken} />{tr('يُقرأ الآن')}</span>
+              <span><i className={styles.lgFree} />{tr('متاح')}</span>
             </div>
             <div className={styles.roseFoot}>
               <span className={styles.bar} aria-hidden="true"><i style={{ width: pct + '%' }} /></span>
-              <span className="nq-num">{toAr(pct)}٪ · {toAr(done)} من {toAr(total)} {unit}</span>
+              <span className="nq-num">{pctText(pct)} · {tr('{a} من {b}', { a: toAr(done), b: toAr(total) })} {unit}</span>
             </div>
-            <p className={styles.roseHint}>اضغط على ورقة متاحة لتأخذها.</p>
+            <p className={styles.roseHint}>{tr('اضغط على ورقة متاحة لتأخذها.')}</p>
           </div>
 
           <div className={styles.side}>
             {/* ── share ── */}
             <div className={`nq-card ${styles.sharebox}`}>
               <div className={styles.codeWrap}>
-                <small>كود الختمة</small>
+                <small>{tr('كود الختمة')}</small>
                 <bdi className={styles.code} dir="ltr">{room.code}</bdi>
               </div>
-              <span className={`nq-pill ${styles.visPill}`}><Icon name={room.is_public ? 'globe' : 'lock'} />{room.is_public ? 'عامة' : 'خاصة'}</span>
+              <span className={`nq-pill ${styles.visPill}`}><Icon name={room.is_public ? 'globe' : 'lock'} />{room.is_public ? tr('عامة') : tr('خاصة')}</span>
               <div className={styles.shareActs}>
-                <button type="button" className="nq-btn ghost sm" onClick={copyCode}><Icon name={copied === 'code' ? 'check' : 'copy'} />نسخ الكود</button>
-                <button type="button" className="nq-btn ghost sm" onClick={copyLink}><Icon name={copied === 'link' ? 'check' : 'copy'} />نسخ الرابط</button>
-                <button type="button" className="nq-btn gold sm" onClick={invite}><Icon name="share" />دعوة</button>
+                <button type="button" className="nq-btn ghost sm" onClick={copyCode}><Icon name={copied === 'code' ? 'check' : 'copy'} />{tr('نسخ الكود')}</button>
+                <button type="button" className="nq-btn ghost sm" onClick={copyLink}><Icon name={copied === 'link' ? 'check' : 'copy'} />{tr('نسخ الرابط')}</button>
+                <button type="button" className="nq-btn gold sm" onClick={invite}><Icon name="share" />{tr('دعوة')}</button>
               </div>
             </div>
 
@@ -786,18 +803,18 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
               {myName ? (
                 <>
                   <Icon name="user" />
-                  <span className={styles.muted}>تشارك باسم</span>
+                  <span className={styles.muted}>{tr('تشارك باسم')}</span>
                   <b className={styles.myName}>{myName}</b>
-                  <button type="button" className="nq-btn ghost sm" onClick={() => { setMyName(''); try { localStorage.removeItem('nq_khatma_name'); } catch {} }}>تغيير</button>
+                  <button type="button" className="nq-btn ghost sm" onClick={() => { setMyName(''); try { localStorage.removeItem('nq_khatma_name'); } catch {} }}>{tr('تغيير')}</button>
                 </>
               ) : (
                 <form className={styles.nameForm} onSubmit={e => { e.preventDefault(); saveName(); }}>
                   <label className="nq-input">
                     <Icon name="user" />
-                    <span className="nq-sr">اسمك في الختمة</span>
-                    <input ref={nameRef} placeholder="اكتب اسمك لتأخذ جزءاً" value={nameInput} onChange={e => setNameInp(e.target.value)} />
+                    <span className="nq-sr">{tr('اسمك في الختمة')}</span>
+                    <input ref={nameRef} placeholder={tr('اكتب اسمك لتأخذ جزءاً')} dir="auto" value={nameInput} onChange={e => setNameInp(e.target.value)} />
                   </label>
-                  <button type="submit" className="nq-btn gold sm" disabled={!nameInput.trim()}>حفظ</button>
+                  <button type="submit" className="nq-btn gold sm" disabled={!nameInput.trim()}>{tr('حفظ')}</button>
                 </form>
               )}
             </div>
@@ -807,22 +824,22 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
                 <Pattern />
                 <Badge8 icon="trophy" size={56} />
                 <div>
-                  <b className={styles.completeT}>اكتملت الختمة، تقبّل الله</b>
-                  {(room.completions || 0) > 0 && <small>{toAr(room.completions)} ختمات سابقة</small>}
+                  <b className={styles.completeT}>{tr('اكتملت الختمة، تقبّل الله')}</b>
+                  {(room.completions || 0) > 0 && <small>{tr('{n} ختمات سابقة', { n: toAr(room.completions) })}</small>}
                 </div>
-                {isOwner && <button type="button" className="nq-btn gold sm" onClick={() => setConfirm('round')}><Icon name="repeat" />ختمة جديدة</button>}
+                {isOwner && <button type="button" className="nq-btn gold sm" onClick={() => setConfirm('round')}><Icon name="repeat" />{tr('ختمة جديدة')}</button>}
               </div>
             )}
 
             {/* ── parts ── */}
             <div className={`nq-card ${styles.partsCard}`}>
               <div className={styles.partsHead}>
-                <h2 className={styles.h3}>{room.mode === 'juz' ? 'الأجزاء' : 'الأحزاب'}</h2>
+                <h2 className={styles.h3}>{room.mode === 'juz' ? tr('الأجزاء') : tr('الأحزاب')}</h2>
                 {allNames.length > 1 && (
-                  <div className={styles.filters} role="group" aria-label="تصفية بالاسم">
+                  <div className={styles.filters} role="group" aria-label={tr('تصفية بالاسم')}>
                     {['all', ...allNames].map(m => (
                       <button key={m} type="button" className={`nq-pill ${filterMem === m ? 'on' : ''}`} aria-pressed={filterMem === m}
-                        onClick={() => setFilter(m)}>{m === 'all' ? 'الكل' : m}</button>
+                        onClick={() => setFilter(m)}>{m === 'all' ? tr('الكل') : m}</button>
                     ))}
                   </div>
                 )}
@@ -841,7 +858,7 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
                     <li key={pi} id={`kg-part-${pi}`} className={`${styles.part} ${flash === pi ? styles.flash : ''} ${iClaimed ? styles.partMine : ''}`}>
                       {canToggle ? (
                         <button type="button" className={styles.dotBtn} aria-pressed={!!part.done}
-                          aria-label={`${part.label}: تمّت قراءته`} disabled={claiming === pi}
+                          aria-label={`${labelOf(part)}: ${tr('تمّت قراءته')}`} disabled={claiming === pi}
                           onClick={() => { if (claiming !== pi) togglePart(part); }}>
                           <span className={`${styles.dot} ${styles[st]}`}>{part.done && <Tick />}</span>
                         </button>
@@ -850,18 +867,18 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
                       )}
 
                       <div className={styles.partInfo}>
-                        <span className={styles.partName}>{part.label}</span>
+                        <span className={styles.partName}>{labelOf(part)}</span>
                         <small>
-                          {STATE_TEXT[st]}
-                          {part.done && part.done_at && <> · {part.done_by_name ? `${part.done_by_name} · ` : ''}{new Date(part.done_at).toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' })}</>}
-                          {!part.done && others.length > 0 && partTakers.length < 2 && <> · {others.map(tk => tk.name).join('، ')}</>}
-                          {part.assignee && <> · مخصّص لـ{part.assignee}</>}
+                          {tr(STATE_TEXT[st])}
+                          {part.done && part.done_at && <> · {part.done_by_name ? <><bdi>{part.done_by_name}</bdi> · </> : ''}{num(new Date(part.done_at).toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long' }))}</>}
+                          {!part.done && others.length > 0 && partTakers.length < 2 && <> · {others.map(tk => tk.name).join(isRtl() ? '، ' : ', ')}</>}
+                          {part.assignee && <> · {tr('مخصّص لـ{name}', { name: part.assignee })}</>}
                         </small>
                         {partTakers.length > 1 && (
                           <span className={styles.takers}>
                             {partTakers.map(tk => (
                               <span key={tk.id} className={`${styles.taker} ${tk.done ? styles.takerDone : ''}`}>
-                                {tk.done && <Icon name="check" />}{tk.name}{tk.is_me ? ' (أنت)' : ''}
+                                {tk.done && <Icon name="check" />}<bdi>{tk.name}</bdi>{tk.is_me ? ` ${tr('(أنت)')}` : ''}
                               </span>
                             ))}
                           </span>
@@ -870,14 +887,14 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
 
                       <div className={styles.partActs}>
                         {partTakers.length > 1 && (
-                          <span className={styles.count} title={partTakers.map(tk => tk.name).join('، ')}>
+                          <span className={styles.count} title={partTakers.map(tk => tk.name).join(isRtl() ? '، ' : ', ')}>
                             <Icon name="users" /><span className="nq-num">{toAr(partTakers.length)}</span>
-                            <span className="nq-sr">مشاركين</span>
+                            <span className="nq-sr">{tr('مشاركين')}</span>
                           </span>
                         )}
                         {part.done && !iClaimed ? (
                           <button type="button" className="nq-ibtn" onClick={() => handleClaim(part)} disabled={claiming === pi}
-                            aria-label={`سآخذ ${part.label} أيضاً`} title="سآخذه أيضاً">
+                            aria-label={tr('سآخذ {p} أيضاً', { p: labelOf(part) })} title={tr('سآخذه أيضاً')}>
                             {claiming === pi ? '…' : <Icon name="plus" />}
                           </button>
                         ) : (
@@ -886,12 +903,12 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
                           aria-pressed={iClaimed ? iDone : undefined}
                           onClick={() => handleClaim(part)} disabled={claiming === pi}>
                           {claiming === pi ? '…'
-                            : iClaimed ? (iDone ? <><Icon name="check" />قرأته</> : <>أتممت قراءته</>)
-                            : <><Icon name="plus" />سآخذه</>}
+                            : iClaimed ? (iDone ? <><Icon name="check" />{tr('قرأته')}</> : <>{tr('أتممت قراءته')}</>)
+                            : <><Icon name="plus" />{tr('سآخذه')}</>}
                         </button>
                         )}
                         {iClaimed && !iDone && claiming !== pi && (
-                          <button type="button" className="nq-ibtn" onClick={() => handleRelease(part)} aria-label={`ترك ${part.label}`} title="ترك الجزء">
+                          <button type="button" className="nq-ibtn" onClick={() => handleRelease(part)} aria-label={tr('ترك {p}', { p: labelOf(part) })} title={tr('ترك الجزء')}>
                             <Icon name="x" />
                           </button>
                         )}
@@ -907,23 +924,23 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
               {isOwner ? (
                 <>
                   <div className={styles.ctrlRow}>
-                    <span className={styles.ctrlLbl}><Icon name="shieldUser" />إدارة الختمة</span>
-                    <div className="nq-seg" role="group" aria-label="الخصوصية">
-                      <button type="button" aria-pressed={!room.is_public} onClick={() => setVisibility(false)}>خاصة</button>
-                      <button type="button" aria-pressed={!!room.is_public} onClick={() => setVisibility(true)}>عامة</button>
+                    <span className={styles.ctrlLbl}><Icon name="shieldUser" />{tr('إدارة الختمة')}</span>
+                    <div className="nq-seg" role="group" aria-label={tr('الخصوصية')}>
+                      <button type="button" aria-pressed={!room.is_public} onClick={() => setVisibility(false)}>{tr('خاصة')}</button>
+                      <button type="button" aria-pressed={!!room.is_public} onClick={() => setVisibility(true)}>{tr('عامة')}</button>
                     </div>
                   </div>
                   <div className={styles.ctrlActs}>
                     {!isComplete && (
-                      <button type="button" className="nq-btn ghost sm" onClick={() => setConfirm('round')}><Icon name="repeat" />بدء ختمة جديدة</button>
+                      <button type="button" className="nq-btn ghost sm" onClick={() => setConfirm('round')}><Icon name="repeat" />{tr('بدء ختمة جديدة')}</button>
                     )}
-                    <button type="button" className={`nq-btn ghost sm ${styles.danger}`} onClick={() => setConfirm('delete')}><Icon name="x" />حذف الختمة</button>
+                    <button type="button" className={`nq-btn ghost sm ${styles.danger}`} onClick={() => setConfirm('delete')}><Icon name="x" />{tr('حذف الختمة')}</button>
                   </div>
                 </>
               ) : (
                 <div className={styles.ctrlRow}>
-                  <span className={styles.muted}>تشارك في هذه الختمة بدعوة من منشئها.</span>
-                  <button type="button" className="nq-btn ghost sm" onClick={() => setConfirm('leave')}><Icon name="logout" />الخروج من الختمة</button>
+                  <span className={styles.muted}>{tr('تشارك في هذه الختمة بدعوة من منشئها.')}</span>
+                  <button type="button" className="nq-btn ghost sm" onClick={() => setConfirm('leave')}><Icon name="logout" className={styles.icoBack} />{tr('الخروج من الختمة')}</button>
                 </div>
               )}
             </div>
@@ -944,6 +961,7 @@ function RoomView({ room, user, onBack, onNew, onUpdate, onGone, showToast }) {
 }
 
 function ConfirmDialog({ title, body, ok, danger, busy, onOk, onCancel }) {
+  const tr = useTr();
   const okRef = useRef(null);
   useEffect(() => {
     const prev = document.activeElement;
@@ -961,9 +979,9 @@ function ConfirmDialog({ title, body, ok, danger, busy, onOk, onCancel }) {
         <p id="kg-dlg-b" className={styles.muted}>{body}</p>
         <div className={styles.dialogActs}>
           <button type="button" ref={okRef} className={`nq-btn ${danger ? styles.dangerSolid : 'gold'}`} onClick={onOk} disabled={busy}>
-            {busy ? 'جارٍ التنفيذ…' : ok}
+            {busy ? tr('جارٍ التنفيذ…') : ok}
           </button>
-          <button type="button" className="nq-btn ghost" onClick={onCancel} disabled={busy}>إلغاء</button>
+          <button type="button" className="nq-btn ghost" onClick={onCancel} disabled={busy}>{tr('إلغاء')}</button>
         </div>
       </div>
     </div>

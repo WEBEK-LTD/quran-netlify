@@ -1,20 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store';
-import { SURAHS_META } from '../data';
 import { useAuth } from '../hooks/useAuth';
 import { aiChat, errorMessage } from '../backend';
 import styles from './AIAssistant.module.css';
 import { Icon } from './ornaments/Ornaments';
+import { useTr, trNow, num, surahName } from '../l10n';
 
 // ─── Suggested questions per context ─────────────────────────────────────────
 function getSuggestions(surahNum, ayahNum) {
-  const name = SURAHS_META[surahNum - 1]?.[0] || '';
+  const name = surahName(surahNum) || '';
   return [
-    `ما معنى هذه الآية من سورة ${name}؟`,
-    `ما الدروس المستفادة من هذه الآية؟`,
-    `كيف أطبّق هذه الآية في حياتي؟`,
-    `ما علاقة هذه الآية بما قبلها؟`,
+    trNow('ما معنى هذه الآية من سورة {name}؟', { name }),
+    trNow('ما الدروس المستفادة من هذه الآية؟'),
+    trNow('كيف أطبّق هذه الآية في حياتي؟'),
+    trNow('ما علاقة هذه الآية بما قبلها؟'),
   ];
 }
 
@@ -24,7 +24,7 @@ function Bubble({ msg }) {
   return (
     <div className={`${styles.bubble} ${isUser ? styles.userBubble : styles.aiBubble}`}>
       {!isUser && <div className={styles.aiAvatar}><Icon name="chat" /></div>}
-      <div className={styles.bubbleContent}>
+      <div className={styles.bubbleContent} dir="auto">
         {msg.streaming
           ? <span>{msg.content}<span className={styles.cursor} /></span>
           : <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
@@ -38,16 +38,17 @@ function Bubble({ msg }) {
 // user/assistant turns (last 12) and the ayah being read.
 function aiErrorText(e) {
   const code = e && e.code;
-  if (code === 'unauthenticated') return 'سجّل الدخول لاستخدام المساعد';
-  if (code === 'ai_not_configured') return 'المساعد غير مُفعّل حالياً — لم تُضبط إعداداته بعد من الإدارة';
-  if (code === 'feature_disabled') return 'المساعد متوقف مؤقتاً من الإدارة';
-  if (code === 'rate_limited') return '⏳ وصلت للحد المسموح من الأسئلة هذه الساعة — حاول بعد قليل';
-  return '⚠️ ' + errorMessage(e, 'تعذّر الحصول على إجابة، حاول مرة أخرى');
+  if (code === 'unauthenticated') return trNow('سجّل الدخول لاستخدام المساعد');
+  if (code === 'ai_not_configured') return trNow('المساعد غير مُفعّل حالياً — لم تُضبط إعداداته بعد من الإدارة');
+  if (code === 'feature_disabled') return trNow('المساعد متوقف مؤقتاً من الإدارة');
+  if (code === 'rate_limited') return '⏳ ' + trNow('وصلت للحد المسموح من الأسئلة هذه الساعة — حاول بعد قليل');
+  return '⚠️ ' + errorMessage(e, trNow('تعذّر الحصول على إجابة، حاول مرة أخرى'));
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function AIAssistant() {
   const [state] = useStore();
+  const tr = useTr();
   const { user, loading: authLoading } = useAuth();
   const [open, setOpen]         = useState(false);
   const [messages, setMessages] = useState([]);
@@ -67,7 +68,7 @@ export default function AIAssistant() {
 
   const surahNum = state.currentSurah;
   const ayahNum  = state.currentAyah;
-  const surahName = SURAHS_META[surahNum - 1]?.[0] || '';
+  const sName = surahName(surahNum) || '';
   const posRef = useRef(null);
   posRef.current = { surah: surahNum, ayah: ayahNum };
 
@@ -94,9 +95,9 @@ export default function AIAssistant() {
       const surah = d.surah || null;
       ctxRef.current = { surah, ayah: d.ayah, text: d.text || '' };
       if (!userRef.current) return;   // the panel shows the sign-in prompt
-      const name = SURAHS_META[(surah || 1) - 1]?.[0] || '';
+      const name = surahName(surah || 1) || '';
       clearTimeout(timer);
-      timer = setTimeout(() => sendMessage(`اشرح لي الآية ${d.ayah} من سورة ${name}`), 200);
+      timer = setTimeout(() => sendMessage(trNow('اشرح لي الآية {n} من سورة {name}', { n: d.ayah, name })), 200);
     }
     window.addEventListener('openAI', handler);
     return () => { window.removeEventListener('openAI', handler); clearTimeout(timer); };
@@ -158,7 +159,7 @@ export default function AIAssistant() {
       <button
         className={`${styles.fab} ${open ? styles.fabOpen : ''}`}
         onClick={() => setOpen(o => !o)}
-        title="المساعد" aria-label="المساعد"
+        title={tr('المساعد')} aria-label={tr('المساعد')}
       >
         {open ? <Icon name="x" /> : <Icon name="chat" />}
         {!open && <span className={styles.fabPulse} />}
@@ -172,17 +173,17 @@ export default function AIAssistant() {
             <div className={styles.headerInfo}>
               <div className={styles.headerIcon}><Icon name="chat" /></div>
               <div>
-                <h3>المساعد الإسلامي</h3>
-                <p>سورة {surahName} — الآية {ayahNum}</p>
+                <h3>{tr('المساعد الإسلامي')}</h3>
+                <p>{tr('سورة {name} — الآية {n}', { name: sName, n: num(ayahNum) })}</p>
               </div>
             </div>
             <div className={styles.headerActions}>
               {messages.length > 0 && (
-                <button className={styles.clearBtn} onClick={clearChat} title="محادثة جديدة">
+                <button className={styles.clearBtn} onClick={clearChat} title={tr('محادثة جديدة')} aria-label={tr('محادثة جديدة')}>
                   🗑
                 </button>
               )}
-              <button className={styles.closeBtn} onClick={() => setOpen(false)}>✕</button>
+              <button className={styles.closeBtn} onClick={() => setOpen(false)} aria-label={tr('إغلاق')}>✕</button>
             </div>
           </div>
 
@@ -191,13 +192,13 @@ export default function AIAssistant() {
             {isEmpty && !user && !authLoading && (
               <div className={styles.emptyState}>
                 <div className={styles.emptyIcon}><Icon name="lock" /></div>
-                <p className={styles.emptyTitle}>سجّل الدخول لاستخدام المساعد</p>
-                <p className={styles.emptySub}>المساعد متاح للمستخدمين المسجّلين فقط</p>
+                <p className={styles.emptyTitle}>{tr('سجّل الدخول لاستخدام المساعد')}</p>
+                <p className={styles.emptySub}>{tr('المساعد متاح للمستخدمين المسجّلين فقط')}</p>
                 <div className={styles.suggestions}>
                   <Link to="/login" className={styles.suggestion} onClick={() => setOpen(false)}
-                    style={{ textAlign: 'center', textDecoration: 'none' }}>تسجيل الدخول</Link>
+                    style={{ textAlign: 'center', textDecoration: 'none' }}>{tr('تسجيل الدخول')}</Link>
                   <Link to="/signup" className={styles.suggestion} onClick={() => setOpen(false)}
-                    style={{ textAlign: 'center', textDecoration: 'none' }}>إنشاء حساب</Link>
+                    style={{ textAlign: 'center', textDecoration: 'none' }}>{tr('إنشاء حساب')}</Link>
                 </div>
               </div>
             )}
@@ -205,8 +206,8 @@ export default function AIAssistant() {
             {isEmpty && (user || authLoading) && (
               <div className={styles.emptyState}>
                 <div className={styles.emptyIcon}><Icon name="chat" /></div>
-                <p className={styles.emptyTitle}>اسألني عن القرآن الكريم</p>
-                <p className={styles.emptySub}>أنا هنا لمساعدتك في فهم الآيات والتفسير والفقه</p>
+                <p className={styles.emptyTitle}>{tr('اسألني عن القرآن الكريم')}</p>
+                <p className={styles.emptySub}>{tr('أنا هنا لمساعدتك في فهم الآيات والتفسير والفقه')}</p>
 
                 <div className={styles.suggestions}>
                   {suggestions.map((s, i) => (
@@ -229,7 +230,7 @@ export default function AIAssistant() {
             {error && (
               <div className={styles.errorMsg}>
                 {error}
-                <button onClick={() => setError('')}>✕</button>
+                <button onClick={() => setError('')} aria-label={tr('إغلاق')}>✕</button>
               </div>
             )}
             <div ref={bottomRef} />
@@ -248,20 +249,20 @@ export default function AIAssistant() {
                   sendMessage();
                 }
               }}
-              placeholder="اسأل عن الآية، التفسير، الفقه..."
+              placeholder={tr('اسأل عن الآية، التفسير، الفقه...')}
               rows={2}
-              dir="rtl"
+              dir="auto"
               disabled={loading || !user}
             />
             <div className={styles.inputActions}>
-              <span className={styles.hint}>Enter للإرسال • Shift+Enter لسطر جديد</span>
+              <span className={styles.hint}>{tr('Enter للإرسال • Shift+Enter لسطر جديد')}</span>
               {loading
-                ? <span className={styles.typingDots}>جاري التفكير...</span>
+                ? <span className={styles.typingDots}>{tr('جاري التفكير...')}</span>
                 : <button
                     className={styles.sendBtn}
                     onClick={() => sendMessage()}
                     disabled={!input.trim() || !user}
-                  >إرسال ↩</button>
+                  >{tr('إرسال ↩')}</button>
               }
             </div>
           </div>

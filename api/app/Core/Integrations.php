@@ -10,8 +10,8 @@ final class Integrations
     public const KEYS = [
         'google_client_id'     => ['معرّف عميل Google (Client ID)', false],
         'google_client_secret' => ['السر السري لعميل Google (Client Secret)', true],
-        'ai_provider'          => ['مزوّد الذكاء الاصطناعي (openai أو anthropic)', false],
-        'ai_model'             => ['نموذج الذكاء الاصطناعي (اختياري)', false],
+        'ai_provider'          => ['مزوّد المساعد (openai أو anthropic)', false],
+        'ai_model'             => ['نموذج المساعد (اختياري)', false],
         'openai_api_key'       => ['مفتاح OpenAI', true],
         'anthropic_api_key'    => ['مفتاح Anthropic', true],
         'mail_from_address'    => ['عنوان البريد المُرسِل', false],

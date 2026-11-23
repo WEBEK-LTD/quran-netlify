@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { SURAHS_META } from '../data';
+import { useTr, trNow, num, surahName } from '../l10n';
 import styles from './ShareCard.module.css';
 
 const THEMES = [
@@ -12,6 +13,7 @@ const THEMES = [
 
 
 export default function ShareCard() {
+  const tr = useTr();
   const [ayahData, setAyahData] = useState(null); // { surah, ayah, text }
   const [open, setOpen]         = useState(false);
   const [copied, setCopied]     = useState(false);
@@ -89,6 +91,14 @@ export default function ShareCard() {
     ctx.fillStyle = t.accent;
     ctx.font = 'bold 34px Cairo, Arial';
     ctx.fillText(`﴾ سورة ${SURAHS_META[ayahData.surah-1]?.[0]} — الآية ${ayahData.ayah} ﴿`, W/2, H - 130);
+    // the reference in the visitor's language, under the Arabic one
+    if (tr.lang !== 'ar') {
+      ctx.fillStyle = t.accent + 'aa';
+      ctx.font = '26px Cairo, Arial';
+      ctx.direction = tr.dir;
+      ctx.fillText(trNow('{name} {s}:{a}', { name: surahName(ayahData.surah), s: num(ayahData.surah), a: num(ayahData.ayah) }), W / 2, H - 98);
+      ctx.direction = 'rtl';
+    }
 
     // Brand bottom
     ctx.fillStyle = t.accent + '55';
@@ -96,14 +106,15 @@ export default function ShareCard() {
     ctx.fillText('nuralquran.net', W / 2, H - 75);
 
     return canvas.toDataURL('image/png');
-  }, [ayahData, t]);
+  }, [ayahData, t, tr.lang]);
 
   // Early return only AFTER all hooks (rules of hooks)
   if (!open || !ayahData) return null;
 
   const meta = SURAHS_META[ayahData.surah - 1];
   const ref  = `سورة ${meta?.[0]} — الآية ${ayahData.ayah}`;
-  const full  = `${ayahData.text}\n\n﴾ ${ref} ﴿\n\nنور القرآن`;
+  const localRef = tr.lang !== 'ar' ? tr('{name} {s}:{a}', { name: surahName(ayahData.surah), s: num(ayahData.surah), a: num(ayahData.ayah) }) : '';
+  const full  = `${ayahData.text}\n\n﴾ ${ref} ﴿${localRef ? `\n${localRef}` : ''}\n\n${tr('نور القرآن')}`;
 
   async function downloadImage() {
     const dataUrl = await generateImage();
@@ -119,7 +130,7 @@ export default function ShareCard() {
       const blob = await (await fetch(dataUrl)).blob();
       const file = new File([blob], 'ayah.png', { type: 'image/png' });
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'آية قرآنية' });
+        await navigator.share({ files: [file], title: trNow('آية قرآنية') });
       } else {
         downloadImage();
       }
@@ -138,7 +149,7 @@ export default function ShareCard() {
   }
 
   function shareTwitter() {
-    const tweet = `${ayahData.text}\n\n﴾ ${ref} ﴿`;
+    const tweet = `${ayahData.text}\n\n﴾ ${ref} ﴿${localRef ? `\n${localRef}` : ''}`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweet)}`, '_blank');
   }
 
@@ -150,8 +161,8 @@ export default function ShareCard() {
     <div className={styles.backdrop} onClick={e => e.target === e.currentTarget && setOpen(false)}>
       <div className={styles.panel}>
         <div className={styles.panelHeader}>
-          <h3>مشاركة الآية</h3>
-          <button className={styles.closeBtn} onClick={() => setOpen(false)}>✕</button>
+          <h3>{tr('مشاركة الآية')}</h3>
+          <button className={styles.closeBtn} onClick={() => setOpen(false)} aria-label={tr('إغلاق')}>✕</button>
         </div>
 
         {/* Preview card */}
@@ -161,53 +172,54 @@ export default function ShareCard() {
             <div className={styles.cardCorner} style={{ color: t.accent }}>✦</div>
             <div className={styles.cardCornerBr} style={{ color: t.accent }}>✦</div>
           </div>
-          <p className={styles.cardText} style={{ color: t.text, fontFamily: 'Amiri Quran, serif' }}>
+          <p className={styles.cardText} lang="ar" style={{ color: t.text, fontFamily: 'Amiri Quran, serif' }}>
             {ayahData.text}
           </p>
-          <div className={styles.cardRef} style={{ color: t.accent }}>
+          <div className={styles.cardRef} style={{ color: t.accent }} lang="ar">
             ﴾ {ref} ﴿
           </div>
+          {localRef && <div className={styles.cardBrand} style={{ color: t.accent }} dir={tr.dir}>{localRef}</div>}
           <div className={styles.cardBrand} style={{ color: t.accent + '88' }}>نور القرآن</div>
         </div>
 
         {/* Theme picker */}
         <div className={styles.themeRow}>
-          <span className={styles.themeLabel}>اللون:</span>
+          <span className={styles.themeLabel}>{tr('اللون:')}</span>
           {THEMES.map(th => (
             <button key={th.id}
               className={`${styles.themeDot} ${theme === th.id ? styles.themeActive : ''}`}
               style={{ background: th.bg, border: `2px solid ${theme === th.id ? th.accent : 'transparent'}` }}
-              onClick={() => setTheme(th.id)} />
+              onClick={() => setTheme(th.id)} aria-pressed={theme === th.id} />
           ))}
         </div>
 
         {/* Share buttons */}
         <div className={styles.shareRow}>
           <button className={`${styles.shareBtn} ${styles.whatsapp}`} onClick={shareWhatsApp}>
-            <span>💬</span> واتساب
+            <span>💬</span> {tr('واتساب')}
           </button>
           <button className={`${styles.shareBtn} ${styles.twitter}`} onClick={shareTwitter}>
-            <span>𝕏</span> تويتر
+            <span>𝕏</span> {tr('تويتر')}
           </button>
           <button className={`${styles.shareBtn} ${styles.telegram}`} onClick={shareTelegram}>
-            <span>✈️</span> تيليجرام
+            <span>✈️</span> {tr('تيليجرام')}
           </button>
           <button className={`${styles.shareBtn} ${styles.copy} ${copied ? styles.copied : ''}`} onClick={copyText}>
-            <span>{copied ? '✅' : '📋'}</span> {copied ? 'تم' : 'نسخ'}
+            <span>{copied ? '✅' : '📋'}</span> {copied ? tr('تم') : tr('نسخ')}
           </button>
         </div>
 
         {/* Image share */}
         <div className={styles.imgRow}>
           <button className={styles.imgBtn} onClick={shareAsImage}>
-            🖼️ مشاركة كصورة
+            🖼️ {tr('مشاركة كصورة')}
           </button>
           <button className={styles.imgBtn} onClick={downloadImage}>
-            ⬇️ تحميل الصورة
+            ⬇️ {tr('تحميل الصورة')}
           </button>
           {navigator.share && (
             <button className={styles.imgBtn} onClick={() => navigator.share({ text: full })}>
-              ↗ مشاركة نص
+              ↗ {tr('مشاركة نص')}
             </button>
           )}
         </div>

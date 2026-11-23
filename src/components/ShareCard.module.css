@@ -62,7 +62,7 @@
 .themeRow {
   display: flex; align-items: center; gap: 8px;
 }
-.themeLabel { font-size: 12px; color: var(--text3); margin-left: 4px; }
+.themeLabel { font-size: 12px; color: var(--text3); margin-inline-end: 4px; }
 .themeDot {
   width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
   transition: transform 0.15s;

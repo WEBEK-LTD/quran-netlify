@@ -46,6 +46,7 @@
 .relCard > :global(.nq-ico):first-child { color: var(--gold); }
 .relCard span { flex: 1; }
 .relArrow { color: var(--faint); transform: scaleX(-1); }
+:global([dir="ltr"]) .relArrow { transform: none; }
 
 /* ── delete data ── */
 .page .narrow { max-width: 860px; padding-top: 48px; display: grid; gap: 28px; }

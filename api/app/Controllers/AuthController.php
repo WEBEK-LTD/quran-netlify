@@ -5,6 +5,7 @@ namespace NQ\Controllers;
 
 use NQ\Core\ApiError;
 use NQ\Core\Auth;
+use NQ\Core\Avatar;
 use NQ\Core\Db;
 use NQ\Core\Mailer;
 use NQ\Core\MailText;
@@ -257,7 +258,9 @@ final class AuthController
         }
         // Foreign keys cascade: sessions, tokens, bookmarks, notes, progress, reading log, hifz,
         // khatmat, owned group rooms (+ parts, takers, members), claims, memberships, tickets, bans, presence.
+        $photo = $r->user['avatar_file'] ?? null;
         Db::exec('DELETE FROM users WHERE id = ?', [$uid]);
+        Avatar::delete(is_string($photo) ? $photo : null); // the profile photo file too
         Auth::clearCookie();
         return Reply::empty();
     }
@@ -266,7 +269,8 @@ final class AuthController
     {
         $uid = $r->userId();
         $iso = [Db::class, 'iso'];
-        $user = Auth::shape((array) Auth::findUser($uid));
+        $row = (array) Auth::findUser($uid);
+        $user = Auth::shape($row);
         $hifz = Db::one('SELECT data, client_updated_at FROM hifz WHERE user_id = ?', [$uid]);
         $tickets = Db::all('SELECT id, subject, topic, status, created_at, updated_at FROM support_tickets WHERE user_id = ? ORDER BY id', [$uid]);
         foreach ($tickets as &$t) {
@@ -285,6 +289,8 @@ final class AuthController
         $data = [
             'exported_at' => gmdate('Y-m-d\TH:i:s\Z'),
             'user' => $user,
+            // uploaded photo (null when none; user.avatar_url may still be the Google picture)
+            'profile_photo_url' => is_string($row['avatar_file'] ?? null) && Avatar::validName($row['avatar_file']) ? Avatar::url($row['avatar_file']) : null,
             'bookmarks' => Db::all('SELECT surah, ayah, created_at FROM bookmarks WHERE user_id = ? ORDER BY created_at', [$uid]),
             'notes' => Db::all('SELECT surah, ayah, text, updated_at FROM notes WHERE user_id = ? ORDER BY updated_at DESC', [$uid]),
             'progress' => Db::one('SELECT surah, ayah, updated_at FROM reading_progress WHERE user_id = ?', [$uid]),

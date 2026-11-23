@@ -7,6 +7,15 @@ final class Request
 {
     public const MAX_BODY = 65536;
 
+    /**
+     * The largest request body a route accepts (checked from Content-Length before routing).
+     * Everything is JSON capped at MAX_BODY except the profile-photo upload (multipart).
+     */
+    public static function bodyLimit(string $method, string $path): int
+    {
+        return $method === 'POST' && $path === '/me/avatar' ? Avatar::MAX_REQUEST : self::MAX_BODY;
+    }
+
     public string $method;
     public string $path;
     /** @var array<string,mixed> */
@@ -103,6 +112,13 @@ final class Request
             throw ApiError::notFound();
         }
         return (int) $v;
+    }
+
+    /** One uploaded file from a multipart/form-data body (PHP has already parsed it). @return array<string,mixed>|null */
+    public function file(string $field): ?array
+    {
+        $f = $_FILES[$field] ?? null;
+        return is_array($f) ? $f : null;
     }
 
     /** @return array<string,mixed> the decoded JSON object body (empty array if none) */

@@ -8,13 +8,23 @@ import { useAuth } from '../hooks/useAuth';
 import { loadStats } from '../backend';
 import { useHifz, localDateStr, parseLocalDate } from '../hifzStore';
 import { PageHero, Icon, Badge8, toAr as toArRaw } from '../components/ornaments/Ornaments';
+import { useTr, num, intlLocale, isRtl } from '../l10n';
 import styles from './ReportPage.module.css';
 
 const toAr = n => toArRaw(Math.round(n));
 
-const MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-const WEEK_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+// Month and weekday names in the visitor's language (ar-EG gives يناير… / الأحد…)
+const monthName = m => new Date(2024, m, 1).toLocaleDateString(intlLocale(), { month: 'long' });
+// [full name, column label] for Sunday…Saturday (7 Jan 2024 is a Sunday)
+function weekDays() {
+  const loc = intlLocale();
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(2024, 0, 7 + i);
+    const full = d.toLocaleDateString(loc, { weekday: 'long' });
+    const short = loc === 'ar-EG' ? full.replace('ال', '').slice(0, 2) : d.toLocaleDateString(loc, { weekday: 'short' });
+    return [full, short];
+  });
+}
 
 // 'YYYY-MM-DD' parsed as a LOCAL date (new Date('YYYY-MM-DD') is UTC midnight
 // and shifts to the previous day west of Greenwich)
@@ -48,6 +58,7 @@ function level(cnt, active, max) {
 }
 
 export default function ReportPage() {
+  const tr = useTr();
   const { user } = useAuth();
   const { hifz, completedSurahs, memorizedAyahs, progressPct } = useHifz(user?.id);
   const [sessions, setSessions] = useState([]);
@@ -122,20 +133,22 @@ export default function ReportPage() {
   function printReport() { window.print(); }
 
   const hero = (
-    <PageHero eyebrow="تقريرك" title="التقرير الشهري" sub="صورة هادئة لقراءتك وحفظك، شهراً بعد شهر.">
-      <button type="button" className="nq-btn ghost" onClick={printReport}><Icon name="download" />طباعة أو حفظ PDF</button>
-      <Link className="nq-btn ghost" to="/dashboard"><Icon name="chart" />لوحة التقدّم</Link>
+    <PageHero eyebrow={tr('تقريرك')} title={tr('التقرير الشهري')} sub={tr('صورة هادئة لقراءتك وحفظك، شهراً بعد شهر.')}>
+      <button type="button" className="nq-btn ghost" onClick={printReport}><Icon name="download" />{tr('طباعة أو حفظ PDF')}</button>
+      <Link className="nq-btn ghost" to="/dashboard"><Icon name="chart" />{tr('لوحة التقدّم')}</Link>
     </PageHero>
   );
 
   if (loading) return (
     <div className={styles.page}>
       {hero}
-      <div className={styles.center} role="status" aria-label="جارٍ التحميل"><div className={styles.spinner} /></div>
+      <div className={styles.center} role="status" aria-label={tr('جارٍ التحميل')}><div className={styles.spinner} /></div>
     </div>
   );
 
   const hasMonthData = monthSess.length > 0;
+  const MONTH = monthName(selMonth);
+  const WEEK = weekDays();
 
   return (
     <div className={styles.page}>
@@ -145,30 +158,30 @@ export default function ReportPage() {
         {!user && (
           <p className={styles.notice}>
             <Icon name="lock" />
-            <span>تعرض هذه الصفحة البيانات المحفوظة على هذا الجهاز فقط. <Link to="/login">سجّل الدخول</Link> لمزامنة تقريرك.</span>
+            <span>{tr('تعرض هذه الصفحة البيانات المحفوظة على هذا الجهاز فقط.')} <Link to="/login">{tr('سجّل الدخول')}</Link> {tr('لمزامنة تقريرك.')}</span>
           </p>
         )}
-        {loadErr && <p className={`${styles.notice} ${styles.noticeErr}`}>تعذّر تحميل بياناتك من الخادم، تُعرض البيانات المحلية.</p>}
+        {loadErr && <p className={`${styles.notice} ${styles.noticeErr}`}>{tr('تعذّر تحميل بياناتك من الخادم، تُعرض البيانات المحلية.')}</p>}
 
         {/* ── month selector ── */}
         <div className={styles.month}>
-          <button type="button" className="nq-ibtn" onClick={prevMonth} aria-label="الشهر السابق"><Icon name="back" /></button>
+          <button type="button" className="nq-ibtn" onClick={prevMonth} aria-label={tr('الشهر السابق')}><Icon name="back" className={styles.icoBack} /></button>
           <div className={styles.monthLbl} aria-live="polite">
-            <span className={styles.monthName}>{MONTHS_AR[selMonth]}</span>
+            <span className={styles.monthName}>{isRtl() ? MONTH : MONTH.charAt(0).toLocaleUpperCase(intlLocale()) + MONTH.slice(1)}</span>
             <span className={`nq-num ${styles.monthYear}`}>{toAr(selYear)}</span>
           </div>
-          <button type="button" className="nq-ibtn" onClick={nextMonth} disabled={isCurrentMonth} aria-label="الشهر التالي">
-            <Icon name="back" style={{ transform: 'scaleX(-1)' }} />
+          <button type="button" className="nq-ibtn" onClick={nextMonth} disabled={isCurrentMonth} aria-label={tr('الشهر التالي')}>
+            <Icon name="back" className={styles.icoNext} />
           </button>
         </div>
 
         {/* ── KPIs ── */}
         <div className={styles.kpis}>
           {[
-            { icon: 'book', v: totalAyahs, l: 'آية مقروءة', s: 'في هذا الشهر' },
-            { icon: 'calendar', v: activeDays, l: 'يوم قراءة', s: `من ${toAr(daysInMonth)} يوماً` },
-            { icon: 'chart', v: avgPerDay, l: 'آية في اليوم', s: 'متوسط أيام القراءة' },
-            { icon: 'timer', v: streak, l: 'أيام متتالية', s: 'حتى اليوم' },
+            { icon: 'book', v: totalAyahs, l: tr('آية مقروءة'), s: tr('في هذا الشهر') },
+            { icon: 'calendar', v: activeDays, l: tr('يوم قراءة'), s: tr('من {n} يوماً', { n: toAr(daysInMonth) }) },
+            { icon: 'chart', v: avgPerDay, l: tr('آية في اليوم'), s: tr('متوسط أيام القراءة') },
+            { icon: 'timer', v: streak, l: tr('أيام متتالية'), s: tr('حتى اليوم') },
           ].map(k => (
             <div key={k.l} className={`nq-card ${styles.kpi}`}>
               <Badge8 icon={k.icon} size={44} />
@@ -182,9 +195,9 @@ export default function ReportPage() {
         <div className={`${styles.grid} ${styles.gridTop}`}>
           {/* ── heat-map calendar ── */}
           <section className={`nq-card ${styles.card}`} aria-labelledby="rp-cal">
-            <h2 id="rp-cal" className={styles.h3}>خريطة القراءة</h2>
-            <div className={styles.cal} role="grid" aria-label={`أيام القراءة في ${MONTHS_AR[selMonth]}`}>
-              {WEEK_AR.map(d => <div key={d} className={styles.calHead} role="columnheader" title={d}>{d.replace('ال', '').slice(0, 2)}</div>)}
+            <h2 id="rp-cal" className={styles.h3}>{tr('خريطة القراءة')}</h2>
+            <div className={styles.cal} role="grid" aria-label={tr('أيام القراءة في {m}', { m: MONTH })}>
+              {WEEK.map(([full, short]) => <div key={full} className={styles.calHead} role="columnheader" title={full}>{short}</div>)}
               {Array.from({ length: firstDay }, (_, i) => <div key={'e' + i} aria-hidden="true" />)}
               {Array.from({ length: daysInMonth }, (_, i) => {
                 const day = i + 1;
@@ -195,8 +208,8 @@ export default function ReportPage() {
                 return (
                   <div key={day} role="gridcell"
                     className={`${styles.day} ${styles['l' + lv]} ${date === today ? styles.today : ''}`}
-                    title={cnt ? `${toAr(day)} — ${toAr(cnt)} آية` : toAr(day)}
-                    aria-label={`${toAr(day)} ${MONTHS_AR[selMonth]}: ${active ? (cnt ? `${toAr(cnt)} آية` : 'يوم قراءة') : 'لا قراءة'}`}>
+                    title={cnt ? `${toAr(day)} — ${tr('{n} آية', { n: toAr(cnt) })}` : toAr(day)}
+                    aria-label={`${toAr(day)} ${MONTH}: ${active ? (cnt ? tr('{n} آية', { n: toAr(cnt) }) : tr('يوم قراءة')) : tr('لا قراءة')}`}>
                     <span className={styles.dayN}>{toAr(day)}</span>
                     {cnt > 0 && <span className={styles.dayC}>{toAr(cnt)}</span>}
                   </div>
@@ -204,13 +217,13 @@ export default function ReportPage() {
               })}
             </div>
             <div className={styles.legend} aria-hidden="true">
-              <span>أقل</span>
+              <span>{tr('أقل')}</span>
               {[0, 1, 2, 3, 4].map(l => <i key={l} className={styles['l' + l]} />)}
-              <span>أكثر</span>
+              <span>{tr('أكثر')}</span>
             </div>
             {bestDay && (
               <p className={styles.best}>
-                <Icon name="trophy" />أفضل يوم: {parseLocalDate(bestDay.date)?.toLocaleDateString('ar-EG', { day: 'numeric', month: 'long' })} · {toAr(bestDay.ayah_count)} آية
+                <Icon name="trophy" />{tr('أفضل يوم:')} {num(parseLocalDate(bestDay.date)?.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long' }) || '')} · {tr('{n} آية', { n: toAr(bestDay.ayah_count) })}
               </p>
             )}
           </section>
@@ -218,13 +231,13 @@ export default function ReportPage() {
           {/* ── daily bars ── */}
           <section className={`nq-card ${styles.card}`} aria-labelledby="rp-bars">
             <div className={styles.cardHead}>
-              <h2 id="rp-bars" className={styles.h3}>القراءة اليومية</h2>
-              {hasMonthData && <span className={styles.meta}>أعلى يوم: {toAr(maxAyahs)} آية</span>}
+              <h2 id="rp-bars" className={styles.h3}>{tr('القراءة اليومية')}</h2>
+              {hasMonthData && <span className={styles.meta}>{tr('أعلى يوم: {n} آية', { n: toAr(maxAyahs) })}</span>}
             </div>
             {hasMonthData ? (
               <>
                 <div className={styles.bars} role="img"
-                  aria-label={`قرأت ${toAr(totalAyahs)} آية في ${toAr(activeDays)} يوماً من ${MONTHS_AR[selMonth]}`}>
+                  aria-label={tr('قرأت {a} آية في {d} يوماً من {m}', { a: toAr(totalAyahs), d: toAr(activeDays), m: MONTH })}>
                   {Array.from({ length: daysInMonth }, (_, i) => {
                     const day = i + 1;
                     const date = dateOf(day);
@@ -232,7 +245,7 @@ export default function ReportPage() {
                     const active = activeDates.has(date);
                     const h = cnt ? Math.max(6, (cnt / maxAyahs) * 100) : active ? 4 : 0;
                     return (
-                      <div key={day} className={styles.barCol} title={`${toAr(day)} ${MONTHS_AR[selMonth]}: ${toAr(cnt)} آية`}>
+                      <div key={day} className={styles.barCol} title={`${toAr(day)} ${MONTH}: ${tr('{n} آية', { n: toAr(cnt) })}`}>
                         <span className={`${styles.bar} ${date === today ? styles.barToday : ''}`} style={{ height: `${h}%` }} />
                       </div>
                     );
@@ -247,8 +260,8 @@ export default function ReportPage() {
             ) : (
               <div className={styles.emptyChart}>
                 <Badge8 icon="book" size={52} />
-                <p>لا قراءة مسجّلة في {MONTHS_AR[selMonth]} {toAr(selYear)}.</p>
-                <Link className="nq-btn gold sm" to="/reader"><Icon name="book" />ابدأ القراءة</Link>
+                <p>{tr('لا قراءة مسجّلة في {m} {y}.', { m: MONTH, y: toAr(selYear) })}</p>
+                <Link className="nq-btn gold sm" to="/reader"><Icon name="book" />{tr('ابدأ القراءة')}</Link>
               </div>
             )}
           </section>
@@ -257,18 +270,18 @@ export default function ReportPage() {
         <div className={styles.grid}>
           {/* ── all-time ── */}
           <section className={`nq-card ${styles.card}`} aria-labelledby="rp-all">
-            <h2 id="rp-all" className={styles.h3}>الإحصاءات الكاملة</h2>
+            <h2 id="rp-all" className={styles.h3}>{tr('الإحصاءات الكاملة')}</h2>
             <dl className={styles.all}>
               {[
                 { icon: 'book',     label: 'إجمالي الآيات المقروءة', val: toAr(allAyahs) },
                 { icon: 'calendar', label: 'أيام القراءة',            val: toAr(allDays) },
                 { icon: 'list',     label: 'سور محفوظة',              val: toAr(completedSurahs) },
                 { icon: 'star',     label: 'آيات محفوظة',             val: toAr(memorizedAyahs) },
-                { icon: 'chart',    label: 'نسبة الحفظ',              val: `${toArRaw(String(progressPct).replace('.', '٫'))}٪` },
+                { icon: 'chart',    label: 'نسبة الحفظ',              val: tr('{n}٪', { n: toArRaw(isRtl() ? String(progressPct).replace('.', '٫') : String(progressPct)) }) },
                 { icon: 'sun',      label: 'أيام الورد المكتملة',     val: toAr(wardDays) },
               ].map(({ icon, label, val }) => (
                 <div key={label} className={styles.allRow}>
-                  <dt><Icon name={icon} />{label}</dt>
+                  <dt><Icon name={icon} />{tr(label)}</dt>
                   <dd className="nq-num">{val}</dd>
                 </div>
               ))}
@@ -278,11 +291,11 @@ export default function ReportPage() {
           {/* ── ward record ── */}
           <section className={`nq-card ${styles.card}`} aria-labelledby="rp-ward">
             <div className={styles.cardHead}>
-              <h2 id="rp-ward" className={styles.h3}>سجل الورد · آخر ١٤ يوماً</h2>
-              <Link to="/hifz" className={styles.meta}>إدارة الورد</Link>
+              <h2 id="rp-ward" className={styles.h3}>{tr('سجل الورد · آخر {n} يوماً', { n: toAr(14) })}</h2>
+              <Link to="/hifz" className={styles.meta}>{tr('إدارة الورد')}</Link>
             </div>
             <div className={styles.ward} role="img"
-              aria-label={`أتممت الورد في ${toAr(last14.filter(w => w.done).length)} من آخر ١٤ يوماً`}>
+              aria-label={tr('أتممت الورد في {a} من آخر {n} يوماً', { a: toAr(last14.filter(w => w.done).length), n: toAr(14) })}>
               {last14.map(w => (
                 <div key={w.ds} className={styles.wardCol} title={w.ds}>
                   <span className={styles.wardTrack}><span className={`${styles.wardFill} ${w.done ? styles.wardDone : ''}`} /></span>
@@ -291,14 +304,14 @@ export default function ReportPage() {
               ))}
             </div>
             <div className={styles.wardLgd} aria-hidden="true">
-              <span><i className={styles.wardDone} />أتممت الورد</span>
-              <span><i />لم يُسجَّل</span>
+              <span><i className={styles.wardDone} />{tr('أتممت الورد')}</span>
+              <span><i />{tr('لم يُسجَّل')}</span>
             </div>
           </section>
         </div>
 
         <div className={`${styles.actions} ${styles.noPrint}`}>
-          <button type="button" className="nq-btn gold" onClick={printReport}><Icon name="download" />طباعة أو حفظ PDF</button>
+          <button type="button" className="nq-btn gold" onClick={printReport}><Icon name="download" />{tr('طباعة أو حفظ PDF')}</button>
         </div>
       </div>
     </div>

@@ -47,7 +47,7 @@
   width: 100%; padding: 16px 18px;
   background: transparent; border: none; outline: none; resize: none;
   color: var(--text); font-family: var(--font-ui); font-size: 14px;
-  line-height: 1.8; direction: rtl;
+  line-height: 1.8;
 }
 .textarea::placeholder { color: var(--text3); }
 

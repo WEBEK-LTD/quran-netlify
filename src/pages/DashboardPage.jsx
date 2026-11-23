@@ -11,6 +11,7 @@ import { visibleGroups } from '../features';
 import { useHifz, localDateStr } from '../hifzStore';
 import { PageHero, Icon, Badge8, Corners, Pattern, Divider, toAr } from '../components/ornaments/Ornaments';
 import { useTr, num, surahName, intlLocale } from '../l10n';
+import { trCount } from '../locales/library';
 import styles from './DashboardPage.module.css';
 
 function readJSON(key, fallback) {
@@ -57,12 +58,6 @@ function dowLabels(lang) {
   if (lang === 'ar') return ['س', '', 'إ', '', 'خ', '', ''];
   return [6, 1, 3].flatMap(d => [dayLabel(d, lang, 'narrow'), '']).concat(['']).slice(0, 7);
 }
-// "1|2" plural forms in a translation: singular for 1, plural otherwise
-function pick(s, n) {
-  if (!s.includes('|')) return s;
-  const [one, many] = s.split('|');
-  return Number(n) === 1 ? one : many;
-}
 
 // Weeks (Saturday → Friday) ending with the current week; each day { date, count, future }
 function buildHeat(byDate) {
@@ -103,7 +98,8 @@ const BC_ICON = { info: 'bell', warning: 'bell', success: 'check', error: 'x' };
 
 export default function DashboardPage() {
   const tr = useTr();
-  const trn = (key, n, vars) => pick(tr(key, { n: toAr(n), ...vars }), n);
+  const trc = (key, n, vars) => trCount(tr, key, n, vars);
+  const trn = (key, n, vars) => trc(key, n, { n: toAr(n), ...vars });
   const pct = v => (tr.lang === 'ar' ? `${toAr(v)}٪` : `${num(v)}%`);
   const { user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -285,17 +281,17 @@ export default function DashboardPage() {
             <div className={styles.ring} style={{ '--p': Math.min(100, progressPct || 0) }} role="img" aria-label={tr('نسبة الحفظ {p}', { p: pct(progressPct || 0) })}>
               <b className="nq-num">{pct(progressPct || 0)}</b>
             </div>
-            <p className={styles.hifzTxt}><b className="nq-num">{toAr(completedSurahs)}</b> {pick(tr('سورة محفوظة'), completedSurahs)}</p>
+            <p className={styles.hifzTxt}><b className="nq-num">{toAr(completedSurahs)}</b> {trc('سورة محفوظة', completedSurahs)}</p>
             <span className={styles.more}>{tr('خطة الحفظ والمراجعة')} <Icon name="back" className={styles.go} /></span>
           </Link>
         </section>
 
         {/* ── KPIs ── */}
         <section aria-label={tr('إحصاءاتك')} className={styles.kpis}>
-          <Kpi icon="timer" value={toAr(streak)} unit={streak === 1 ? tr('يوم') : pick(tr('يوماً'), streak)} label={tr('أيام متتالية')} sub={streak ? tr('حافظ على وردك اليوم') : tr('ابدأ سلسلتك اليوم')} busy={busy} />
+          <Kpi icon="timer" value={toAr(streak)} unit={streak === 1 ? tr('يوم') : trc('يوماً', streak)} label={tr('أيام متتالية')} sub={streak ? tr('حافظ على وردك اليوم') : tr('ابدأ سلسلتك اليوم')} busy={busy} />
           {user
-            ? <Kpi icon="book" value={tr.lang === 'ar' ? toAr(ayahsRead.toLocaleString('en').replace(/,/g, '٬')) : num(ayahsRead.toLocaleString(intlLocale(tr.lang)))} unit={pick(tr('آية'), ayahsRead)} label={tr('قرأتها هذا العام')} sub={trn('في {n} يوماً', readingDays)} busy={busy} />
-            : <Kpi icon="calendar" value={toAr(readingDays)} unit={pick(tr('يوماً'), readingDays)} label={tr('أيام القراءة')} sub={tr('على هذا الجهاز')} busy={busy} />}
+            ? <Kpi icon="book" value={tr.lang === 'ar' ? toAr(ayahsRead.toLocaleString('en').replace(/,/g, '٬')) : num(ayahsRead.toLocaleString(intlLocale(tr.lang)))} unit={trc('آية', ayahsRead)} label={tr('قرأتها هذا العام')} sub={trn('في {n} يوماً', readingDays)} busy={busy} />
+            : <Kpi icon="calendar" value={toAr(readingDays)} unit={trc('يوماً', readingDays)} label={tr('أيام القراءة')} sub={tr('على هذا الجهاز')} busy={busy} />}
           <Kpi icon="grid" value={pct(progressPct || 0)} label={tr('نسبة الحفظ')} sub={tr('{n} سورة من {total}', { n: toAr(completedSurahs), total: toAr(114) })} busy={busy} />
           <Kpi icon="check" value={toAr(khatmat.length)} unit={khatmat.length === 1 ? tr('ختمة') : tr('ختمات')} label={tr('ختماتي')} sub={<Link to="/khatma" className={styles.kLink}>{tr('سجلّ الختمات')}</Link>} busy={busy} />
         </section>
@@ -308,8 +304,8 @@ export default function DashboardPage() {
               <h2 id="heat-h" className={styles.h2}>{tr('عامٌ من القراءة')}</h2>
             </div>
             <div className={styles.heatStats}>
-              <span><b className="nq-num">{toAr(weekTotal)}</b> {pick(user ? tr('آية هذا الأسبوع') : tr('يوم قراءة هذا الأسبوع'), weekTotal)}</span>
-              <span><b className="nq-num">{toAr(activeThisMonth)}</b> {pick(tr('يوماً هذا الشهر'), activeThisMonth)}</span>
+              <span><b className="nq-num">{toAr(weekTotal)}</b> {trc(user ? 'آية هذا الأسبوع' : 'يوم قراءة هذا الأسبوع', weekTotal)}</span>
+              <span><b className="nq-num">{toAr(activeThisMonth)}</b> {trc('يوماً هذا الشهر', activeThisMonth)}</span>
             </div>
           </header>
           <div className={styles.heatWrap}>

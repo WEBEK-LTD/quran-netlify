@@ -8,8 +8,9 @@ import { Link } from 'react-router-dom';
 import { useHifz, localDateStr, parseLocalDate } from '../hifzStore';
 import { useAuth } from '../hooks/useAuth';
 import { listKhatmat, createKhatma, updateKhatma, deleteKhatma as apiDeleteKhatma, errorMessage } from '../backend';
-import { TRANSLATIONS } from '../i18n';
+import { TRANSLATIONS, getLang } from '../i18n';
 import { PageHero, Icon, Badge8, Pattern, toAr } from '../components/ornaments/Ornaments';
+import { useTr, trNow, num, surahName, intlLocale, isRtl } from '../l10n';
 import styles from './KhatmaPage.module.css';
 
 const KHATMA_KEY = 'nq_khatmat';
@@ -48,6 +49,13 @@ const TYPES = {
   listening:   { label: 'استماع',    icon: 'head' },
   needsReview: { label: 'مراجعة',    icon: 'repeat' },
 };
+// Short words like «حفظ» (memorising / save) are ambiguous as translation keys, so
+// other languages look the type up by a descriptive key; Arabic shows the label.
+const TYPE_KEY_TR = {
+  reading: 'نوع الختمة: قراءة', memorizing: 'نوع الختمة: حفظ', daily: 'نوع الختمة: ورد يومي',
+  listening: 'نوع الختمة: استماع', needsReview: 'نوع الختمة: مراجعة',
+};
+const typeLabel = key => (getLang() === 'ar' ? TYPES[key].label : trNow(TYPE_KEY_TR[key]));
 
 // Older entries stored the translated label (in whatever UI language was active)
 function typeKeyOf(stored) {
@@ -62,18 +70,31 @@ function typeKeyOf(stored) {
 }
 
 // Arabic counting of days: يوم · يومان · ٣–١٠ أيام · ١١+ يوماً
+// (each Arabic form is its own translation key; other languages pluralise there)
 function daysAr(n) {
-  if (n === 1) return 'يوم واحد';
-  if (n === 2) return 'يومان';
-  if (n >= 3 && n <= 10) return `${toAr(n)} أيام`;
-  return `${toAr(n)} يوماً`;
+  if (n === 1) return trNow('يوم واحد');
+  if (n === 2) return trNow('يومان');
+  if (n >= 3 && n <= 10) return trNow('{n} أيام', { n: toAr(n) });
+  return trNow('{n} يوماً', { n: toAr(n) });
 }
-const fmtDate = (s, opts = { year: 'numeric', month: 'long', day: 'numeric' }) =>
-  parseLocalDate(s)?.toLocaleDateString('ar-EG', opts) || s || '';
+const fmtDate = (s, opts = { year: 'numeric', month: 'long', day: 'numeric' }) => {
+  const d = parseLocalDate(s);
+  return d ? num(d.toLocaleDateString(intlLocale(), opts)) : (s || '');
+};
+// Arabic reference line, plus a transliterated reference in LTR languages
+const ayahRefLine = (ar, s, a) => (isRtl() ? ar : `${ar} — ${surahName(s)} ${s}:${a}`);
+// Count of khatmat with the Arabic number agreement (other languages: one form per key)
+function khatmaCount(n) {
+  if (n === 1) return trNow('{one} ختمة', { one: toAr(n) });
+  if (n === 2) return trNow('{n} ختمتان', { n: toAr(n) });
+  if (n <= 10) return trNow('{n} ختمات', { n: toAr(n) });
+  return trNow('{n} ختمة', { n: toAr(n) });
+}
 
 const EMPTY_FORM = () => ({ start: localDateStr(), end: '', type: 'reading', notes: '' });
 
 export default function KhatmaPage() {
+  const tr = useTr();
   const { user, loading: authLoading } = useAuth();
   const { progressPct, completedSurahs } = useHifz(user?.id);
   const [khatmat, setKhatmat] = useState(loadKhatmat);
@@ -113,7 +134,7 @@ export default function KhatmaPage() {
         try { localStorage.setItem(mergedFlag(user.id), '1'); } catch {}
         if (alive) setKhatmat(server.map(fromApi));
       } catch (e) {
-        if (alive) { setError(errorMessage(e, 'تعذّر تحميل ختماتك من حسابك')); setKhatmat([]); }
+        if (alive) { setError(errorMessage(e, trNow('تعذّر تحميل ختماتك من حسابك'))); setKhatmat([]); }
       }
       if (alive) setListLoading(false);
     })();
@@ -144,7 +165,7 @@ export default function KhatmaPage() {
         const item = fromApi(saved);
         setKhatmat(prev => editingId != null ? prev.map(k => (k.id === editingId ? item : k)) : [item, ...prev]);
       } catch (e) {
-        if (aliveRef.current) { setFormErr(errorMessage(e, 'تعذّر حفظ الختمة، حاول مجدداً')); setSaving(false); }
+        if (aliveRef.current) { setFormErr(errorMessage(e, trNow('تعذّر حفظ الختمة، حاول مجدداً'))); setSaving(false); }
         return;
       }
       setSaving(false);
@@ -165,7 +186,7 @@ export default function KhatmaPage() {
         await apiDeleteKhatma(id);
         if (aliveRef.current) setKhatmat(prev => prev.filter(k => k.id !== id));
       } catch (e) {
-        if (aliveRef.current) setError(errorMessage(e, 'تعذّر حذف الختمة، حاول مجدداً'));
+        if (aliveRef.current) setError(errorMessage(e, trNow('تعذّر حذف الختمة، حاول مجدداً')));
       }
       if (aliveRef.current) { setSaving(false); setConfirmDel(null); }
       return;
@@ -187,14 +208,14 @@ export default function KhatmaPage() {
   return (
     <div className={styles.page}>
       <PageHero
-        eyebrow="سجلّ الختمات"
-        title="ختماتي"
+        eyebrow={tr('سجلّ الختمات')}
+        title={tr('ختماتي')}
         ayah="ٱلَّذِينَ ءَاتَيْنَٰهُمُ ٱلْكِتَٰبَ يَتْلُونَهُۥ حَقَّ تِلَاوَتِهِۦٓ"
-        ayahRef="سورة البقرة · ١٢١"
-        sub="سجلٌّ هادئ لكل ختمة أتممتها: قراءةً أو حفظاً أو استماعاً."
+        ayahRef={ayahRefLine('سورة البقرة · ١٢١', 2, 121)}
+        sub={tr('سجلٌّ هادئ لكل ختمة أتممتها: قراءةً أو حفظاً أو استماعاً.')}
       >
-        <button type="button" className="nq-btn gold" onClick={openNew}><Icon name="plus" />تسجيل ختمة</button>
-        <Link className="nq-btn ghost" to="/khatma-group"><Icon name="users" />ختمة الروح</Link>
+        <button type="button" className="nq-btn gold" onClick={openNew}><Icon name="plus" />{tr('تسجيل ختمة')}</button>
+        <Link className="nq-btn ghost" to="/khatma-group"><Icon name="users" />{tr('ختمة الروح')}</Link>
       </PageHero>
 
       <div className="nq-wrap">
@@ -202,7 +223,7 @@ export default function KhatmaPage() {
         {!user && !authLoading && (
           <p className={styles.note}>
             <Icon name="lock" />
-            <span>ختماتك محفوظة على هذا الجهاز فقط. <Link to="/login">سجّل الدخول</Link> لمزامنتها مع حسابك.</span>
+            <span>{tr('ختماتك محفوظة على هذا الجهاز فقط.')} <Link to="/login">{tr('سجّل الدخول')}</Link> {tr('لمزامنتها مع حسابك.')}</span>
           </p>
         )}
 
@@ -210,8 +231,8 @@ export default function KhatmaPage() {
           {/* ── the log ── */}
           <section className={styles.main} aria-labelledby="kh-log">
             <div className={styles.secHead}>
-              <h2 id="kh-log" className={styles.h2}>سجلّ الختمات</h2>
-              {khatmat.length > 0 && <span className={styles.secMeta}>{toAr(khatmat.length)} {khatmat.length === 1 ? 'ختمة' : khatmat.length === 2 ? 'ختمتان' : khatmat.length <= 10 ? 'ختمات' : 'ختمة'}</span>}
+              <h2 id="kh-log" className={styles.h2}>{tr('سجلّ الختمات')}</h2>
+              {khatmat.length > 0 && <span className={styles.secMeta}>{khatmaCount(khatmat.length)}</span>}
             </div>
 
             {listLoading ? (
@@ -222,16 +243,16 @@ export default function KhatmaPage() {
               <div className={`nq-card ${styles.empty}`}>
                 <Pattern />
                 <Badge8 icon="beads" size={64} />
-                <p className={styles.emptyT}>لم تسجّل أي ختمة بعد</p>
-                <p className={styles.muted}>إذا أتممت ختم القرآن الكريم، سجّل ختمتك هنا لتحفظ أثرها وتتابع رحلتك.</p>
-                <button type="button" className="nq-btn gold" onClick={openNew}><Icon name="plus" />تسجيل أول ختمة</button>
+                <p className={styles.emptyT}>{tr('لم تسجّل أي ختمة بعد')}</p>
+                <p className={styles.muted}>{tr('إذا أتممت ختم القرآن الكريم، سجّل ختمتك هنا لتحفظ أثرها وتتابع رحلتك.')}</p>
+                <button type="button" className="nq-btn gold" onClick={openNew}><Icon name="plus" />{tr('تسجيل أول ختمة')}</button>
               </div>
             ) : (
               <ol className={styles.list}>
                 {khatmat.map((k, i) => {
                   const days = Math.max(1, daysBetween(k.start, k.end));
                   const key = typeKeyOf(k.type);
-                  const tp = TYPES[key] || { label: k.type || TYPES.reading.label, icon: 'book' };
+                  const tp = TYPES[key] ? { ...TYPES[key], label: typeLabel(key) } : { label: k.type || typeLabel('reading'), icon: 'book' };
                   return (
                     <li key={k.id} className={styles.item} style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
                       <span className={styles.marker}><Badge8 size={48}>{toAr(khatmat.length - i)}</Badge8></span>
@@ -240,12 +261,12 @@ export default function KhatmaPage() {
                           <span className="nq-pill on"><Icon name={tp.icon} />{tp.label}</span>
                           <span className={styles.dur}><Icon name="timer" />{daysAr(days)}</span>
                         </div>
-                        <h3 className={styles.cardT}>أُتمّت في {fmtDate(k.end)}</h3>
-                        <p className={styles.range}>من {fmtDate(k.start)} إلى {fmtDate(k.end)}</p>
+                        <h3 className={styles.cardT}>{tr('أُتمّت في {d}', { d: fmtDate(k.end) })}</h3>
+                        <p className={styles.range}>{tr('من {a} إلى {b}', { a: fmtDate(k.start), b: fmtDate(k.end) })}</p>
                         {k.notes && <p className={styles.notes}>{k.notes}</p>}
                         <div className={styles.cardActs}>
-                          <button type="button" className="nq-ibtn" onClick={() => openEdit(k)} aria-label="تعديل الختمة" title="تعديل"><Icon name="pen" /></button>
-                          <button type="button" className={`nq-ibtn ${styles.del}`} onClick={() => setConfirmDel(k.id)} aria-label="حذف الختمة" title="حذف"><Icon name="x" /></button>
+                          <button type="button" className="nq-ibtn" onClick={() => openEdit(k)} aria-label={tr('تعديل الختمة')} title={tr('تعديل')}><Icon name="pen" /></button>
+                          <button type="button" className={`nq-ibtn ${styles.del}`} onClick={() => setConfirmDel(k.id)} aria-label={tr('حذف الختمة')} title={tr('حذف')}><Icon name="x" /></button>
                         </div>
                       </article>
                     </li>
@@ -259,18 +280,18 @@ export default function KhatmaPage() {
           <aside className={styles.aside}>
             {khatmat.length > 0 && (
               <div className={`nq-card ${styles.stats}`}>
-                <h2 className={styles.h3}>في أرقام</h2>
+                <h2 className={styles.h3}>{tr('في أرقام')}</h2>
                 <div className={styles.statGrid}>
-                  <div><b className="nq-num">{toAr(khatmat.length)}</b><small>ختمة مسجّلة</small></div>
-                  <div><b className="nq-num">{toAr(thisYearCount)}</b><small>هذه السنة</small></div>
-                  <div><b className="nq-num">{toAr(avgDays)}</b><small>متوسط المدة بالأيام</small></div>
-                  <div><b className="nq-num">{toAr(fastest)}</b><small>أسرع ختمة بالأيام</small></div>
+                  <div><b className="nq-num">{toAr(khatmat.length)}</b><small>{tr('ختمة مسجّلة')}</small></div>
+                  <div><b className="nq-num">{toAr(thisYearCount)}</b><small>{tr('هذه السنة')}</small></div>
+                  <div><b className="nq-num">{toAr(avgDays)}</b><small>{tr('متوسط المدة بالأيام')}</small></div>
+                  <div><b className="nq-num">{toAr(fastest)}</b><small>{tr('أسرع ختمة بالأيام')}</small></div>
                 </div>
                 {byType.length > 0 && (
                   <div className={styles.types}>
                     {byType.map(({ key, n }) => (
                       <div key={key} className={styles.typeRow}>
-                        <span><Icon name={TYPES[key].icon} />{TYPES[key].label}</span>
+                        <span><Icon name={TYPES[key].icon} />{typeLabel(key)}</span>
                         <span className={styles.typeBar} aria-hidden="true"><i style={{ width: `${(n / khatmat.length) * 100}%` }} /></span>
                         <b className="nq-num">{toAr(n)}</b>
                       </div>
@@ -282,22 +303,22 @@ export default function KhatmaPage() {
 
             <div className={`nq-card ${styles.next}`}>
               <Pattern />
-              <span className="nq-eyebrow">ختمتك القادمة حفظاً</span>
+              <span className="nq-eyebrow">{tr('ختمتك القادمة حفظاً')}</span>
               <div className={styles.ringWrap}>
-                <svg viewBox="0 0 120 120" className={styles.ring} role="img" aria-label={`حفظت ${toAr(progressPct)}٪ من القرآن`}>
+                <svg viewBox="0 0 120 120" className={styles.ring} role="img" aria-label={tr('حفظت {p} من القرآن', { p: tr('{n}٪', { n: toAr(progressPct) }) })}>
                   <circle cx="60" cy="60" r={r} className={styles.ringBg} />
                   <circle cx="60" cy="60" r={r} className={styles.ringFg}
                     strokeDasharray={circ} strokeDashoffset={circ - (Math.min(100, progressPct) / 100) * circ} />
                 </svg>
-                <b className="nq-num">{toAr(String(progressPct).replace('.', '٫'))}٪</b>
+                <b className="nq-num">{tr('{n}٪', { n: toAr(isRtl() ? String(progressPct).replace('.', '٫') : String(progressPct)) })}</b>
               </div>
-              <p className={styles.nextT}>{toAr(completedSurahs)} سورة من ١١٤</p>
+              <p className={styles.nextT}>{tr('{a} سورة من {b}', { a: toAr(completedSurahs), b: toAr(114) })}</p>
               <p className={styles.muted}>
                 {completedSurahs >= 114
-                  ? 'أتممت حفظ القرآن الكريم، فسجّل ختمتك.'
-                  : `بقي ${toAr(114 - completedSurahs)} سورة لإتمام الحفظ.`}
+                  ? tr('أتممت حفظ القرآن الكريم، فسجّل ختمتك.')
+                  : tr('بقي {n} سورة لإتمام الحفظ.', { n: toAr(114 - completedSurahs) })}
               </p>
-              <Link className="nq-btn ghost sm" to="/hifz"><Icon name="star" />خريطة الحفظ</Link>
+              <Link className="nq-btn ghost sm" to="/hifz"><Icon name="star" />{tr('خريطة الحفظ')}</Link>
             </div>
           </aside>
         </div>
@@ -305,57 +326,57 @@ export default function KhatmaPage() {
 
       {showForm && (
         <Dialog labelId="kh-form-t" onClose={closeForm}>
-          <h2 id="kh-form-t" className={styles.h3}>{editingId != null ? 'تعديل الختمة' : 'تسجيل ختمة جديدة'}</h2>
+          <h2 id="kh-form-t" className={styles.h3}>{editingId != null ? tr('تعديل الختمة') : tr('تسجيل ختمة جديدة')}</h2>
           <div className={styles.fieldRow}>
             <label className={styles.field}>
-              <span>تاريخ البداية</span>
+              <span>{tr('تاريخ البداية')}</span>
               <input className={styles.ctl} type="date" value={form.start}
                 onChange={e => setForm(v => ({ ...v, start: e.target.value }))} />
             </label>
             <label className={styles.field}>
-              <span>تاريخ الإتمام</span>
+              <span>{tr('تاريخ الإتمام')}</span>
               <input className={styles.ctl} type="date" value={form.end} min={form.start}
                 onChange={e => setForm(v => ({ ...v, end: e.target.value }))} />
             </label>
           </div>
           <div className={styles.field}>
-            <span id="kh-type">نوع الختمة</span>
+            <span id="kh-type">{tr('نوع الختمة')}</span>
             <div className={styles.typeGrid} role="group" aria-labelledby="kh-type">
               {TYPE_KEYS.map(typ => (
                 <button key={typ} type="button" className={styles.typeBtn} aria-pressed={form.type === typ}
                   onClick={() => setForm(v => ({ ...v, type: typ }))}>
-                  <Icon name={TYPES[typ].icon} />{TYPES[typ].label}
+                  <Icon name={TYPES[typ].icon} />{typeLabel(typ)}
                 </button>
               ))}
             </div>
           </div>
           <label className={styles.field}>
-            <span>ملاحظة (اختياري)</span>
-            <textarea className={`${styles.ctl} ${styles.ta}`} rows={3} placeholder="مثلاً: ختمة رمضان، جزء كل يوم بعد الفجر"
-              value={form.notes} onChange={e => setForm(v => ({ ...v, notes: e.target.value }))} dir="rtl" />
+            <span>{tr('ملاحظة (اختياري)')}</span>
+            <textarea className={`${styles.ctl} ${styles.ta}`} rows={3} placeholder={tr('مثلاً: ختمة رمضان، جزء كل يوم بعد الفجر')}
+              value={form.notes} onChange={e => setForm(v => ({ ...v, notes: e.target.value }))} dir="auto" />
           </label>
           {form.start && form.end && (
-            <p className={styles.duration}><Icon name="timer" />المدة: {daysAr(Math.max(1, daysBetween(form.start, form.end)))}</p>
+            <p className={styles.duration}><Icon name="timer" />{tr('المدة:')} {daysAr(Math.max(1, daysBetween(form.start, form.end)))}</p>
           )}
           {formErr && <p role="alert" className={styles.err}>{formErr}</p>}
           <div className={styles.dlgActs}>
             <button type="button" className="nq-btn gold" onClick={addKhatma} disabled={!form.end || saving}>
-              <Icon name="check" />{saving ? 'جارٍ الحفظ…' : editingId != null ? 'حفظ التعديل' : 'تسجيل الختمة'}
+              <Icon name="check" />{saving ? tr('جارٍ الحفظ…') : editingId != null ? tr('حفظ التعديل') : tr('تسجيل الختمة')}
             </button>
-            <button type="button" className="nq-btn ghost" onClick={closeForm}>إلغاء</button>
+            <button type="button" className="nq-btn ghost" onClick={closeForm}>{tr('إلغاء')}</button>
           </div>
         </Dialog>
       )}
 
       {confirmDel && (
         <Dialog labelId="kh-del-t" onClose={() => { if (!saving) setConfirmDel(null); }} small>
-          <h2 id="kh-del-t" className={styles.h3}>حذف الختمة؟</h2>
-          <p className={styles.muted}>لا يمكن التراجع عن هذا الإجراء.</p>
+          <h2 id="kh-del-t" className={styles.h3}>{tr('حذف الختمة؟')}</h2>
+          <p className={styles.muted}>{tr('لا يمكن التراجع عن هذا الإجراء.')}</p>
           <div className={styles.dlgActs}>
             <button type="button" className={`nq-btn ${styles.dangerSolid}`} onClick={() => deleteKhatma(confirmDel)} disabled={saving}>
-              {saving ? 'جارٍ الحذف…' : 'نعم، احذف'}
+              {saving ? tr('جارٍ الحذف…') : tr('نعم، احذف')}
             </button>
-            <button type="button" className="nq-btn ghost" onClick={() => setConfirmDel(null)} disabled={saving}>إلغاء</button>
+            <button type="button" className="nq-btn ghost" onClick={() => setConfirmDel(null)} disabled={saving}>{tr('إلغاء')}</button>
           </div>
         </Dialog>
       )}

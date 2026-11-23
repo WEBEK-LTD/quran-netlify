@@ -16,6 +16,7 @@ final class RateLimit
         'reading' => [2, 1],
         'writes'  => [120, 60],
         'presence' => [10, 60],
+        'avatar'  => [10, 3600],
     ];
 
     /**

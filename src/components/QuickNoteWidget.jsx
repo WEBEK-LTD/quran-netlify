@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { saveNote, loadNotes } from '../backend';
-import { SURAHS_META } from '../data';
+import { useTr, trNow, num, surahName } from '../l10n';
 import styles from './QuickNoteWidget.module.css';
 
 const LOCAL_KEY = 'nq_notes';
@@ -10,6 +10,7 @@ function setLocal(n) { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(n));
 
 export default function QuickNoteWidget() {
   const { user } = useAuth();
+  const tr = useTr();
   const [note,    setNote]    = useState(null);
   const [text,    setText]    = useState('');
   const [saving,  setSaving]  = useState(false);
@@ -52,7 +53,7 @@ export default function QuickNoteWidget() {
       const ok = await saveNote(user.id, surah, ayah, text.trim()).catch(() => false);
       if (ok === false) {
         setSaving(false);
-        setSaveErr('⚠️ تعذّر الحفظ على حسابك — حُفظت الملاحظة على هذا الجهاز فقط');
+        setSaveErr('⚠️ ' + trNow('تعذّر الحفظ على حسابك — حُفظت الملاحظة على هذا الجهاز فقط'));
         return;
       }
     }
@@ -66,31 +67,30 @@ export default function QuickNoteWidget() {
   }
 
   if (!note) return null;
-  const surahName = SURAHS_META[note.surah - 1]?.[0] || '';
 
   return (
     <div className={styles.backdrop} onClick={e => e.target === e.currentTarget && setNote(null)}>
       <div className={styles.modal}>
         <div className={styles.header}>
           <div className={styles.ref}>
-            <span className={styles.badge}>{note.surah}</span>
-            <span>سورة {surahName} — الآية {note.ayah}</span>
+            <span className={styles.badge}>{num(note.surah)}</span>
+            <span>{tr('سورة {name} — الآية {n}', { name: surahName(note.surah), n: num(note.ayah) })}</span>
           </div>
-          <button className={styles.closeBtn} onClick={() => setNote(null)}>✕</button>
+          <button className={styles.closeBtn} onClick={() => setNote(null)} aria-label={tr('إغلاق')}>✕</button>
         </div>
         <textarea ref={textareaRef} className={styles.textarea} value={text}
           onChange={e => setText(e.target.value)} onKeyDown={handleKey}
-          placeholder="اكتب ملاحظتك... تأمل، فكرة، سؤال، فائدة..." rows={5} dir="rtl" />
+          placeholder={tr('اكتب ملاحظتك... تأمل، فكرة، سؤال، فائدة...')} rows={5} dir="auto" />
         {saveErr && (
           <p role="alert" style={{ color: '#f87171', fontSize: 12, margin: '6px 0 0' }}>{saveErr}</p>
         )}
         <div className={styles.footer}>
-          <span className={styles.hint}>Ctrl+Enter للحفظ • Esc للإغلاق</span>
+          <span className={styles.hint}>{tr('Ctrl+Enter للحفظ • Esc للإغلاق')}</span>
           <div className={styles.actions}>
-            <button className={styles.cancelBtn} onClick={() => setNote(null)}>إلغاء</button>
+            <button className={styles.cancelBtn} onClick={() => setNote(null)}>{tr('إلغاء')}</button>
             <button className={`${styles.saveBtn} ${saved ? styles.savedBtn : ''}`}
               onClick={handleSave} disabled={saving || !text.trim()}>
-              {saved ? '✅ تم الحفظ' : saving ? '...' : '💾 حفظ'}
+              {saved ? `✅ ${tr('تم الحفظ')}` : saving ? '...' : `💾 ${tr('حفظ')}`}
             </button>
           </div>
         </div>

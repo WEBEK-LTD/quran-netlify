@@ -5,9 +5,13 @@ import { useState, useEffect, useRef } from 'react';
 import { SURAHS_META } from '../data';
 import { normalizeArabic } from '../arabic';
 import { PageHero, Icon, Badge8, Corners, Divider, AyahMark, toAr } from '../components/ornaments/Ornaments';
+import { useTr, surahName, revelationLabel } from '../l10n';
+import { trCount } from '../locales/library';
 import styles from './IjazaPage.module.css';
 
 // ─── القراءات العشر المتواترة + رواياتها ──────────────────────────────────────
+// Every Arabic field below (except reciter names, which stay as they are) is
+// a source string translated at render time via src/locales/library.js.
 const QIRAAT = [
   {
     id: 'hafs',
@@ -105,10 +109,19 @@ const isHafsQ = q => q.id === 'hafs';
 const textIsHafs = (q, fellBack) => !isHafsQ(q) && (q.edition === HAFS_EDITION || fellBack);
 
 // All audio on everyayah here is Hafs — never present it as this riwaya
-function audioLabel(q) {
+function audioLabel(q, tr) {
   if (isHafsQ(q)) return q.reciter;
   const voice = q.audioAvailable === false ? 'مشاري راشد العفاسي' : q.reciter;
-  return `${HAFS_AUDIO_LABEL} — ${voice}`;
+  return `${tr(HAFS_AUDIO_LABEL)} — ${voice}`;
+}
+
+
+// Fill {placeholders} in a translated sentence with React nodes.
+function withParts(str, parts) {
+  return str.split(/(\{\w+\})/).map((p, i) => {
+    const k = p.match(/^\{(\w+)\}$/)?.[1];
+    return k && parts[k] !== undefined ? <span key={i} style={{ display: 'contents' }}>{parts[k]}</span> : p;
+  });
 }
 
 // ─── API fetch for a specific qiraa edition ───────────────────────────────────
@@ -172,13 +185,15 @@ function tabFromHash() {
 
 // ─── Surah Selector ───────────────────────────────────────────────────────────
 function SurahSelector({ selected, onChange }) {
+  const tr = useTr();
+  const trc = (key, n, vars) => trCount(tr, key, n, vars);
   const [open,   setOpen]   = useState(false);
   const [search, setSearch] = useState('');
   const boxRef = useRef(null);
   const nq = normalizeArabic(search.trim());
   const filtered = SURAHS_META
     .map((m, i) => ({ num: i + 1, name: m[0], en: m[1], ayahs: m[2] }))
-    .filter(s => !nq || normalizeArabic(s.name).includes(nq) || s.en.toLowerCase().includes(search.toLowerCase()) || String(s.num).includes(search.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))));
+    .filter(s => !nq || normalizeArabic(s.name).includes(nq) || s.en.toLowerCase().includes(search.toLowerCase()) || String(s.num).includes(search.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))));
 
   useEffect(() => {
     if (!open) return;
@@ -193,26 +208,26 @@ function SurahSelector({ selected, onChange }) {
     <div className={styles.surahSel} ref={boxRef}>
       <button type="button" className={styles.surahSelBtn} onClick={() => setOpen(o => !o)} aria-expanded={open} aria-haspopup="listbox">
         <Badge8 size={34}>{toAr(selected)}</Badge8>
-        <span className={styles.surahSelName}>سورة {SURAHS_META[selected - 1][0]}</span>
+        <span className={styles.surahSelName}>{tr('سورة {name}', { name: surahName(selected, tr.lang) })}</span>
         <Icon name="chev" className={open ? styles.flip : ''} />
       </button>
       {open && (
         <div className={styles.surahDropdown}>
           <label className={`nq-input ${styles.surahSearch}`}>
             <Icon name="search" />
-            <input placeholder="اسم السورة أو رقمها" value={search} onChange={e => setSearch(e.target.value)} autoFocus aria-label="ابحث عن سورة" />
+            <input placeholder={tr('اسم السورة أو رقمها')} value={search} onChange={e => setSearch(e.target.value)} autoFocus aria-label={tr('ابحث عن سورة')} />
           </label>
-          <div className={styles.surahList} role="listbox" aria-label="السور">
+          <div className={styles.surahList} role="listbox" aria-label={tr('السور')}>
             {filtered.map(s => (
               <button key={s.num} type="button" role="option" aria-selected={s.num === selected}
                 className={`${styles.surahItem} ${s.num === selected ? styles.surahItemActive : ''}`}
                 onClick={() => { onChange(s.num); setOpen(false); setSearch(''); }}>
                 <span className={styles.surahItemNum}>{toAr(s.num)}</span>
-                <span>{s.name}</span>
-                <span className={styles.surahItemAyahs}>{toAr(s.ayahs)} آية</span>
+                <span>{surahName(s.num, tr.lang)}</span>
+                <span className={styles.surahItemAyahs}>{trc('{n} آية', s.ayahs, { n: toAr(s.ayahs) })}</span>
               </button>
             ))}
-            {filtered.length === 0 && <p className={styles.muted} style={{ padding: 12 }}>لا توجد سورة بهذا الاسم.</p>}
+            {filtered.length === 0 && <p className={styles.muted} style={{ padding: 12 }}>{tr('لا توجد سورة بهذا الاسم.')}</p>}
           </div>
         </div>
       )}
@@ -231,6 +246,7 @@ function Notice({ icon = 'bell', tone = 'warn', role = 'note', children }) {
 
 // One run of ayahs, each clickable to play (when onPlay is given)
 function AyahRun({ list, playingAyah, onPlay }) {
+  const tr = useTr();
   return list.map(a => (
     <span key={a.number}
       className={`${styles.ayahSpan} ${playingAyah === a.number ? styles.ayahPlaying : ''} ${onPlay ? styles.ayahClick : ''}`}
@@ -238,7 +254,7 @@ function AyahRun({ list, playingAyah, onPlay }) {
         role: 'button', tabIndex: 0,
         onClick: () => onPlay(a.number),
         onKeyDown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlay(a.number); } },
-        'aria-label': `استمع للآية ${toAr(a.number)}`,
+        'aria-label': tr('استمع للآية {n}', { n: toAr(a.number) }),
       } : {})}>
       {a.text} <AyahMark n={a.number} />{' '}
     </span>
@@ -247,6 +263,9 @@ function AyahRun({ list, playingAyah, onPlay }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function IjazaPage() {
+  const tr = useTr();
+  const trc = (key, n, vars) => trCount(tr, key, n, vars);
+  const ltr = tr.dir === 'ltr';
   const [tab,        setTabState] = useState(tabFromHash);   // mushaf | qiraat | chain | ijaza
   const [qiraaId,    setQiraaId]  = useState('hafs');
   const [surah,      setSurah]    = useState(1);
@@ -318,7 +337,7 @@ export default function IjazaPage() {
     if (fallbackTriedRef.current) {
       el.pause();
       setIsPlaying(false);
-      setAudioMsg('تعذّر تشغيل الصوت لهذه الآية — تحقق من الاتصال وحاول لاحقاً');
+      setAudioMsg('تعذّر تشغيل الصوت لهذه الآية — تحقق من الاتصال وحاول لاحقاً'); // translated at render
       return;
     }
     fallbackTriedRef.current = true;
@@ -397,7 +416,7 @@ export default function IjazaPage() {
         setFellBack(fb);
         setLoading(false);
       })
-      .catch(() => { if (alive) { setLoading(false); setLoadErr('تعذّر تحميل السورة — تحقق من الاتصال'); } });
+      .catch(() => { if (alive) { setLoading(false); setLoadErr('تعذّر تحميل السورة — تحقق من الاتصال'); } }); // message translated at render
     return () => { alive = false; };
   }, [surah, qiraaId]);
 
@@ -425,7 +444,7 @@ export default function IjazaPage() {
   const compareTextHafs = textIsHafs(compareQ, cmpFellBack);
 
   const hasBasmala = surah !== 1 && surah !== 9;
-  const nowLabel = audioError && !isHafsQ(activeQ) ? `${HAFS_AUDIO_LABEL} — مشاري راشد العفاسي` : audioLabel(activeQ);
+  const nowLabel = audioError && !isHafsQ(activeQ) ? `${tr(HAFS_AUDIO_LABEL)} — مشاري راشد العفاسي` : audioLabel(activeQ, tr);
   const meta = SURAHS_META[surah - 1];
 
   function readWith(id) { setQiraaId(id); setTab('mushaf'); }
@@ -433,22 +452,22 @@ export default function IjazaPage() {
   return (
     <div className={styles.page}>
       <PageHero
-        eyebrow="علوم القرآن"
-        title="الإجازة والقراءات"
-        sub="القراءات العشر، وسند الإجازة المتصل برسول الله ﷺ، ومصحف تقرأ فيه بالروايات."
+        eyebrow={tr('علوم القرآن')}
+        title={tr('الإجازة والقراءات')}
+        sub={tr('القراءات العشر، وسند الإجازة المتصل برسول الله ﷺ، ومصحف تقرأ فيه بالروايات.')}
       />
 
       {/* audio lives outside the tabs so its listeners survive switching sections */}
       <audio ref={audioRef} preload="none" onError={handleAudioError} />
 
       {/* ── section navigation ── */}
-      <nav className={styles.secNav} ref={navRef} aria-label="أقسام الصفحة">
+      <nav className={styles.secNav} ref={navRef} aria-label={tr('أقسام الصفحة')}>
         <div className={`nq-wrap ${styles.secNavIn}`}>
           {SECTIONS.map(s => (
             <a key={s.id} href={`#${s.id}`} className={`${styles.secLink} ${tab === s.id ? styles.secOn : ''}`}
               aria-current={tab === s.id ? 'page' : undefined}
               onClick={e => { e.preventDefault(); setTab(s.id); }}>
-              <Icon name={s.icon} />{s.label}
+              <Icon name={s.icon} />{tr(s.label)}
             </a>
           ))}
         </div>
@@ -459,18 +478,18 @@ export default function IjazaPage() {
         {tab === 'mushaf' && (
           <section className={styles.panel} aria-labelledby="sec-mushaf">
             <header className={styles.panelHead}>
-              <span className="nq-eyebrow">اقرأ واستمع وقارن</span>
-              <h2 id="sec-mushaf" className="nq-h-sec">مصحف الروايات</h2>
+              <span className="nq-eyebrow">{tr('اقرأ واستمع وقارن')}</span>
+              <h2 id="sec-mushaf" className="nq-h-sec">{tr('مصحف الروايات')}</h2>
             </header>
 
             <div className={`nq-card ${styles.controls}`}>
               <div className={styles.ctrlBlock}>
-                <span className={styles.ctrlLabel}>الرواية</span>
-                <div className={styles.chips} role="group" aria-label="اختر الرواية">
+                <span className={styles.ctrlLabel}>{tr('الرواية')}</span>
+                <div className={styles.chips} role="group" aria-label={tr('اختر الرواية')}>
                   {QIRAAT.map(q => (
                     <button key={q.id} type="button" className={styles.chip} aria-pressed={qiraaId === q.id}
-                      onClick={() => setQiraaId(q.id)} title={q.full}>
-                      {q.rawi}
+                      onClick={() => setQiraaId(q.id)} title={tr(q.full)}>
+                      {tr(q.rawi)}
                     </button>
                   ))}
                 </div>
@@ -478,24 +497,24 @@ export default function IjazaPage() {
 
               <div className={styles.ctrlRow}>
                 <SurahSelector selected={surah} onChange={setSurah} />
-                <div className={styles.fontCtrl} role="group" aria-label="حجم الخط">
-                  <button type="button" onClick={() => setFontSize(f => Math.max(18, f - 2))} aria-label="تصغير الخط">أ−</button>
+                <div className={styles.fontCtrl} role="group" aria-label={tr('حجم الخط')}>
+                  <button type="button" onClick={() => setFontSize(f => Math.max(18, f - 2))} aria-label={tr('تصغير الخط')}>{tr('أ−')}</button>
                   <span className="nq-num" aria-live="polite">{toAr(fontSize)}</span>
-                  <button type="button" onClick={() => setFontSize(f => Math.min(48, f + 2))} aria-label="تكبير الخط">أ+</button>
+                  <button type="button" onClick={() => setFontSize(f => Math.min(48, f + 2))} aria-label={tr('تكبير الخط')}>{tr('أ+')}</button>
                 </div>
                 <button type="button" className={`nq-btn ghost sm ${styles.cmpBtn}`} aria-pressed={compare} onClick={() => setCompare(c => !c)}>
-                  <Icon name="list" />مقارنة روايتين
+                  <Icon name="list" />{tr('مقارنة روايتين')}
                 </button>
               </div>
 
               {compare && (
                 <div className={styles.ctrlBlock}>
-                  <span className={styles.ctrlLabel}>قارن مع</span>
-                  <div className={styles.chips} role="group" aria-label="الرواية التي تقارن بها">
+                  <span className={styles.ctrlLabel}>{tr('قارن مع')}</span>
+                  <div className={styles.chips} role="group" aria-label={tr('الرواية التي تقارن بها')}>
                     {QIRAAT.filter(q => q.id !== qiraaId).map(q => (
                       <button key={q.id} type="button" className={styles.chip} aria-pressed={compareId === q.id}
-                        onClick={() => setCmpId(q.id)} title={q.full}>
-                        {q.rawi}
+                        onClick={() => setCmpId(q.id)} title={tr(q.full)}>
+                        {tr(q.rawi)}
                       </button>
                     ))}
                   </div>
@@ -507,49 +526,49 @@ export default function IjazaPage() {
             <div className={`nq-card ${styles.qInfo}`}>
               <Badge8 icon="scroll" />
               <div className={styles.qInfoMain}>
-                <h3>{activeQ.full}</h3>
-                <p>{activeQ.desc}</p>
+                <h3>{tr(activeQ.full)}</h3>
+                <p>{tr(activeQ.desc)}</p>
               </div>
               <div className={styles.qInfoMeta}>
-                <span><Icon name="pin" />{activeQ.region}</span>
-                <span><Icon name="head" />{audioLabel(activeQ)}</span>
+                <span><Icon name="pin" />{tr(activeQ.region)}</span>
+                <span><Icon name="head" />{audioLabel(activeQ, tr)}</span>
               </div>
             </div>
 
             {/* ─── Text / audio honesty notices ─── */}
             {(activeTextHafs || !isHafsQ(activeQ) || loadErr) && (
               <div className={styles.notices}>
-                {activeTextHafs && <Notice icon="book" tone="warn">{HAFS_TEXT_NOTICE}</Notice>}
+                {activeTextHafs && <Notice icon="book" tone="warn">{tr(HAFS_TEXT_NOTICE)}</Notice>}
                 {!isHafsQ(activeQ) && (
                   <Notice icon="head" tone="info">
-                    {activeQ.audioNote || <>تسجيل رواية <strong>{activeQ.rawi}</strong> غير متاح حالياً</>}
-                    {!(activeQ.audioNote || '').includes('بديلة') && <> — الصوت المتاح: {HAFS_AUDIO_LABEL}</>}
+                    {activeQ.audioNote ? tr(activeQ.audioNote) : withParts(tr('تسجيل رواية {rawi} غير متاح حالياً'), { rawi: <strong>{tr(activeQ.rawi)}</strong> })}
+                    {!(activeQ.audioNote || '').includes('بديلة') && tr(' — الصوت المتاح: {label}', { label: tr(HAFS_AUDIO_LABEL) })}
                   </Notice>
                 )}
-                {loadErr && <Notice icon="x" tone="danger" role="alert">{loadErr}</Notice>}
+                {loadErr && <Notice icon="x" tone="danger" role="alert">{tr(loadErr)}</Notice>}
               </div>
             )}
 
             {/* ─── Audio Player Bar ─── */}
             <div className={`nq-card ${styles.audioBar}`}>
               <div className={styles.audioCtrls}>
-                <button type="button" className="nq-ibtn" onClick={playPrev} disabled={!playingAyah || playingAyah <= 1} aria-label="الآية السابقة"><Icon name="next" /></button>
-                <button type="button" className={styles.playBtn} onClick={togglePlay} aria-label={isPlaying ? 'إيقاف مؤقت' : 'تشغيل'}>
+                <button type="button" className="nq-ibtn" onClick={playPrev} disabled={!playingAyah || playingAyah <= 1} aria-label={tr('الآية السابقة')}><Icon name={ltr ? 'prev' : 'next'} /></button>
+                <button type="button" className={styles.playBtn} onClick={togglePlay} aria-label={isPlaying ? tr('إيقاف مؤقت') : tr('تشغيل')}>
                   <Icon name={isPlaying ? 'pause' : 'play'} fill />
                 </button>
-                <button type="button" className="nq-ibtn" onClick={playNext} disabled={!ayahs.length} aria-label="الآية التالية"><Icon name="prev" /></button>
+                <button type="button" className="nq-ibtn" onClick={playNext} disabled={!ayahs.length} aria-label={tr('الآية التالية')}><Icon name={ltr ? 'next' : 'prev'} /></button>
                 <button type="button" className={`nq-ibtn ${styles.repeat}`} aria-pressed={autoNext} onClick={() => setAutoNext(v => !v)}
-                  aria-label="تشغيل مستمر" title="تشغيل مستمر">
+                  aria-label={tr('تشغيل مستمر')} title={tr('تشغيل مستمر')}>
                   <Icon name="repeat" />
                 </button>
               </div>
               <div className={styles.audioInfo} aria-live="polite">
                 {playingAyah ? (
-                  <><b>الآية {toAr(playingAyah)}</b><span>{nowLabel}</span></>
+                  <><b>{tr('الآية {n}', { n: toAr(playingAyah) })}</b><span>{nowLabel}</span></>
                 ) : (
-                  <><b>اضغط على أي آية للاستماع</b><span>{audioLabel(activeQ)}</span></>
+                  <><b>{tr('اضغط على أي آية للاستماع')}</b><span>{audioLabel(activeQ, tr)}</span></>
                 )}
-                {audioMsg && <span className={styles.audioErr} role="alert">{audioMsg}</span>}
+                {audioMsg && <span className={styles.audioErr} role="alert">{tr(audioMsg)}</span>}
               </div>
             </div>
 
@@ -557,28 +576,28 @@ export default function IjazaPage() {
             {compare ? (
               <div className={styles.compareGrid}>
                 {[[activeQ, activeTextHafs, ayahs, loading, true], [compareQ, compareTextHafs, cmpAyahs, cmpAyahs.length === 0, false]].map(([q, isHafsText, list, busy, playable]) => (
-                  <article key={q.id} className={`nq-card ${styles.mushaf}`} aria-label={q.full}>
+                  <article key={q.id} className={`nq-card ${styles.mushaf}`} aria-label={tr(q.full)}>
                     <header className={styles.colHead}>
-                      <b>{q.full}</b>
-                      {isHafsText && <span className={styles.colNote}><Icon name="book" />{HAFS_TEXT_NOTICE}</span>}
+                      <b>{tr(q.full)}</b>
+                      {isHafsText && <span className={styles.colNote}><Icon name="book" />{tr(HAFS_TEXT_NOTICE)}</span>}
                     </header>
-                    {hasBasmala && <div className={styles.basmala}>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>}
-                    <div className={styles.mushafText} style={{ fontSize }} lang="ar">
+                    {hasBasmala && <div className={styles.basmala} lang="ar" dir="rtl">بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>}
+                    <div className={styles.mushafText} style={{ fontSize }} lang="ar" dir="rtl">
                       {busy ? <Waiting /> : <AyahRun list={list} playingAyah={playable ? playingAyah : null} onPlay={playable ? playAyah : null} />}
                     </div>
                   </article>
                 ))}
               </div>
             ) : (
-              <article className={`nq-card ${styles.mushaf} ${styles.mushafSingle}`} aria-label={`سورة ${meta[0]} — ${activeQ.full}`}>
+              <article className={`nq-card ${styles.mushaf} ${styles.mushafSingle}`} aria-label={`${tr('سورة {name}', { name: surahName(surah, tr.lang) })} — ${tr(activeQ.full)}`}>
                 <Corners />
                 <header className={styles.surahBand}>
-                  <span>{meta[3]}</span>
-                  <b>سورة {meta[0]}</b>
-                  <span>{toAr(meta[2])} آية</span>
+                  <span>{revelationLabel(meta[3], tr.lang)}</span>
+                  <b>{tr('سورة {name}', { name: surahName(surah, tr.lang) })}</b>
+                  <span>{trc('{n} آية', meta[2], { n: toAr(meta[2]) })}</span>
                 </header>
-                {hasBasmala && <div className={styles.basmala}>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>}
-                <div className={styles.mushafText} style={{ fontSize }} lang="ar">
+                {hasBasmala && <div className={styles.basmala} lang="ar" dir="rtl">بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>}
+                <div className={styles.mushafText} style={{ fontSize }} lang="ar" dir="rtl">
                   {loading ? <Waiting /> : <AyahRun list={ayahs} playingAyah={playingAyah} onPlay={playAyah} />}
                 </div>
               </article>
@@ -590,9 +609,9 @@ export default function IjazaPage() {
         {tab === 'qiraat' && (
           <section className={styles.panel} aria-labelledby="sec-qiraat">
             <header className={styles.panelHead}>
-              <span className="nq-eyebrow">عشرة أئمة، لكل إمام راويان</span>
-              <h2 id="sec-qiraat" className="nq-h-sec">القراءات العشر المتواترة</h2>
-              <p className="nq-lead">كلها وصلت إلينا بسند صحيح متصل بالنبي ﷺ. السبع الأولى جمعها الإمام الشاطبي في «حرز الأماني»، وأتمّ ابن الجزري العشر في «الدرّة المضيّة».</p>
+              <span className="nq-eyebrow">{tr('عشرة أئمة، لكل إمام راويان')}</span>
+              <h2 id="sec-qiraat" className="nq-h-sec">{tr('القراءات العشر المتواترة')}</h2>
+              <p className="nq-lead">{tr('كلها وصلت إلينا بسند صحيح متصل بالنبي ﷺ. السبع الأولى جمعها الإمام الشاطبي في «حرز الأماني»، وأتمّ ابن الجزري العشر في «الدرّة المضيّة».')}</p>
             </header>
 
             <ol className={styles.imams}>
@@ -603,20 +622,20 @@ export default function IjazaPage() {
                     <div className={styles.imamTop}>
                       <Badge8 size={52}>{toAr(im.n)}</Badge8>
                       <div>
-                        <h3>{im.imam}</h3>
-                        <span className={styles.imamMeta}><Icon name="pin" />{im.city} · تُوفّي سنة {toAr(im.died)}هـ</span>
+                        <h3>{tr(im.imam)}</h3>
+                        <span className={styles.imamMeta}><Icon name="pin" />{tr(im.city)} · {tr('تُوفّي سنة {n}هـ', { n: toAr(im.died) })}</span>
                       </div>
-                      <span className={`nq-pill ${im.n <= 7 ? 'on' : ''} ${styles.tag}`}>{im.n <= 7 ? 'من السبع' : 'المتمّمة للعشر'}</span>
+                      <span className={`nq-pill ${im.n <= 7 ? 'on' : ''} ${styles.tag}`}>{im.n <= 7 ? tr('من السبع') : tr('المتمّمة للعشر')}</span>
                     </div>
                     <div className={styles.rawis}>
-                      <span className={styles.rawiLabel}>راوياه</span>
-                      {im.rawis.map(r => <span key={r} className={styles.rawi}>{r}</span>)}
+                      <span className={styles.rawiLabel}>{tr('راوياه')}</span>
+                      {im.rawis.map(r => <span key={r} className={styles.rawi}>{tr(r)}</span>)}
                     </div>
                     {avail.length > 0 && (
                       <div className={styles.imamActs}>
                         {avail.map(q => (
                           <button key={q.id} type="button" className="nq-btn ghost sm" onClick={() => readWith(q.id)}>
-                            <Icon name="book" />{q.full.startsWith('رواية') ? `اقرأ برواية ${q.rawi}` : `اقرأ ${q.full}`}
+                            <Icon name="book" />{q.full.startsWith('رواية') ? tr('اقرأ برواية {rawi}', { rawi: tr(q.rawi) }) : tr('اقرأ {name}', { name: tr(q.full) })}
                           </button>
                         ))}
                       </div>
@@ -628,22 +647,22 @@ export default function IjazaPage() {
 
             <div className={styles.subHead}>
               <Divider />
-              <h2 className={styles.h2}>الروايات في مصحف الروايات</h2>
-              <p className={styles.muted}>ما يتوفّر لكل رواية من نص وتلاوة، بلا مبالغة.</p>
+              <h2 className={styles.h2}>{tr('الروايات في مصحف الروايات')}</h2>
+              <p className={styles.muted}>{tr('ما يتوفّر لكل رواية من نص وتلاوة، بلا مبالغة.')}</p>
             </div>
             <div className={styles.riwayat}>
               {QIRAAT.map(q => (
                 <div key={q.id} className={`nq-card ${styles.riwaya}`}>
                   <div className={styles.riwayaHead}>
-                    <h3>{q.full}</h3>
-                    <span className={styles.imamMeta}><Icon name="pin" />{q.region}</span>
+                    <h3>{tr(q.full)}</h3>
+                    <span className={styles.imamMeta}><Icon name="pin" />{tr(q.region)}</span>
                   </div>
-                  <p className={styles.riwayaDesc}>{q.desc}</p>
-                  <span className={styles.riwayaLine}><Icon name="head" />{audioLabel(q)}</span>
-                  {q.audioNote && <span className={`${styles.riwayaLine} ${styles.warnLine}`}><Icon name="bell" />{q.audioNote}</span>}
-                  {textIsHafs(q, false) && <span className={`${styles.riwayaLine} ${styles.warnLine}`}><Icon name="book" />{HAFS_TEXT_NOTICE}</span>}
+                  <p className={styles.riwayaDesc}>{tr(q.desc)}</p>
+                  <span className={styles.riwayaLine}><Icon name="head" />{audioLabel(q, tr)}</span>
+                  {q.audioNote && <span className={`${styles.riwayaLine} ${styles.warnLine}`}><Icon name="bell" />{tr(q.audioNote)}</span>}
+                  {textIsHafs(q, false) && <span className={`${styles.riwayaLine} ${styles.warnLine}`}><Icon name="book" />{tr(HAFS_TEXT_NOTICE)}</span>}
                   <button type="button" className={`nq-btn ghost sm ${styles.readBtn}`} onClick={() => readWith(q.id)}>
-                    اقرأ بهذه الرواية <Icon name="back" className={styles.go} />
+                    {tr('اقرأ بهذه الرواية')} <Icon name="back" className={styles.go} />
                   </button>
                 </div>
               ))}
@@ -655,9 +674,9 @@ export default function IjazaPage() {
         {tab === 'chain' && (
           <section className={styles.panel} aria-labelledby="sec-chain">
             <header className={styles.panelHead}>
-              <span className="nq-eyebrow">من فم الشيخ إلى أذن الطالب</span>
-              <h2 id="sec-chain" className="nq-h-sec">سند الإجازة</h2>
-              <p className="nq-lead">الإجازة إذن العالم لطالبه برواية القرآن الكريم، وتمتدّ سلسلة الإسناد متصلة من الطالب إلى النبي ﷺ. هذا هو المسار العام للسند عبر التاريخ:</p>
+              <span className="nq-eyebrow">{tr('من فم الشيخ إلى أذن الطالب')}</span>
+              <h2 id="sec-chain" className="nq-h-sec">{tr('سند الإجازة')}</h2>
+              <p className="nq-lead">{tr('الإجازة إذن العالم لطالبه برواية القرآن الكريم، وتمتدّ سلسلة الإسناد متصلة من الطالب إلى النبي ﷺ. هذا هو المسار العام للسند عبر التاريخ:')}</p>
             </header>
 
             <ol className={styles.chain}>
@@ -667,8 +686,8 @@ export default function IjazaPage() {
                     {i === 0 ? <Badge8 icon="star" size={60} /> : <Badge8 size={52}>{toAr(node.level)}</Badge8>}
                   </span>
                   <div className={`nq-card ${styles.chainCard}`}>
-                    <h3>{node.text}</h3>
-                    <p>{node.desc}</p>
+                    <h3>{tr(node.text)}</h3>
+                    <p>{tr(node.desc)}</p>
                   </div>
                 </li>
               ))}
@@ -680,26 +699,26 @@ export default function IjazaPage() {
         {tab === 'ijaza' && (
           <section className={styles.panel} aria-labelledby="sec-ijaza">
             <header className={styles.panelHead}>
-              <span className="nq-eyebrow">حفظ النقل</span>
-              <h2 id="sec-ijaza" className="nq-h-sec">عن الإجازة</h2>
+              <span className="nq-eyebrow">{tr('حفظ النقل')}</span>
+              <h2 id="sec-ijaza" className="nq-h-sec">{tr('عن الإجازة')}</h2>
             </header>
             <article className={`nq-card ${styles.article}`}>
               <Corners />
               <div className={styles.articleIn}>
-                <h3><Badge8 icon="shield" size={44} />أهمية الإجازة</h3>
-                <p>الإجازة ضمانٌ لصحة النقل؛ فكل حرف في القرآن وصل إلينا بسندٍ متصل محفوظ، لا يُعتمد فيه إلا على من أخذ بالتلقّي المباشر من فم الشيخ إلى أذن الطالب، وهكذا حُفظ القرآن بإذن الله منذ عهد النبي ﷺ.</p>
+                <h3><Badge8 icon="shield" size={44} />{tr('أهمية الإجازة')}</h3>
+                <p>{tr('الإجازة ضمانٌ لصحة النقل؛ فكل حرف في القرآن وصل إلينا بسندٍ متصل محفوظ، لا يُعتمد فيه إلا على من أخذ بالتلقّي المباشر من فم الشيخ إلى أذن الطالب، وهكذا حُفظ القرآن بإذن الله منذ عهد النبي ﷺ.')}</p>
                 <Divider />
-                <h3><Badge8 icon="check" size={44} />شروط الإجازة</h3>
-                <p>يُشترط لصحة الإجازة أن يتلو الطالب القرآن كاملاً على الشيخ بالقراءة المُجاز بها، وأن يصحّح الشيخ أخطاءه، وأن يكون الشيخ حاملاً لإجازةٍ متصلةٍ بسندها.</p>
+                <h3><Badge8 icon="check" size={44} />{tr('شروط الإجازة')}</h3>
+                <p>{tr('يُشترط لصحة الإجازة أن يتلو الطالب القرآن كاملاً على الشيخ بالقراءة المُجاز بها، وأن يصحّح الشيخ أخطاءه، وأن يكون الشيخ حاملاً لإجازةٍ متصلةٍ بسندها.')}</p>
                 <Divider />
-                <h3><Badge8 icon="grid" size={44} />القراءات السبع والعشر</h3>
-                <p>القراءات السبع المتواترة هي قراءات: نافع، وابن كثير، وأبي عمرو، وابن عامر، وعاصم، وحمزة، والكسائي. وأضاف العلماء ثلاثاً لتكتمل العشر: أبو جعفر، ويعقوب، وخلف العاشر.</p>
+                <h3><Badge8 icon="grid" size={44} />{tr('القراءات السبع والعشر')}</h3>
+                <p>{tr('القراءات السبع المتواترة هي قراءات: نافع، وابن كثير، وأبي عمرو، وابن عامر، وعاصم، وحمزة، والكسائي. وأضاف العلماء ثلاثاً لتكتمل العشر: أبو جعفر، ويعقوب، وخلف العاشر.')}</p>
               </div>
             </article>
-            <Notice icon="shieldUser" tone="info">هذه الصفحة للتعريف والقراءة فقط، ولا تمنح إجازة. الإجازة تُنال بالقراءة على شيخٍ مُجازٍ متصل السند.</Notice>
+            <Notice icon="shieldUser" tone="info">{tr('هذه الصفحة للتعريف والقراءة فقط، ولا تمنح إجازة. الإجازة تُنال بالقراءة على شيخٍ مُجازٍ متصل السند.')}</Notice>
             <div className={styles.articleActs}>
-              <button type="button" className="nq-btn gold" onClick={() => setTab('mushaf')}><Icon name="book" />افتح مصحف الروايات</button>
-              <button type="button" className="nq-btn ghost" onClick={() => setTab('chain')}><Icon name="scroll" />سند الإجازة</button>
+              <button type="button" className="nq-btn gold" onClick={() => setTab('mushaf')}><Icon name="book" />{tr('افتح مصحف الروايات')}</button>
+              <button type="button" className="nq-btn ghost" onClick={() => setTab('chain')}><Icon name="scroll" />{tr('سند الإجازة')}</button>
             </div>
           </section>
         )}
@@ -709,8 +728,9 @@ export default function IjazaPage() {
 }
 
 function Waiting() {
+  const tr = useTr();
   return (
-    <div className={styles.waiting} aria-busy="true" aria-label="جارٍ تحميل السورة">
+    <div className={styles.waiting} aria-busy="true" aria-label={tr('جارٍ تحميل السورة')}>
       <span /><span /><span /><span />
     </div>
   );

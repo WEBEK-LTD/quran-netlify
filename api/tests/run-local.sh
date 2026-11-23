@@ -14,7 +14,8 @@ fi
 $MYSQL -e "DROP DATABASE IF EXISTS \`$DB_NAME\`; CREATE DATABASE \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 rm -rf "$API_DIR/storage/mail"
 
-php -S "127.0.0.1:$PORT" -t "$API_DIR/public" "$API_DIR/public/index.php" > "$API_DIR/storage/logs/dev-server.log" 2>&1 &
+# upload limits as in public/.user.ini (php -S ignores .user.ini)
+php -d upload_max_filesize=6M -d post_max_size=8M -S "127.0.0.1:$PORT" -t "$API_DIR/public" "$API_DIR/public/index.php" > "$API_DIR/storage/logs/dev-server.log" 2>&1 &
 SERVER=$!
 trap 'kill $SERVER 2>/dev/null || true; rm -f "$API_DIR/config.php"' EXIT
 for _ in $(seq 1 50); do curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break; sleep 0.1; done

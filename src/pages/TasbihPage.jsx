@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import styles from './TasbihPage.module.css';
 import { PageHero, Icon, Badge8, Corners, toAr } from '../components/ornaments/Ornaments';
+import { useTr, intlLocale } from '../l10n';
 
 const PRESETS = [
   { id: 'subhan',  label: 'سبحان الله',        ar: 'سُبْحَانَ اللهِ',              target: 33  },
@@ -17,6 +18,8 @@ const PRESETS = [
   { id: 'custom',  label: 'ذكر مخصّص',         ar: '',                              target: 100 },
 ];
 const TARGETS = [33, 34, 99, 100, 1000];
+// The phrases themselves stay in Arabic (they are recited in Arabic); only descriptive labels translate.
+const LABEL_TRANSLATED = new Set(['salah', 'hawqala', 'custom']);
 
 // ring geometry (viewBox -170..170)
 const R = 138;
@@ -51,6 +54,7 @@ function loadTodayTaps() {
 }
 
 export default function TasbihPage() {
+  const tr = useTr();
   const [activeId,  setActiveId]  = useState('subhan');
   const [counts,    setCounts]    = useState(() => loadState());
   const [sessions,  setSessions]  = useState(() => {
@@ -100,7 +104,7 @@ export default function TasbihPage() {
         preset: label,
         count: target,
         date: today,
-        time: new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }),
+        time: new Date().toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' }),
       };
       setSessions(prev2 => {
         const next2 = [session, ...prev2].slice(0, 50);
@@ -164,32 +168,45 @@ export default function TasbihPage() {
 
   const shownCount = count % target || (count > 0 ? target : 0);
   const ringFrac = count > 0 && count % target === 0 ? 1 : pct / 100;
-  const phrase = activeId === 'custom' ? (customText.trim() || 'اكتب ذكرك أعلاه') : (preset.ar || preset.label);
+  const phrase = activeId === 'custom' ? (customText.trim() || tr('اكتب ذكرك أعلاه')) : (preset.ar || preset.label);
+  const phraseIsAr = activeId !== 'custom' || !!customText.trim();
+  const labelOf = p => (LABEL_TRANSLATED.has(p.id) ? tr(p.label) : p.label);
+  const activeLabel = activeId === 'custom' ? (customText.trim() || tr(preset.label)) : labelOf(preset);
+  // session times are formatted when shown (s.id is the timestamp) so they follow the interface language
+  const sessionTime = s => (typeof s.id === 'number'
+    ? new Date(s.id).toLocaleTimeString(intlLocale(tr.lang), { hour: '2-digit', minute: '2-digit' })
+    : s.time);
+  // saved sessions keep the Arabic label: translate the descriptive ones, leave phrases and custom text
+  const sessionName = name => {
+    const p = PRESETS.find(x => x.label === name);
+    return p ? labelOf(p) : name;
+  };
   const beads = target <= 100 ? target : 0;
   const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return localDay(d); })();
-  const dayLabel = d => d === todayStr ? 'اليوم' : d === yesterday ? 'أمس' : toAr(d.split('-').reverse().join('/'));
+  const dayLabel = d => d === todayStr ? tr('اليوم') : d === yesterday ? tr('أمس') : toAr(d.split('-').reverse().join('/'));
 
   return (
     <div className={styles.page}>
       <PageHero
-        eyebrow="الذكر"
-        title="السبحة"
-        sub="عدّاد تسبيح بأهداف ودورات، يحفظ جلساتك على جهازك. اضغط الدائرة أو مفتاح المسافة للعدّ."
+        eyebrow={tr('الذكر')}
+        title={tr('السبحة')}
+        sub={tr('عدّاد تسبيح بأهداف ودورات، يحفظ جلساتك على جهازك. اضغط الدائرة أو مفتاح المسافة للعدّ.')}
       >
         <button type="button" className="nq-btn ghost sm" onClick={toggleVibrate} aria-pressed={vibrate}>
-          <Icon name={vibrate ? 'phone' : 'x'} />{vibrate ? 'الاهتزاز مفعّل' : 'الاهتزاز متوقف'}
+          <Icon name={vibrate ? 'phone' : 'x'} />{vibrate ? tr('الاهتزاز مفعّل') : tr('الاهتزاز متوقف')}
         </button>
       </PageHero>
 
       <div className={`nq-wrap ${styles.wrap}`}>
         <div className={styles.grid}>
-          <section className={`nq-card ${styles.main}`} aria-label="العدّاد">
+          <section className={`nq-card ${styles.main}`} aria-label={tr('العدّاد')}>
             <Corners />
-            <div className={styles.presets} role="group" aria-label="الذكر">
+            <div className={styles.presets} role="group" aria-label={tr('الذكر')}>
               {PRESETS.map(p => (
                 <button key={p.id} type="button" className={`nq-pill ${styles.preset} ${activeId === p.id ? 'on' : ''}`}
-                  aria-pressed={activeId === p.id} onClick={() => switchPreset(p.id)}>
-                  {p.id === 'custom' && <Icon name="pen" />}{p.label}
+                  aria-pressed={activeId === p.id} onClick={() => switchPreset(p.id)}
+                  lang={LABEL_TRANSLATED.has(p.id) ? undefined : 'ar'}>
+                  {p.id === 'custom' && <Icon name="pen" />}{labelOf(p)}
                 </button>
               ))}
             </div>
@@ -197,8 +214,8 @@ export default function TasbihPage() {
             {activeId === 'custom' && (
               <label className={`nq-input ${styles.custom}`}>
                 <Icon name="pen" />
-                <span className="nq-sr">نص الذكر المخصّص</span>
-                <input value={customText} onChange={e => updateCustomText(e.target.value)} placeholder="اكتب ذكرك المخصّص…" dir="rtl" />
+                <span className="nq-sr">{tr('نص الذكر المخصّص')}</span>
+                <input value={customText} onChange={e => updateCustomText(e.target.value)} placeholder={tr('اكتب ذكرك المخصّص…')} dir="auto" />
               </label>
             )}
 
@@ -216,31 +233,31 @@ export default function TasbihPage() {
                 })}
               </svg>
               <button type="button" className={styles.tap} onClick={increment}
-                aria-label={`سبّح: ${activeId === 'custom' ? (customText.trim() || preset.label) : preset.label}، العدد ${toAr(shownCount)} من ${toAr(target)}`}>
+                aria-label={tr('سبّح: {label}، العدد {n} من {target}', { label: activeLabel, n: toAr(shownCount), target: toAr(target) })}>
                 <svg className={styles.star} viewBox="0 0 40 40" aria-hidden="true"><use href="#nq-star8" /></svg>
                 <span className={`${styles.count} nq-num`} aria-hidden="true">{toAr(shownCount)}</span>
-                <span className={styles.phrase} aria-hidden="true">{phrase}</span>
-                <span className={styles.of} aria-hidden="true">من {toAr(target)}</span>
+                <span className={styles.phrase} aria-hidden="true" lang={phraseIsAr ? 'ar' : undefined} dir={phraseIsAr && activeId !== 'custom' ? 'rtl' : 'auto'}>{phrase}</span>
+                <span className={styles.of} aria-hidden="true">{tr('من {n}', { n: toAr(target) })}</span>
               </button>
             </div>
 
             <div className={styles.under} aria-live="polite">
               {completed > 0
-                ? <span className="nq-pill on"><Icon name="check" />أكملت {toAr(completed)} {completed === 1 ? 'دورة' : completed === 2 ? 'دورتين' : 'دورات'}</span>
-                : <span className={styles.hint}>اضغط الدائرة أو مفتاح المسافة أو Enter للتسبيح</span>}
+                ? <span className="nq-pill on"><Icon name="check" />{completed === 1 ? tr('أكملت {n} دورة', { n: toAr(completed) }) : completed === 2 ? tr('أكملت {n} دورتين', { n: toAr(completed) }) : tr('أكملت {n} دورات', { n: toAr(completed) })}</span>
+                : <span className={styles.hint}>{tr('اضغط الدائرة أو مفتاح المسافة أو Enter للتسبيح')}</span>}
             </div>
 
             <div className={styles.controls}>
               <div className={styles.targetRow}>
-                <span className={styles.lbl}>الهدف</span>
-                <div className="nq-seg" role="group" aria-label="الهدف">
+                <span className={styles.lbl}>{tr('الهدف')}</span>
+                <div className="nq-seg" role="group" aria-label={tr('الهدف')}>
                   {TARGETS.map(t => (
                     <button key={t} type="button" aria-pressed={target === t} onClick={() => setTarget(t)}>{toAr(t)}</button>
                   ))}
                 </div>
               </div>
               <button type="button" className="nq-btn ghost sm" onClick={reset} disabled={count === 0}>
-                <Icon name="repeat" />تصفير العدّاد
+                <Icon name="repeat" />{tr('تصفير العدّاد')}
               </button>
             </div>
           </section>
@@ -249,33 +266,33 @@ export default function TasbihPage() {
             <div className={styles.stats}>
               <div className={`nq-card ${styles.stat} ${styles.statWide}`}>
                 <Badge8 icon="beads" size={52} />
-                <div><b className="nq-num">{toAr(totalToday)}</b><span>تسبيحة اليوم</span></div>
+                <div><b className="nq-num">{toAr(totalToday)}</b><span>{tr('تسبيحة اليوم')}</span></div>
               </div>
               <div className={`nq-card ${styles.stat}`}>
-                <div><b className="nq-num">{toAr(sessionsToday)}</b><span>جلسات اليوم</span></div>
+                <div><b className="nq-num">{toAr(sessionsToday)}</b><span>{tr('جلسات اليوم')}</span></div>
               </div>
               <div className={`nq-card ${styles.stat}`}>
-                <div><b className="nq-num">{toAr(sessions.length)}</b><span>كل الجلسات</span></div>
+                <div><b className="nq-num">{toAr(sessions.length)}</b><span>{tr('كل الجلسات')}</span></div>
               </div>
             </div>
 
             <section className={`nq-card ${styles.history}`} aria-labelledby="tb-hist">
-              <h2 id="tb-hist" className={styles.hTitle}><Icon name="list" />آخر الجلسات</h2>
+              <h2 id="tb-hist" className={styles.hTitle}><Icon name="list" />{tr('آخر الجلسات')}</h2>
               {sessions.length === 0 ? (
-                <p className={styles.emptyH}>تظهر هنا كل دورة تكملها، مع الذكر ووقت إتمامه.</p>
+                <p className={styles.emptyH}>{tr('تظهر هنا كل دورة تكملها، مع الذكر ووقت إتمامه.')}</p>
               ) : (
                 <ol className={styles.sessions}>
                   {sessions.slice(0, 10).map(s => (
                     <li key={s.id} className={styles.session}>
-                      <span className={styles.sName}>{s.preset}</span>
+                      <span className={styles.sName} dir="auto">{sessionName(s.preset)}</span>
                       <span className={`${styles.sCount} nq-num`}>{toAr(s.count)}</span>
-                      <span className={styles.sTime}>{dayLabel(s.date)} · {s.time}</span>
+                      <span className={styles.sTime}>{dayLabel(s.date)} · {sessionTime(s)}</span>
                     </li>
                   ))}
                 </ol>
               )}
               {sessions.length > 10 && (
-                <p className={styles.moreH}>و{toAr(sessions.length - 10)} جلسة أخرى محفوظة</p>
+                <p className={styles.moreH}>{tr('و{n} جلسة أخرى محفوظة', { n: toAr(sessions.length - 10) })}</p>
               )}
             </section>
           </aside>

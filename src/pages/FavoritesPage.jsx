@@ -10,6 +10,7 @@ import { normalizeArabic } from '../arabic';
 import { PageHero, Icon, Badge8, Corners, Divider, AyahMark, toAr } from '../components/ornaments/Ornaments';
 import { useAyahText, cachedAyahText } from './FavoritesPage/ayahText';
 import { useTr, trNow, surahName, revelationLabel } from '../l10n';
+import { trCount } from '../locales/library';
 import styles from './FavoritesPage.module.css';
 
 function readLocal() {
@@ -33,11 +34,10 @@ function mergeBookmarks(server, local) {
 
 const PAGE = 24;
 const toLatinDigits = s => String(s || '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
-// "1|2" plural forms in a translation: singular for 1, plural otherwise
-const pick = (s, n) => { if (!s.includes('|')) return s; const [one, many] = s.split('|'); return Number(n) === 1 ? one : many; };
 
 export default function FavoritesPage() {
   const tr = useTr();
+  const trc = (key, n, vars) => trCount(tr, key, n, vars);
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [bookmarks, setBookmarks] = useState([]);
@@ -124,8 +124,8 @@ export default function FavoritesPage() {
       <PageHero eyebrow={tr('آياتٌ تعود إليها')} title={tr('المفضلة')} sub={tr('الآيات التي حفظتها أثناء القراءة، تعود إليها متى شئت وتنتقل منها إلى موضعها في المصحف.')}>
         {!loading && bookmarks.length > 0 && (
           <>
-            <span className="nq-pill on nq-num"><Icon name="bookmark" />{pick(tr('{n} آية', { n: toAr(bookmarks.length) }), bookmarks.length)}</span>
-            <span className="nq-pill nq-num"><Icon name="book" />{pick(tr('من {n} سورة', { n: toAr(surahCount) }), surahCount)}</span>
+            <span className="nq-pill on nq-num"><Icon name="bookmark" />{trc('{n} آية', bookmarks.length, { n: toAr(bookmarks.length) })}</span>
+            <span className="nq-pill nq-num"><Icon name="book" />{trc('من {n} سورة', surahCount, { n: toAr(surahCount) })}</span>
           </>
         )}
       </PageHero>
@@ -180,8 +180,8 @@ export default function FavoritesPage() {
 
             <p className={styles.count} aria-live="polite">
               {list.length === bookmarks.length
-                ? <><b className="nq-num">{toAr(list.length)}</b> {pick(tr('آية محفوظة'), list.length)}</>
-                : <><b className="nq-num">{toAr(list.length)}</b> {pick(tr('من {total} آية', { total: toAr(bookmarks.length) }), bookmarks.length)}</>}
+                ? <><b className="nq-num">{toAr(list.length)}</b> {trc('آية محفوظة', list.length)}</>
+                : <><b className="nq-num">{toAr(list.length)}</b> {trc('من {total} آية', bookmarks.length, { total: toAr(bookmarks.length) })}</>}
             </p>
 
             {list.length === 0 ? (

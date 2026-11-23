@@ -39,7 +39,7 @@ function section(string $t): void
 }
 
 /**
- * @param array<string,mixed> $o token, ip, client(bool|string), headers, cookie, raw
+ * @param array<string,mixed> $o token, ip, client(bool|string), headers, cookie, raw, multipart
  * @return array{status:int, json:mixed, headers:array<string,list<string>>, raw:string}
  */
 function req(string $method, string $path, mixed $body = null, array $o = []): array
@@ -63,7 +63,10 @@ function req(string $method, string $path, mixed $body = null, array $o = []): a
     }
     $ch = curl_init($url);
     $payload = null;
-    if (isset($o['raw'])) {
+    if (isset($o['multipart'])) {
+        $payload = $o['multipart']; // array of fields / CURLStringFile; curl writes the boundary
+        $h[] = 'Expect:';
+    } elseif (isset($o['raw'])) {
         $payload = (string) $o['raw'];
         $h[] = 'Content-Type: ' . ($o['ctype'] ?? 'application/json');
     } elseif ($body !== null) {
@@ -162,6 +165,35 @@ function pdo(): ?PDO
         $pdo = new PDO('mysql:host=' . $c['db']['host'] . ';dbname=' . $c['db']['name'] . ';charset=utf8mb4', $c['db']['user'], $c['db']['pass'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     }
     return $pdo;
+}
+
+/** A PNG of $w×$h made with GD, optionally with a tEXt metadata chunk (to prove re-encoding drops it). */
+function makePng(int $w, int $h, string $meta = ''): string
+{
+    $im = imagecreatetruecolor($w, $h);
+    imagefill($im, 0, 0, imagecolorallocate($im, 20, 120, 90));
+    imagefilledrectangle($im, intdiv($w, 4), intdiv($h, 4), intdiv($w * 3, 4), intdiv($h * 3, 4), imagecolorallocate($im, 214, 178, 103));
+    ob_start();
+    imagepng($im);
+    $png = (string) ob_get_clean();
+    if ($meta !== '') {
+        $data = "Comment\0" . $meta;
+        $chunk = pack('N', strlen($data)) . 'tEXt' . $data . pack('N', crc32('tEXt' . $data));
+        $png = substr($png, 0, 33) . $chunk . substr($png, 33); // right after IHDR
+    }
+    return $png;
+}
+
+/** POST /me/avatar with one file in the `photo` field. */
+function uploadPhoto(string $bytes, string $name, string $mime, array $o): array
+{
+    return req('POST', '/me/avatar', null, $o + ['multipart' => ['photo' => new CURLStringFile($bytes, $name, $mime)]]);
+}
+
+/** Path part of an avatar URL → the file name. */
+function avatarFile(?string $url): string
+{
+    return $url !== null && preg_match('#/v1/avatars/([^/?]+)$#', $url, $m) ? $m[1] : '';
 }
 
 $run = 'r' . bin2hex(random_bytes(3));
@@ -358,6 +390,115 @@ $kdel = req('DELETE', '/me/khatmat/' . (int) (data($k2)['id'] ?? 0), null, $ta);
 check('DELETE khatma', $kdel['status'] === 200, desc($kdel));
 $kl = req('GET', '/me/khatmat', null, $ta);
 check('GET khatmat (1 left)', $kl['status'] === 200 && count((array) data($kl)) === 1, desc($kl));
+
+// ───────────────────────────────────────────────────────────────────────────
+section('Profile photo');
+$meA = data(req('GET', '/auth/me', null, $ta));
+check('no photo yet → avatar_url null', array_key_exists('avatar_url', (array) ($meA['user'] ?? [])) && $meA['user']['avatar_url'] === null, json_encode($meA));
+$png = makePng(300, 200, 'SECRET-META-' . $run);
+$noAuth = uploadPhoto($png, 'me.png', 'image/png', ['ip' => '10.1.0.9']);
+check('upload without session → 401', $noAuth['status'] === 401, desc($noAuth));
+$noCsrf = uploadPhoto($png, 'me.png', 'image/png', $ta + ['client' => false]);
+check('upload without X-NQ-Client → 403', $noCsrf['status'] === 403, desc($noCsrf));
+$up = uploadPhoto($png, 'me.png', 'image/png', $ta);
+if ($up['status'] === 503 && errc($up) === 'avatar_unavailable') {
+    check('server without GD → 503 with the Arabic message', str_contains((string) ($up['json']['error']['message'] ?? ''), 'رفع الصور غير متاح'), desc($up));
+    echo "  (GD missing on this server — remaining photo checks skipped)\n";
+} else {
+    $url = (string) (data($up)['user']['avatar_url'] ?? '');
+    $file = avatarFile($url);
+    check('upload PNG → {user} with absolute avatar URL', $up['status'] === 200 && str_starts_with($url, $BASE . '/v1/avatars/')
+        && preg_match('/^\d+-[a-f0-9]{24}\.(webp|jpg)$/', $file) === 1, desc($up));
+    $meU = data(req('GET', '/auth/me', null, $ta));
+    check('/auth/me returns the photo URL', ($meU['user']['avatar_url'] ?? '') === $url, json_encode($meU));
+    $img = req('GET', $url, null, ['client' => false]);
+    $dim = @getimagesizefromstring($img['raw']);
+    check('GET photo → image/webp or image/jpeg, 512×512, raw bytes (no JSON)', $img['status'] === 200
+        && in_array(hdr($img, 'content-type'), ['image/webp', 'image/jpeg'], true)
+        && is_array($dim) && $dim[0] === 512 && $dim[1] === 512, desc($img) . ' ' . hdr($img, 'content-type'));
+    check('photo headers: immutable cache, nosniff, CSP none, CORP cross-origin', str_contains(hdr($img, 'cache-control'), 'max-age=31536000')
+        && str_contains(hdr($img, 'cache-control'), 'immutable') && hdr($img, 'x-content-type-options') === 'nosniff'
+        && str_contains(hdr($img, 'content-security-policy'), "default-src 'none'") && hdr($img, 'cross-origin-resource-policy') === 'cross-origin',
+        json_encode($img['headers']));
+    check('re-encoded: original bytes and metadata are not kept', !str_contains($img['raw'], 'SECRET-META') && $img['raw'] !== $png);
+    if ($LOCAL !== null) {
+        check('stored outside the web root in storage/avatars', is_file($LOCAL . '/storage/avatars/' . $file) && !is_file($LOCAL . '/public/' . $file));
+    }
+
+    $php = uploadPhoto("<?php echo 'pwned'; ?>", 'shell.jpg', 'image/jpeg', $ta);
+    check('PHP file renamed .jpg → 422 unsupported_image', $php['status'] === 422 && errc($php) === 'unsupported_image', desc($php));
+    $svg = uploadPhoto('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><script>alert(1)</script></svg>', 'x.svg', 'image/svg+xml', $ta);
+    check('SVG → 422 unsupported_image', $svg['status'] === 422 && errc($svg) === 'unsupported_image', desc($svg));
+    $fake = uploadPhoto("\xFF\xD8\xFF\xE0" . str_repeat('A', 2000) . '<?php system($_GET[1]); ?>', 'a.jpg', 'image/jpeg', $ta);
+    check('JPEG magic bytes + garbage → 422', $fake['status'] === 422 && errc($fake) === 'unsupported_image', desc($fake));
+    $tiny = uploadPhoto(makePng(32, 32), 'tiny.png', 'image/png', $ta);
+    check('image smaller than 64×64 → 422 image_dimensions', $tiny['status'] === 422 && errc($tiny) === 'image_dimensions', desc($tiny));
+    $huge = uploadPhoto(random_bytes(6 * 1024 * 1024), 'big.jpg', 'image/jpeg', $ta);
+    check('upload > 5 MB → 413 avatar_too_large', $huge['status'] === 413 && errc($huge) === 'avatar_too_large', desc($huge));
+    $over = uploadPhoto("\x89PNG\r\n\x1A\n" . random_bytes(5 * 1024 * 1024 + 1000), 'big.png', 'image/png', $ta);
+    check('file just over 5 MB (request under the route limit) → 413', $over['status'] === 413 && errc($over) === 'avatar_too_large', desc($over));
+    $nofile = req('POST', '/me/avatar', null, $ta + ['multipart' => ['other' => 'x']]);
+    check('multipart without `photo` → 422 validation (fields.photo)', $nofile['status'] === 422 && isset($nofile['json']['error']['fields']['photo']), desc($nofile));
+    $json = req('POST', '/me/avatar', ['photo' => 'data:image/png;base64,AAAA'], $ta);
+    check('JSON body instead of multipart → 422', $json['status'] === 422, desc($json));
+    $jsonBig = req('POST', '/me/bookmarks', null, $ta + ['multipart' => ['photo' => new CURLStringFile(random_bytes(100000), 'a.png', 'image/png')]]);
+    check('the 5 MB allowance is only for /me/avatar (other routes keep 64 KB → 413)', $jsonBig['status'] === 413, desc($jsonBig));
+    $trav = req('GET', '/avatars/..%2F..%2Fconfig.php', null, ['client' => false]);
+    $other = req('GET', '/avatars/1-' . str_repeat('0', 24) . '.webp', null, ['client' => false]);
+    check('serving: bad or unknown file names → 404', $trav['status'] === 404 && $other['status'] === 404 && !str_contains($trav['raw'], 'app_key'), desc($trav) . ' / ' . desc($other));
+
+    $gif = imagecreatetruecolor(120, 90);
+    ob_start();
+    imagegif($gif);
+    $gifBytes = (string) ob_get_clean();
+    $up2 = uploadPhoto($gifBytes, 'anim.gif', 'image/gif', $ta);
+    $url2 = (string) (data($up2)['user']['avatar_url'] ?? '');
+    check('replace with a GIF → new URL', $up2['status'] === 200 && $url2 !== '' && $url2 !== $url, desc($up2));
+    check('previous photo is deleted on replace', req('GET', $url, null, ['client' => false])['status'] === 404
+        && ($LOCAL === null || !is_file($LOCAL . '/storage/avatars/' . $file)));
+    if (function_exists('imagewebp')) {
+        $wi = imagecreatetruecolor(800, 1200);
+        ob_start();
+        imagewebp($wi);
+        $up3 = uploadPhoto((string) ob_get_clean(), 'tall.webp', 'image/webp', $ta);
+        $url3 = (string) (data($up3)['user']['avatar_url'] ?? '');
+        $d3 = @getimagesizefromstring(req('GET', $url3, null, ['client' => false])['raw']);
+        check('WebP upload (tall) → centre-cropped 512×512', $up3['status'] === 200 && is_array($d3) && $d3[0] === 512 && $d3[1] === 512, desc($up3));
+        $url2 = $url3;
+    }
+    $exP = data(req('GET', '/auth/export', null, $ta));
+    check('data export includes the photo URL', ($exP['profile_photo_url'] ?? '') === $url2 && ($exP['user']['avatar_url'] ?? '') === $url2);
+    $del = req('DELETE', '/me/avatar', null, $ta);
+    check('DELETE /me/avatar → user.avatar_url null', $del['status'] === 200 && array_key_exists('avatar_url', (array) (data($del)['user'] ?? []))
+        && data($del)['user']['avatar_url'] === null, desc($del));
+    check('deleted photo is gone (404, file removed)', req('GET', $url2, null, ['client' => false])['status'] === 404
+        && ($LOCAL === null || !is_file($LOCAL . '/storage/avatars/' . avatarFile($url2))));
+    $del2 = req('DELETE', '/me/avatar', null, $ta);
+    check('DELETE again is harmless', $del2['status'] === 200, desc($del2));
+    if (pdo()) {
+        $gid = (int) ($meA['user']['id'] ?? 0);
+        pdo()->exec("UPDATE users SET avatar_url = 'https://lh3.googleusercontent.com/a/test' WHERE id = {$gid}");
+        $g1 = data(uploadPhoto($png, 'me.png', 'image/png', $ta));
+        $gUp = (string) ($g1['user']['avatar_url'] ?? '');
+        $g2 = data(req('DELETE', '/me/avatar', null, $ta));
+        check('uploaded photo wins over the Google picture; removing it falls back to Google', str_contains($gUp, '/v1/avatars/')
+            && ($g2['user']['avatar_url'] ?? '') === 'https://lh3.googleusercontent.com/a/test', $gUp . ' / ' . json_encode($g2));
+        pdo()->exec("UPDATE users SET avatar_url = NULL WHERE id = {$gid}");
+    }
+
+    $P = ['email' => "photo+{$run}@example.com", 'pw' => 'photo-pass-12', 'ip' => '10.12.0.1'];
+    $tp = ['token' => (string) (data(req('POST', '/auth/signup', ['name' => 'صورة', 'email' => $P['email'], 'password' => $P['pw']], ['ip' => $P['ip']]))['token'] ?? ''), 'ip' => $P['ip']];
+    $small = makePng(80, 80);
+    $codes = [];
+    for ($i = 0; $i < 11; $i++) {
+        $codes[] = uploadPhoto($small, 'p.png', 'image/png', $tp)['status'];
+    }
+    check('upload rate limit: 11th upload in an hour → 429', $codes[10] === 429 && !in_array(429, array_slice($codes, 0, 10), true), implode(',', $codes));
+    if ($LOCAL !== null) {
+        $pid = (int) (data(req('GET', '/auth/me', null, $tp))['user']['id'] ?? 0);
+        check('only the latest photo is kept on disk', count(glob($LOCAL . '/storage/avatars/' . $pid . '-*') ?: []) === 1);
+    }
+}
 
 // ───────────────────────────────────────────────────────────────────────────
 section('Group khatma');
@@ -695,12 +836,22 @@ $dRoom = (string) (data(req('POST', '/groups', ['deceased_name' => 'جد', 'mode
 req('GET', "/groups/{$dRoom}", null, $tb);
 req('POST', "/groups/{$dRoom}/parts/1/claim", ['name' => 'بشير'], $tb);
 req('POST', '/support/tickets', ['subject' => 'سؤال', 'topic' => 'general', 'body' => 'نص'], $td);
+$dPhoto = uploadPhoto(makePng(200, 200), 'd.png', 'image/png', $td);
+$dPhotoFile = avatarFile(data($dPhoto)['user']['avatar_url'] ?? null);
+if ($dPhoto['status'] === 200) {
+    $dAdm = data(req('GET', '/admin/users?q=' . rawurlencode($D['email']), null, $tadm));
+    check('admin user list shows the uploaded photo', str_contains((string) ($dAdm['items'][0]['avatar_url'] ?? ''), '/v1/avatars/' . $dPhotoFile), json_encode($dAdm));
+}
 $dWrong = req('DELETE', '/auth/account', ['password' => 'nope-nope-1'], $td);
 check('delete account wrong password → 422 validation (fields.password)', $dWrong['status'] === 422 && isset($dWrong['json']['error']['fields']['password']), desc($dWrong));
 $dDel = req('DELETE', '/auth/account', ['password' => $D['pw']], $td);
 check('delete account → {}', $dDel['status'] === 200, desc($dDel));
 check('deleted user cannot log in', req('POST', '/auth/login', ['email' => $D['email'], 'password' => $D['pw']], ['ip' => $D['ip']])['status'] === 401);
 check("deleted user's room is gone", req('GET', "/groups/{$dRoom}", null, $tb)['status'] === 404);
+if ($dPhotoFile !== '') {
+    check("account deletion removes the profile photo", req('GET', '/avatars/' . $dPhotoFile, null, ['client' => false])['status'] === 404
+        && ($LOCAL === null || !is_file($LOCAL . '/storage/avatars/' . $dPhotoFile)));
+}
 if (pdo()) {
     $left = 0;
     foreach (['sessions', 'bookmarks', 'notes', 'support_tickets', 'group_rooms' => 'owner_id', 'email_tokens'] as $k => $v) {

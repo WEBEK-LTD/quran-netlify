@@ -339,6 +339,7 @@ function WinLine() {
 }
 
 export default function PrayerTimesPage() {
+  const tr = useTr();
   const [cityInput, setCityInput] = useState('');
   const [city,      setCity]      = useState(() => localStorage.getItem('nq_pray_city') || '');
   const [coords,    setCoords]    = useState(() => {
@@ -361,7 +362,7 @@ export default function PrayerTimesPage() {
   const [loading, setLoading] = useState(false);
   const [weekLoad,setWeekLoad]= useState(false);
   const [error,   setError]   = useState('');
-  const [hijri,   setHijri]   = useState('');
+  const [hijriData, setHijriData] = useState(null);
   const [now,     setNow]     = useState(new Date());
   const [showDay, setShowDay] = useState('today'); // today | tomorrow (نوافذ الصلوات)
   const runRef   = useRef(0);          // معرّف آخر عملية تحميل — لتجاهل نتائج العمليات القديمة
@@ -384,7 +385,7 @@ export default function PrayerTimesPage() {
     let cancelled = false;
     fetch(`https://api.aladhan.com/v1/gToH?date=${cn.d}-${cn.mo}-${cn.y}`)
       .then(r => r.json())
-      .then(d => { const h = d.data?.hijri; if (h && !cancelled) setHijri(`${toAr(h.day)} ${h.month.ar} ${toAr(h.year)} هـ`); })
+      .then(d => { const h = d.data?.hijri; if (h && !cancelled) setHijriData(h); })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [todayKey]); // eslint-disable-line
@@ -478,8 +479,10 @@ export default function PrayerTimesPage() {
       const id = `${todayKey}-${p.key}`;
       if (h === cn.h && m === cn.mi && !firedRef.current.has(id)) {
         firedRef.current.add(id);
-        showPrayerNotification(`حان وقت صلاة ${p.name}`, {
-          body: `حان الآن موعد صلاة ${p.name}${city ? ` في ${city}` : ''}`,
+        const pName = trNow(p.name);
+        const where = city === 'موقعك' ? trNow('موقعك') : city;
+        showPrayerNotification(trNow('حان وقت صلاة {p}', { p: pName }), {
+          body: where ? trNow('حان الآن موعد صلاة {p} في {city}', { p: pName, city: where }) : trNow('حان الآن موعد صلاة {p}', { p: pName }),
           icon: '/icons/icon-192.png',
           tag: id,
         });
@@ -520,7 +523,7 @@ export default function PrayerTimesPage() {
         localStorage.setItem('nq_pray_lat', lat);
         localStorage.setItem('nq_pray_lon', lon);
         try {
-          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ar`);
+          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=${getLang()}`);
           if (r.ok) {
             const d = await r.json();
             const name = d.address?.city || d.address?.town || d.address?.village || 'موقعك';
@@ -557,7 +560,10 @@ export default function PrayerTimesPage() {
   const next = times ? getNextPrayer(times, tomorrowTimes, cn) : null;
   const nextInfo = next ? PRAYERS_INFO.find(x => x.key === next.key) : null;
   const suggested = suggestMethod(tz || undefined);
-  const methodName = METHODS.find(m => m.id === method)?.name || '';
+  const mName = m => (m ? (tr.lang === 'ar' ? m.name : tr(m.tkey || m.name)) : '');
+  const methodName = mName(METHODS.find(m => m.id === method));
+  const cityName = city === 'موقعك' ? tr('موقعك') : city; // the GPS fallback is stored in Arabic
+  const hijri = fmtHijri(hijriData, tr.lang);
   const notifSupported = notifPerm !== 'unsupported';
   const anyAlarm = PRAYERS_INFO.some(p => alarms[p.key]);
   const nowSecs = cn.h * 3600 + cn.mi * 60 + cn.s;
@@ -566,58 +572,58 @@ export default function PrayerTimesPage() {
   const dist = coords ? calcDistance(coords.lat, coords.lon) : null;
   const viewTomorrow = showDay === 'tomorrow' && tomorrowTimes;
   const shown = viewTomorrow ? tomorrowTimes : times;
-  const dateLine = `${DAYS_AR[cn.dow]} ${toAr(cn.d)} ${MONTHS_AR[cn.mo - 1]} ${toAr(cn.y)}`;
+  const dateLine = fmtDateLine(cn, tr.lang);
   const nowClock = fmt12s(`${cn.h}:${cn.mi}`);
 
   const settings = (
     <section ref={settingsRef} id="pt-settings" className={styles.sec} aria-labelledby="pt-settings-h">
       <div className={styles.secHead}>
-        <span className="nq-eyebrow">الإعدادات</span>
-        <h2 id="pt-settings-h" className="nq-h-sec">المدينة وطريقة الحساب</h2>
+        <span className="nq-eyebrow">{tr('الإعدادات')}</span>
+        <h2 id="pt-settings-h" className="nq-h-sec">{tr('المدينة وطريقة الحساب')}</h2>
       </div>
       <div className={`nq-card ${styles.settings}`}>
         <div className={styles.setRow}>
-          <span className={styles.setLbl}><Icon name="pin" />المدينة</span>
+          <span className={styles.setLbl}><Icon name="pin" />{tr('المدينة')}</span>
           <div className={styles.setCtl}>
             <div className={styles.cityRow}>
               <label className={`nq-input ${styles.cityInput}`}>
                 <Icon name="search" />
-                <span className="nq-sr">اسم المدينة</span>
+                <span className="nq-sr">{tr('اسم المدينة')}</span>
                 <input
                   ref={cityRef}
                   value={cityInput}
                   onChange={e => setCityInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                  placeholder={city ? `المدينة الحالية: ${city}` : 'اكتب اسم مدينتك: القاهرة، الرياض، دبي…'}
-                  dir="rtl"
+                  placeholder={city ? tr('المدينة الحالية: {city}', { city: cityName }) : tr('اكتب اسم مدينتك: القاهرة، الرياض، دبي…')}
+                  dir={tr.dir}
                   enterKeyHint="search"
                 />
               </label>
               <button type="button" className="nq-btn gold" onClick={handleSearch} disabled={loading || !cityInput.trim()}>
                 {loading && cityInput.trim() ? <span className={styles.spinner} aria-hidden="true" /> : <Icon name="search" />}
-                بحث
+                {tr('بحث')}
               </button>
             </div>
             <button type="button" className="nq-btn ghost sm" onClick={handleGPS} disabled={loading}>
-              <Icon name="compass" />استخدم موقعي الحالي
+              <Icon name="compass" />{tr('استخدم موقعي الحالي')}
             </button>
           </div>
         </div>
 
         <div className={styles.setRow}>
-          <label className={styles.setLbl} htmlFor="pt-method"><Icon name="gear" />طريقة الحساب</label>
+          <label className={styles.setLbl} htmlFor="pt-method"><Icon name="gear" />{tr('طريقة الحساب')}</label>
           <div className={styles.setCtl}>
             <div className={styles.selectWrap}>
               <select id="pt-method" className={styles.select} value={method} onChange={e => handleMethodChange(e.target.value)}>
-                {METHODS.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                {METHODS.map(m => <option key={m.id} value={m.id}>{mName(m)}</option>)}
               </select>
               <Icon name="chev" />
             </div>
             {method !== suggested && (
               <p className={styles.hint}>
-                الطريقة المعتمدة في منطقتك:{' '}
+                {tr('الطريقة المعتمدة في منطقتك:')}{' '}
                 <button type="button" className={styles.linkBtn} onClick={() => handleMethodChange(suggested)}>
-                  {METHODS.find(m => m.id === suggested)?.name || suggested}
+                  {mName(METHODS.find(m => m.id === suggested)) || suggested}
                 </button>
               </p>
             )}
@@ -625,46 +631,46 @@ export default function PrayerTimesPage() {
         </div>
 
         <div className={styles.setRow}>
-          <span className={styles.setLbl}><Icon name="bell" />تنبيه الأذان</span>
+          <span className={styles.setLbl}><Icon name="bell" />{tr('تنبيه الأذان')}</span>
           <div className={styles.setCtl}>
             <div className={styles.pills}>
               {FIVE.map(p => (
                 <button key={p.key} type="button" className={`nq-pill ${styles.pillBtn} ${alarms[p.key] ? 'on' : ''}`}
                   aria-pressed={!!alarms[p.key]} onClick={() => toggleAlarm(p.key)}
-                  aria-label={`تنبيه أذان ${p.name}`}>
-                  {alarms[p.key] && <Icon name="check" />}{p.name}
+                  aria-label={tr('تنبيه أذان {p}', { p: tr(p.name) })}>
+                  {alarms[p.key] && <Icon name="check" />}{tr(p.name)}
                 </button>
               ))}
             </div>
             {notifSupported && notifPerm === 'default' && (
               <div className={styles.notice}>
                 <Icon name="bell" />
-                <span>فعّل الإشعارات ليصلك تنبيه عند دخول وقت الصلاة التي فعّلت أذانها (أثناء فتح هذه الصفحة).</span>
-                <button type="button" className="nq-btn gold sm" onClick={requestNotifPermission}>تفعيل الإشعارات</button>
+                <span>{tr('فعّل الإشعارات ليصلك تنبيه عند دخول وقت الصلاة التي فعّلت أذانها (أثناء فتح هذه الصفحة).')}</span>
+                <button type="button" className="nq-btn gold sm" onClick={requestNotifPermission}>{tr('تفعيل الإشعارات')}</button>
               </div>
             )}
             {notifSupported && notifPerm === 'denied' && (
               <div className={`${styles.notice} ${styles.noticeWarn}`}>
-                <Icon name="bell" /><span>الإشعارات محظورة لهذا الموقع. فعّلها من إعدادات المتصفح ليعمل التنبيه.</span>
+                <Icon name="bell" /><span>{tr('الإشعارات محظورة لهذا الموقع. فعّلها من إعدادات المتصفح ليعمل التنبيه.')}</span>
               </div>
             )}
             {notifSupported && notifPerm === 'granted' && (
-              <p className={styles.hint}><Icon name="check" /> الإشعارات مفعّلة{anyAlarm ? '' : '، اختر الصلوات التي تريد التنبيه لها'}.</p>
+              <p className={styles.hint}><Icon name="check" /> {anyAlarm ? tr('الإشعارات مفعّلة.') : tr('الإشعارات مفعّلة، اختر الصلوات التي تريد التنبيه لها.')}</p>
             )}
             {!notifSupported && anyAlarm && (
               <div className={`${styles.notice} ${styles.noticeWarn}`}>
-                <Icon name="bell" /><span>هذا المتصفح لا يدعم الإشعارات، لذلك لن يعمل التنبيه.</span>
+                <Icon name="bell" /><span>{tr('هذا المتصفح لا يدعم الإشعارات، لذلك لن يعمل التنبيه.')}</span>
               </div>
             )}
           </div>
         </div>
 
         <div className={styles.setRow}>
-          <span className={styles.setLbl}><Icon name="calendar" />التاريخ</span>
+          <span className={styles.setLbl}><Icon name="calendar" />{tr('التاريخ')}</span>
           <div className={`${styles.setCtl} ${styles.pills}`}>
             <span className="nq-pill">{dateLine}</span>
             {hijri && <span className="nq-pill on">{hijri}</span>}
-            {tz && tz !== DEVICE_TZ && <span className="nq-pill"><Icon name="timer" />بتوقيت المدينة: <bdi dir="ltr">{tz}</bdi></span>}
+            {tz && tz !== DEVICE_TZ && <span className="nq-pill"><Icon name="timer" />{tr('بتوقيت المدينة:')} <bdi dir="ltr">{tz}</bdi></span>}
           </div>
         </div>
       </div>
@@ -674,23 +680,23 @@ export default function PrayerTimesPage() {
   return (
     <div className={styles.page}>
       <PageHero
-        eyebrow={city ? `${city} · ${methodName}` : methodName}
-        title="مواقيت الصلاة"
+        eyebrow={city ? `${cityName} · ${methodName}` : methodName}
+        title={tr('مواقيت الصلاة')}
         ayah="إِنَّ ٱلصَّلَوٰةَ كَانَتْ عَلَى ٱلْمُؤْمِنِينَ كِتَٰبًا مَّوْقُوتًا"
-        ayahRef="سورة النساء · ١٠٣"
+        ayahRef={heroRef('سورة النساء · ١٠٣', 4, 103, tr.lang)}
         sub={`${dateLine}${hijri ? ` · ${hijri}` : ''}`}
       >
-        <button type="button" className="nq-btn ghost sm" onClick={goToCity}><Icon name="pin" />{city ? 'تغيير المدينة' : 'اختر مدينتك'}</button>
-        <button type="button" className="nq-btn ghost sm" onClick={handleGPS} disabled={loading}><Icon name="compass" />موقعي الحالي</button>
+        <button type="button" className="nq-btn ghost sm" onClick={goToCity}><Icon name="pin" />{city ? tr('تغيير المدينة') : tr('اختر مدينتك')}</button>
+        <button type="button" className="nq-btn ghost sm" onClick={handleGPS} disabled={loading}><Icon name="compass" />{tr('موقعي الحالي')}</button>
       </PageHero>
 
       <div className={`nq-wrap ${styles.wrap}`}>
-        {error && <div className={styles.error} role="alert"><Icon name="x" />{error}</div>}
+        {error && <div className={styles.error} role="alert"><Icon name="x" />{tr(error)}</div>}
 
         {loading && !times && (
           <div className={`nq-card ${styles.state}`} role="status">
             <span className={styles.spinnerLg} aria-hidden="true" />
-            <p>جارٍ جلب مواقيت الصلاة…</p>
+            <p>{tr('جارٍ جلب مواقيت الصلاة…')}</p>
           </div>
         )}
 
@@ -698,11 +704,11 @@ export default function PrayerTimesPage() {
           <div className={`nq-card ${styles.state}`}>
             <Pattern />
             <Badge8 icon="mosque" size={72} />
-            <h2 className={styles.stateTitle}>اختر مدينتك لعرض المواقيت</h2>
-            <p className={styles.stateSub}>اكتب اسم مدينتك أو استخدم موقعك الحالي، وسنعرض مواقيت اليوم والأسبوع بطريقة الحساب المعتمدة في بلدك.</p>
+            <h2 className={styles.stateTitle}>{tr('اختر مدينتك لعرض المواقيت')}</h2>
+            <p className={styles.stateSub}>{tr('اكتب اسم مدينتك أو استخدم موقعك الحالي، وسنعرض مواقيت اليوم والأسبوع بطريقة الحساب المعتمدة في بلدك.')}</p>
             <div className={styles.stateActs}>
-              <button type="button" className="nq-btn gold" onClick={goToCity}><Icon name="search" />ابحث عن مدينتك</button>
-              <button type="button" className="nq-btn ghost" onClick={handleGPS}><Icon name="compass" />استخدم موقعي</button>
+              <button type="button" className="nq-btn gold" onClick={goToCity}><Icon name="search" />{tr('ابحث عن مدينتك')}</button>
+              <button type="button" className="nq-btn ghost" onClick={handleGPS}><Icon name="compass" />{tr('استخدم موقعي')}</button>
             </div>
           </div>
         )}
@@ -710,38 +716,38 @@ export default function PrayerTimesPage() {
         {!times && settings}
 
         {times && next && nextInfo && (
-          <section className={styles.pgrid} aria-label="الصلاة القادمة والقبلة">
+          <section className={styles.pgrid} aria-label={tr('الصلاة القادمة والقبلة')}>
             <div className={`nq-card ${styles.nextp}`}>
               <Pattern />
-              <span className="nq-eyebrow">{next.tomorrow ? 'الصلاة القادمة · غداً' : 'الصلاة القادمة'}</span>
+              <span className="nq-eyebrow">{next.tomorrow ? tr('الصلاة القادمة · غداً') : tr('الصلاة القادمة')}</span>
               <div className={styles.nextRow}>
                 <div>
-                  <div className={styles.big}>{nextInfo.name}</div>
-                  <div className={styles.nextAt}>عند {fmt12s(next.time)}</div>
+                  <div className={styles.big}>{tr(nextInfo.name)}</div>
+                  <div className={styles.nextAt}>{tr('عند {t}', { t: fmt12s(next.time) })}</div>
                 </div>
                 <div className={styles.cdBox}>
-                  <small>بعد</small>
-                  <div className={`${styles.cd} nq-num`} role="timer" aria-live="off" aria-label={`بعد ${fmtLeft(next.secsLeft) || ''}`}>{fmtClock(next.secsLeft)}</div>
+                  <small>{tr('بعد')}</small>
+                  <div className={`${styles.cd} nq-num`} role="timer" aria-live="off" aria-label={tr('بعد {left}', { left: fmtLeft(next.secsLeft) || '' })}>{fmtClock(next.secsLeft)}</div>
                 </div>
               </div>
               <SunArc times={times} nowMins={nowMins} />
               <div className={styles.nextFoot}>
-                <span className="nq-pill"><Icon name="timer" />الآن {nowClock}</span>
-                <span className="nq-pill"><Icon name="sun" />الشروق {fmt12s(times.Sunrise)}</span>
+                <span className="nq-pill"><Icon name="timer" />{tr('الآن')} {nowClock}</span>
+                <span className="nq-pill"><Icon name="sun" />{tr('الشروق')} {fmt12s(times.Sunrise)}</span>
                 {hijri && <span className="nq-pill on"><Icon name="moon" />{hijri}</span>}
               </div>
             </div>
 
-            <Link to="/qibla" className={`nq-card ${styles.qibla}`} aria-label={`اتجاه القبلة ${qibla != null ? toAr(Math.round(qibla)) + ' درجة من الشمال' : ''} — افتح البوصلة`}>
-              <span className="nq-eyebrow">اتجاه القبلة</span>
+            <Link to="/qibla" className={`nq-card ${styles.qibla}`} aria-label={qibla != null ? tr('اتجاه القبلة {deg} درجة من الشمال — افتح البوصلة', { deg: toAr(Math.round(qibla)) }) : tr('اتجاه القبلة — افتح البوصلة')}>
+              <span className="nq-eyebrow">{tr('اتجاه القبلة')}</span>
               <QiblaRose bearing={qibla} className={styles.rose} />
               {qibla != null && (
                 <div>
-                  <b className={styles.qDeg}>{toAr(Math.round(qibla))}° من الشمال</b>
-                  <p className={styles.qSub}>{fmtKm(dist)} كم إلى الكعبة المشرّفة · بالشمال الحقيقي</p>
+                  <b className={styles.qDeg}>{tr('{deg}° من الشمال', { deg: toAr(Math.round(qibla)) })}</b>
+                  <p className={styles.qSub}>{tr('{km} كم إلى الكعبة المشرّفة · بالشمال الحقيقي', { km: fmtKm(dist) })}</p>
                 </div>
               )}
-              <span className={styles.qGo}>افتح البوصلة <Icon name="back" className={styles.flip} /></span>
+              <span className={styles.qGo}>{tr('افتح البوصلة')} <Icon name="back" className={styles.flip} /></span>
             </Link>
           </section>
         )}
@@ -750,13 +756,13 @@ export default function PrayerTimesPage() {
           <section className={styles.sec} aria-labelledby="pt-five-h">
             <div className={styles.fiveHead}>
               <div className={styles.secHeadStart}>
-                <span className="nq-eyebrow">{viewTomorrow ? 'مواقيت الغد' : 'مواقيت اليوم'}</span>
-                <h2 id="pt-five-h" className="nq-h-sec">الصلوات الخمس</h2>
+                <span className="nq-eyebrow">{viewTomorrow ? tr('مواقيت الغد') : tr('مواقيت اليوم')}</span>
+                <h2 id="pt-five-h" className="nq-h-sec">{tr('الصلوات الخمس')}</h2>
               </div>
-              <div className="nq-seg" role="group" aria-label="اليوم أو الغد">
-                <button type="button" aria-pressed={!viewTomorrow} onClick={() => setShowDay('today')}>اليوم</button>
+              <div className="nq-seg" role="group" aria-label={tr('اليوم أو الغد')}>
+                <button type="button" aria-pressed={!viewTomorrow} onClick={() => setShowDay('today')}>{tr('اليوم')}</button>
                 <button type="button" aria-pressed={!!viewTomorrow} onClick={() => setShowDay('tomorrow')} disabled={!tomorrowTimes}
-                  title={!tomorrowTimes ? 'جارٍ تحميل مواقيت الغد' : undefined}>غداً</button>
+                  title={!tomorrowTimes ? tr('جارٍ تحميل مواقيت الغد') : undefined}>{tr('غداً')}</button>
               </div>
             </div>
             <div className={styles.windows}>
@@ -769,15 +775,15 @@ export default function PrayerTimesPage() {
                   <div key={p.key} className={`${styles.win} ${isNext ? styles.now : ''} ${past ? styles.past : ''}`}>
                     <WinLine />
                     <Badge8 icon={p.icon} className={styles.wBadge} />
-                    <span className={styles.wName}>{p.name}</span>
-                    <span className={`${styles.wTime} nq-num`}>{f.t}<small>{f.ap === 'ص' ? 'صباحاً' : 'مساءً'}</small></span>
+                    <span className={styles.wName}>{tr(p.name)}</span>
+                    <span className={`${styles.wTime} nq-num`}>{f.t}{f.long && <small>{f.long}</small>}</span>
                     {isNext
-                      ? <span className="nq-pill on">{left ? `بعد ${left}` : 'الصلاة القادمة'}</span>
-                      : <span className={`nq-pill ${styles.wState}`}>{past ? 'انقضى وقتها' : 'لم يحن بعد'}</span>}
+                      ? <span className="nq-pill on">{left ? tr('بعد {left}', { left }) : tr('الصلاة القادمة')}</span>
+                      : <span className={`nq-pill ${styles.wState}`}>{past ? tr('انقضى وقتها') : tr('لم يحن بعد')}</span>}
                     <span className={styles.adh}>
-                      <span aria-hidden="true">الأذان</span>
+                      <span aria-hidden="true">{tr('الأذان')}</span>
                       <button type="button" role="switch" className={styles.tog} aria-checked={!!alarms[p.key]}
-                        aria-label={`تنبيه أذان ${p.name}`}
+                        aria-label={tr('تنبيه أذان {p}', { p: tr(p.name) })}
                         onClick={() => toggleAlarm(p.key)} />
                     </span>
                   </div>
@@ -792,24 +798,24 @@ export default function PrayerTimesPage() {
         {(weekly.length > 0 || weekLoad) && (
           <section className={styles.sec} aria-labelledby="pt-week-h">
             <div className={styles.secHead}>
-              <span className="nq-eyebrow">الأيام السبعة القادمة</span>
-              <h2 id="pt-week-h" className="nq-h-sec">مواقيت الأسبوع</h2>
+              <span className="nq-eyebrow">{tr('الأيام السبعة القادمة')}</span>
+              <h2 id="pt-week-h" className="nq-h-sec">{tr('مواقيت الأسبوع')}</h2>
             </div>
             <div className={`nq-card ${styles.week}`}>
               <div className={styles.weekScroll}>
                 <table className={styles.weekTable}>
                   <thead>
                     <tr>
-                      <th scope="col">اليوم</th>
-                      {PRAYERS_INFO.map(p => <th key={p.key} scope="col">{p.name}</th>)}
+                      <th scope="col">{tr('اليوم')}</th>
+                      {PRAYERS_INFO.map(p => <th key={p.key} scope="col">{tr(p.name)}</th>)}
                     </tr>
                   </thead>
                   <tbody>
                     {weekly.map((day, i) => (
                       <tr key={i} className={i === 0 ? styles.today : i === 1 ? styles.tomorrow : ''}>
                         <th scope="row">
-                          <span className={styles.wDay}>{i === 0 ? 'اليوم' : i === 1 ? 'غداً' : DAYS_AR[day.date.dow]}</span>
-                          <span className={styles.wDate}>{i < 2 ? `${DAYS_AR[day.date.dow]} ` : ''}{toAr(`${day.date.d}/${day.date.mo}`)}</span>
+                          <span className={styles.wDay}>{i === 0 ? tr('اليوم') : i === 1 ? tr('غداً') : dayName(day.date.dow, tr.lang)}</span>
+                          <span className={styles.wDate}>{i < 2 ? `${dayName(day.date.dow, tr.lang)} ` : ''}{toAr(`${day.date.d}/${day.date.mo}`)}</span>
                         </th>
                         {PRAYERS_INFO.map(p => (
                           <td key={p.key} className="nq-num">{fmt24(day.timings[p.key])}</td>
@@ -819,7 +825,7 @@ export default function PrayerTimesPage() {
                   </tbody>
                 </table>
               </div>
-              {weekLoad && <p className={styles.weekLoad} role="status"><span className={styles.spinner} aria-hidden="true" />جارٍ تحميل بقية الأسبوع…</p>}
+              {weekLoad && <p className={styles.weekLoad} role="status"><span className={styles.spinner} aria-hidden="true" />{tr('جارٍ تحميل بقية الأسبوع…')}</p>}
             </div>
           </section>
         )}
@@ -827,8 +833,8 @@ export default function PrayerTimesPage() {
         {times && (
           <section className={styles.sec} aria-labelledby="pt-dua-h">
             <div className={styles.secHead}>
-              <span className="nq-eyebrow">من السنّة</span>
-              <h2 id="pt-dua-h" className="nq-h-sec">أدعية بعد الأذان</h2>
+              <span className="nq-eyebrow">{tr('من السنّة')}</span>
+              <h2 id="pt-dua-h" className="nq-h-sec">{tr('أدعية بعد الأذان')}</h2>
             </div>
             <div className={styles.duas}>
               {[
@@ -837,9 +843,11 @@ export default function PrayerTimesPage() {
               ].map((d, i) => (
                 <figure key={i} className={`nq-card ${styles.dua}`}>
                   <Corners />
-                  <figcaption className={styles.duaName}>{d.name}</figcaption>
-                  <blockquote className={styles.duaAr}>{d.ar}</blockquote>
-                  <p className={styles.duaSrc}>{d.src}</p>
+                  <figcaption className={styles.duaName}>{tr(d.name)}</figcaption>
+                  <blockquote className={styles.duaAr} lang="ar" dir="rtl">{d.ar}</blockquote>
+                  {/* the du'a stays in Arabic; its meaning is shown under it in other languages */}
+                  {tr.lang !== 'ar' && tr(d.ar) !== d.ar && <p className={styles.duaMean}>{tr(d.ar)}</p>}
+                  <p className={styles.duaSrc}>{tr(d.src)}</p>
                 </figure>
               ))}
             </div>

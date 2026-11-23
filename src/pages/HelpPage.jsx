@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { PageHero, Icon, Badge8, toAr } from '../components/ornaments/Ornaments';
 import { normalizeArabic } from '../arabic';
 import styles from './HelpPage.module.css';
+import { useTr } from '../l10n';
 
 const SECTIONS = [
   {
@@ -88,6 +89,7 @@ const SECTIONS = [
 const norm = s => normalizeArabic(String(s || '')).toLowerCase();
 
 export default function HelpPage() {
+  const tr = useTr();
   const [openItem, setOpenItem] = useState(null);
   const [search,   setSearch]   = useState('');
   const { hash } = useLocation();
@@ -100,32 +102,33 @@ export default function HelpPage() {
   }, [hash]);
 
   const q = norm(search.trim());
+  const lang = tr.lang;
   const filtered = useMemo(() => (q
-    ? SECTIONS.map(sec => ({ ...sec, items: sec.items.filter(it => norm(it.q).includes(q) || norm(it.a).includes(q)) }))
+    ? SECTIONS.map(sec => ({ ...sec, items: sec.items.filter(it => norm(tr(it.q)).includes(q) || norm(tr(it.a)).includes(q)) }))
         .filter(sec => sec.items.length > 0)
-    : SECTIONS), [q]);
+    : SECTIONS), [q, lang]); // eslint-disable-line react-hooks/exhaustive-deps
   const total = filtered.reduce((n, s) => n + s.items.length, 0);
 
   return (
     <div className={styles.page}>
-      <PageHero eyebrow="خطوة بخطوة" title="شرح الاستخدام"
-        sub="إجابات مختصرة عن كل ما تحتاجه: القراءة، والاستماع، والحفظ، والصلاة، والختمات، وحسابك." />
+      <PageHero eyebrow={tr('خطوة بخطوة')} title={tr('شرح الاستخدام')}
+        sub={tr('إجابات مختصرة عن كل ما تحتاجه: القراءة، والاستماع، والحفظ، والصلاة، والختمات، وحسابك.')} />
 
       <div className={`nq-wrap ${styles.layout}`}>
         <aside className={styles.side}>
           <label className={`nq-input ${styles.search}`}>
             <Icon name="search" />
-            <span className="nq-sr">ابحث في الأسئلة</span>
-            <input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث في الأسئلة…" />
+            <span className="nq-sr">{tr('ابحث في الأسئلة')}</span>
+            <input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder={tr('ابحث في الأسئلة…')} />
             {search && (
-              <button type="button" className={styles.clear} onClick={() => setSearch('')} aria-label="مسح البحث"><Icon name="x" /></button>
+              <button type="button" className={styles.clear} onClick={() => setSearch('')} aria-label={tr('مسح البحث')}><Icon name="x" /></button>
             )}
           </label>
-          <nav className={styles.toc} aria-label="أقسام الشرح">
+          <nav className={styles.toc} aria-label={tr('أقسام الشرح')}>
             {SECTIONS.map(s => (
               <a key={s.id} href={`#${s.id}`} className={styles.tocLink}
                 onClick={e => { e.preventDefault(); document.getElementById(s.id)?.scrollIntoView({ block: 'start', behavior: 'smooth' }); history.replaceState(null, '', `#${s.id}`); }}>
-                <Icon name={s.icon} />{s.title}
+                <Icon name={s.icon} />{tr(s.title)}
               </a>
             ))}
           </nav>
@@ -134,7 +137,7 @@ export default function HelpPage() {
         <div className={styles.main}>
           {q && (
             <p className={styles.found} role="status">
-              {total ? `${toAr(total)} نتيجة لـ «${search.trim()}»` : `لا نتائج لـ «${search.trim()}». جرّب كلمة أخرى، أو راسل الدعم.`}
+              {total ? tr('{n} نتيجة لـ «{q}»', { n: toAr(total), q: search.trim() }) : tr('لا نتائج لـ «{q}». جرّب كلمة أخرى، أو راسل الدعم.', { q: search.trim() })}
             </p>
           )}
 
@@ -142,8 +145,8 @@ export default function HelpPage() {
             <section key={sec.id} id={sec.id} className={styles.section} aria-labelledby={`${sec.id}-h`}>
               <header className={styles.secHead}>
                 <Badge8 icon={sec.icon} size={50} />
-                <h2 id={`${sec.id}-h`} className={styles.secTitle}>{sec.title}</h2>
-                {sec.link && <Link to={sec.link} className={`nq-btn ghost sm ${styles.open}`}>افتح الصفحة</Link>}
+                <h2 id={`${sec.id}-h`} className={styles.secTitle}>{tr(sec.title)}</h2>
+                {sec.link && <Link to={sec.link} className={`nq-btn ghost sm ${styles.open}`}>{tr('افتح الصفحة')}</Link>}
               </header>
               <div className={styles.items}>
                 {sec.items.map((item, idx) => {
@@ -154,11 +157,11 @@ export default function HelpPage() {
                       <h3 className={styles.qWrap}>
                         <button type="button" className={styles.q} aria-expanded={isOpen} aria-controls={`a-${key}`}
                           onClick={() => setOpenItem(openItem === key ? null : key)}>
-                          <span>{item.q}</span>
+                          <span>{tr(item.q)}</span>
                           <Icon name="chev" className={styles.chev} />
                         </button>
                       </h3>
-                      <div id={`a-${key}`} className={styles.a} hidden={!isOpen}>{item.a}</div>
+                      <div id={`a-${key}`} className={styles.a} hidden={!isOpen}>{tr(item.a)}</div>
                     </div>
                   );
                 })}
@@ -169,12 +172,12 @@ export default function HelpPage() {
           <div className={`nq-card ${styles.contact}`}>
             <Badge8 icon="chat" size={56} />
             <div className={styles.contactText}>
-              <h2>لم تجد إجابة سؤالك؟</h2>
-              <p>راسل فريق الدعم وسنرد عليك في أقرب وقت، أو تصفّح دليل المميزات.</p>
+              <h2>{tr('لم تجد إجابة سؤالك؟')}</h2>
+              <p>{tr('راسل فريق الدعم وسنرد عليك في أقرب وقت، أو تصفّح دليل المميزات.')}</p>
             </div>
             <div className={styles.contactBtns}>
-              <Link to="/support" className="nq-btn gold"><Icon name="chat" />تواصل مع الدعم</Link>
-              <Link to="/docs" className="nq-btn ghost"><Icon name="list" />دليل المميزات</Link>
+              <Link to="/support" className="nq-btn gold"><Icon name="chat" />{tr('تواصل مع الدعم')}</Link>
+              <Link to="/docs" className="nq-btn ghost"><Icon name="list" />{tr('دليل المميزات')}</Link>
             </div>
           </div>
         </div>

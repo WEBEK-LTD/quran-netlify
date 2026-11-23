@@ -5,8 +5,11 @@ import { useAuth } from '../hooks/useAuth';
 import {
   listMyTickets, createSupportTicket,
   listTicketMessages, sendTicketMessage,
-  pollTicketMessages, errorMessage,
+  pollTicketMessages,
 } from '../backend';
+import { apiErrorText } from '../authErrors';
+import { useTr, trNow, intlLocale } from '../l10n';
+import { rich } from './legal/LegalDoc';
 import { PageHero, Icon, Badge8, Pattern, Corners, toAr } from '../components/ornaments/Ornaments';
 import styles from './SupportPage.module.css';
 
@@ -30,19 +33,21 @@ const FAQ = [
 ];
 
 function StatusPill({ status }) {
+  const tr = useTr();
   const s = STATUS[status] || STATUS.open;
-  return <span className={styles.pill} data-tone={s.tone}><i aria-hidden="true" />{s.label}</span>;
+  return <span className={styles.pill} data-tone={s.tone}><i aria-hidden="true" />{tr(s.label)}</span>;
 }
 
 // ─── SupportPage ──────────────────────────────────────────────────────────────
 export default function SupportPage() {
   const { user, loading } = useAuth();
+  const tr = useTr();
   return (
     <div className={styles.page}>
-      <PageHero eyebrow="نحن هنا لخدمتك" title="الدعم"
-        sub="راسل فريق نور القرآن في أي مشكلة أو اقتراح، وتابع الرد في محادثة خاصة بك." />
+      <PageHero eyebrow={tr('نحن هنا لخدمتك')} title={tr('الدعم')}
+        sub={tr('راسل فريق نور القرآن في أي مشكلة أو اقتراح، وتابع الرد في محادثة خاصة بك.')} />
       <div className={`nq-wrap ${styles.wrap}`}>
-        {loading ? <div className={styles.center}><span className={styles.spinner} aria-label="جارٍ التحميل" /></div>
+        {loading ? <div className={styles.center}><span className={styles.spinner} aria-label={tr('جارٍ التحميل')} /></div>
           : !user ? <NotLoggedIn />
           : <SupportView />}
         <Faq />
@@ -53,6 +58,7 @@ export default function SupportPage() {
 
 // ─── SupportView ──────────────────────────────────────────────────────────────
 function SupportView() {
+  const tr = useTr();
   const [tickets,  setTickets]  = useState([]);
   const [active,   setActive]   = useState(null);
   const [messages, setMessages] = useState([]);
@@ -96,7 +102,7 @@ function SupportView() {
       // keep the open ticket's status fresh
       setActive(a => (a ? (data.find(tk => tk.id === a.id) || a) : a));
     } catch (e) {
-      if (aliveRef.current) setListErr(errorMessage(e, 'تعذّر تحميل استفساراتك'));
+      if (aliveRef.current) setListErr(apiErrorText(e, 'تعذّر تحميل استفساراتك'));
     } finally {
       if (aliveRef.current) setListLoading(false);
     }
@@ -119,7 +125,7 @@ function SupportView() {
         setMessages(list);
         lastIdRef.current = list.length ? list[list.length - 1].id : null;
       })
-      .catch(e => { if (alive) setChatErr(errorMessage(e, 'تعذّر تحميل الرسائل')); })
+      .catch(e => { if (alive) setChatErr(apiErrorText(e, 'تعذّر تحميل الرسائل')); })
       .finally(() => { if (alive) setMsgLoading(false); });
     const stop = pollTicketMessages(ticketId, lastIdRef, list => { if (alive) mergeMessages(list); });
     return () => { alive = false; stop(); };
@@ -147,9 +153,9 @@ function SupportView() {
       if (!aliveRef.current) return;
       if (err?.code === 'ticket_closed') {
         setActive(a => (a ? { ...a, status: 'closed' } : a));
-        setChatErr('هذا الاستفسار مغلق، افتح استفساراً جديداً');
+        setChatErr(trNow('هذا الاستفسار مغلق، افتح استفساراً جديداً'));
       } else {
-        setChatErr(errorMessage(err, 'تعذّر إرسال الرسالة، حاول مجدداً'));
+        setChatErr(apiErrorText(err, 'تعذّر إرسال الرسالة، حاول مجدداً'));
       }
     }
     if (aliveRef.current) setSending(false);
@@ -173,7 +179,7 @@ function SupportView() {
       setNewSubject(''); setNewTopic(''); setNewBody('');
       setView('chat');
     } catch (err) {
-      if (aliveRef.current) setFormErr(errorMessage(err, 'تعذّر إرسال الاستفسار، حاول مجدداً'));
+      if (aliveRef.current) setFormErr(apiErrorText(err, 'تعذّر إرسال الاستفسار، حاول مجدداً'));
     }
     if (aliveRef.current) setCreating(false);
   }
@@ -209,23 +215,23 @@ function SupportView() {
       {/* ── tickets ── */}
       <aside className={`nq-card ${styles.side} ${listHidden ? styles.mHide : ''}`} aria-labelledby="sp-mine">
         <div className={styles.sideHead}>
-          <h2 id="sp-mine" className={styles.sideTitle}>استفساراتي</h2>
-          <button type="button" className="nq-btn gold sm" onClick={openNew}><Icon name="plus" />استفسار جديد</button>
+          <h2 id="sp-mine" className={styles.sideTitle}>{tr('استفساراتي')}</h2>
+          <button type="button" className="nq-btn gold sm" onClick={openNew}><Icon name="plus" />{tr('استفسار جديد')}</button>
         </div>
 
-        {listLoading && <div className={styles.empty}><span className={styles.spinner} aria-label="جارٍ التحميل" /></div>}
+        {listLoading && <div className={styles.empty}><span className={styles.spinner} aria-label={tr('جارٍ التحميل')} /></div>}
         {!listLoading && listErr && (
           <div className={styles.empty}>
             <Badge8 icon="x" />
             <p className={styles.emptyTitle}>{listErr}</p>
-            <button type="button" className="nq-btn ghost sm" onClick={() => { setListLoading(true); loadTickets(); }}>إعادة المحاولة</button>
+            <button type="button" className="nq-btn ghost sm" onClick={() => { setListLoading(true); loadTickets(); }}>{tr('إعادة المحاولة')}</button>
           </div>
         )}
         {!listLoading && !listErr && tickets.length === 0 && (
           <div className={styles.empty}>
             <Badge8 icon="chat" />
-            <p className={styles.emptyTitle}>لا توجد استفسارات بعد</p>
-            <p className={styles.emptySub}>اضغط «استفسار جديد» لمراسلة الفريق.</p>
+            <p className={styles.emptyTitle}>{tr('لا توجد استفسارات بعد')}</p>
+            <p className={styles.emptySub}>{tr('اضغط «استفسار جديد» لمراسلة الفريق.')}</p>
           </div>
         )}
 
@@ -237,12 +243,12 @@ function SupportView() {
                 <span className={styles.tTop}>
                   <span className={styles.tSubject}>{ticket.subject}</span>
                   {ticket.unread > 0 && (
-                    <span className={styles.unread} aria-label={`${ticket.unread} رسائل جديدة`}>{toAr(ticket.unread)}</span>
+                    <span className={styles.unread} aria-label={tr('{n} رسائل جديدة', { n: ticket.unread })}>{toAr(ticket.unread)}</span>
                   )}
                 </span>
                 <span className={styles.tMeta}>
                   <StatusPill status={ticket.status} />
-                  <span className={styles.tDate}>{timeAgo(ticket.updated_at)}</span>
+                  <span className={styles.tDate}>{timeAgo(ticket.updated_at, tr)}</span>
                 </span>
               </button>
             </li>
@@ -251,47 +257,47 @@ function SupportView() {
       </aside>
 
       {/* ── main panel ── */}
-      <section ref={panelRef} className={`nq-card ${styles.main} ${mainHidden ? styles.mHide : ''}`} aria-label="المحادثة">
+      <section ref={panelRef} className={`nq-card ${styles.main} ${mainHidden ? styles.mHide : ''}`} aria-label={tr('المحادثة')}>
         {showNew && (
           <form onSubmit={handleCreate} className={styles.newForm}>
             <div className={styles.panelHead}>
               <Badge8 icon="pen" size={46} />
               <div className={styles.grow}>
-                <h2 className={styles.panelTitle}>استفسار جديد</h2>
-                <p className={styles.panelSub}>اكتب ما تحتاجه، وسيصلك الرد هنا.</p>
+                <h2 className={styles.panelTitle}>{tr('استفسار جديد')}</h2>
+                <p className={styles.panelSub}>{tr('اكتب ما تحتاجه، وسيصلك الرد هنا.')}</p>
               </div>
-              <button type="button" className="nq-ibtn" onClick={cancelNew} aria-label="إغلاق النموذج"><Icon name="x" /></button>
+              <button type="button" className="nq-ibtn" onClick={cancelNew} aria-label={tr('إغلاق النموذج')}><Icon name="x" /></button>
             </div>
 
             <fieldset className={styles.fs}>
-              <legend className={styles.label}>نوع الاستفسار</legend>
+              <legend className={styles.label}>{tr('نوع الاستفسار')}</legend>
               <div className={styles.topics}>
                 {TOPICS.map(topic => (
                   <button key={topic} type="button" aria-pressed={newTopic === topic} className={styles.topic}
-                    onClick={() => { setNewTopic(topic); setNewSubject(topic); }}>
-                    {topic}
+                    onClick={() => { setNewTopic(topic); setNewSubject(tr(topic)); }}>
+                    {tr(topic)}
                   </button>
                 ))}
               </div>
             </fieldset>
 
             <label className={styles.fieldLbl}>
-              <span className={styles.label}>الموضوع</span>
+              <span className={styles.label}>{tr('الموضوع')}</span>
               <span className="nq-input"><input value={newSubject} onChange={e => setNewSubject(e.target.value)}
-                placeholder="عنوان قصير لاستفسارك" required /></span>
+                placeholder={tr('عنوان قصير لاستفسارك')} required /></span>
             </label>
             <label className={styles.fieldLbl}>
-              <span className={styles.label}>التفاصيل</span>
+              <span className={styles.label}>{tr('التفاصيل')}</span>
               <textarea className={styles.textarea} rows={6} value={newBody} onChange={e => setNewBody(e.target.value)}
-                placeholder="اشرح المشكلة أو الاقتراح بالتفصيل: ماذا فعلت، وماذا حدث، ونوع جهازك إن أمكن." />
+                placeholder={tr('اشرح المشكلة أو الاقتراح بالتفصيل: ماذا فعلت، وماذا حدث، ونوع جهازك إن أمكن.')} />
             </label>
             {formErr && <p role="alert" className={styles.err}><Icon name="x" />{formErr}</p>}
             <div className={styles.actions}>
               <button type="submit" className="nq-btn gold" disabled={creating || !newSubject.trim()}>
                 {creating ? <span className={styles.spinnerSm} aria-hidden="true" /> : <Icon name="chat" />}
-                {creating ? 'جارٍ الإرسال…' : 'إرسال الاستفسار'}
+                {creating ? tr('جارٍ الإرسال…') : tr('إرسال الاستفسار')}
               </button>
-              <button type="button" className="nq-btn ghost" onClick={cancelNew}>إلغاء</button>
+              <button type="button" className="nq-btn ghost" onClick={cancelNew}>{tr('إلغاء')}</button>
             </div>
           </form>
         )}
@@ -301,11 +307,11 @@ function SupportView() {
             <Pattern />
             <Corners />
             <Badge8 icon="chat" size={72} />
-            <h2 className={styles.welcomeTitle}>كيف نستطيع مساعدتك؟</h2>
-            <p className={styles.welcomeSub}>اختر استفساراً من القائمة لمتابعة المحادثة، أو ابدأ استفساراً جديداً.</p>
+            <h2 className={styles.welcomeTitle}>{tr('كيف نستطيع مساعدتك؟')}</h2>
+            <p className={styles.welcomeSub}>{tr('اختر استفساراً من القائمة لمتابعة المحادثة، أو ابدأ استفساراً جديداً.')}</p>
             <div className={styles.actions} style={{ justifyContent: 'center' }}>
-              <button type="button" className="nq-btn gold" onClick={openNew}><Icon name="plus" />استفسار جديد</button>
-              <Link to="/help" className="nq-btn ghost"><Icon name="doc" />شرح الاستخدام</Link>
+              <button type="button" className="nq-btn gold" onClick={openNew}><Icon name="plus" />{tr('استفسار جديد')}</button>
+              <Link to="/help" className="nq-btn ghost"><Icon name="doc" />{tr('شرح الاستخدام')}</Link>
             </div>
           </div>
         )}
@@ -313,28 +319,28 @@ function SupportView() {
         {!showNew && active && (
           <div className={styles.chat}>
             <div className={styles.chatHead}>
-              <button type="button" className={`nq-ibtn ${styles.backBtn}`} aria-label="العودة إلى الاستفسارات"
+              <button type="button" className={`nq-ibtn ${styles.backBtn}`} aria-label={tr('العودة إلى الاستفسارات')}
                 onClick={() => { setView('list'); setActive(null); }}>
-                <Icon name="back" />
+                <Icon name="back" style={tr.dir === 'ltr' ? { transform: 'scaleX(-1)' } : undefined} />
               </button>
               <div className={styles.grow}>
                 <h2 className={styles.chatSubject}>{active.subject}</h2>
                 <div className={styles.tMeta}>
                   <StatusPill status={active.status} />
-                  {active.topic && <span className={styles.tDate}>{active.topic}</span>}
+                  {active.topic && <span className={styles.tDate}>{tr(active.topic)}</span>}
                 </div>
               </div>
             </div>
 
             <div className={styles.messages} ref={scroller} aria-live="polite">
               {msgLoading && messages.length === 0 && (
-                <div className={styles.noMsg}><span className={styles.spinner} aria-label="جارٍ التحميل" /></div>
+                <div className={styles.noMsg}><span className={styles.spinner} aria-label={tr('جارٍ التحميل')} /></div>
               )}
               {!msgLoading && messages.length === 0 && (
                 <div className={styles.noMsg}>
                   <Badge8 icon="chat" />
-                  <p>ستظهر محادثتك مع فريق الدعم هنا.</p>
-                  <small>سيرد الفريق في أقرب وقت بإذن الله.</small>
+                  <p>{tr('ستظهر محادثتك مع فريق الدعم هنا.')}</p>
+                  <small>{tr('سيرد الفريق في أقرب وقت بإذن الله.')}</small>
                 </div>
               )}
               {messages.reduce((acc, msg, i) => {
@@ -343,7 +349,7 @@ function SupportView() {
                 if (day && day !== prevDay) {
                   acc.push(
                     <div key={'sep' + day} className={styles.dateSep}>
-                      <span>{new Date(day).toLocaleDateString('ar-EG', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                      <span>{new Date(day).toLocaleDateString(intlLocale(tr.lang), { weekday: 'long', month: 'long', day: 'numeric' })}</span>
                     </div>
                   );
                 }
@@ -353,8 +359,8 @@ function SupportView() {
                     <div className={styles.bubbleWrap}>
                       <div className={styles.bubble}>{msg.body}</div>
                       <div className={styles.msgMeta}>
-                        {msg.is_admin ? (msg.sender_name || 'فريق الدعم') : 'أنت'} ·{' '}
-                        {new Date(msg.created_at).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                        {msg.is_admin ? (msg.sender_name || tr('فريق الدعم')) : tr('أنت')} ·{' '}
+                        {new Date(msg.created_at).toLocaleTimeString(intlLocale(tr.lang), { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
                   </div>
@@ -368,18 +374,18 @@ function SupportView() {
             {active.status === 'closed' ? (
               <div className={styles.closed}>
                 <Icon name="check" />
-                <span>تم إغلاق هذا الاستفسار.</span>
-                <button type="button" onClick={openNew} className={styles.linkBtn}>افتح استفساراً جديداً</button>
+                <span>{tr('تم إغلاق هذا الاستفسار.')}</span>
+                <button type="button" onClick={openNew} className={styles.linkBtn}>{tr('افتح استفساراً جديداً')}</button>
               </div>
             ) : (
               <form onSubmit={handleSend} className={styles.compose}>
                 <label className={`nq-input ${styles.grow}`}>
-                  <span className="nq-sr">رسالتك</span>
-                  <input placeholder="اكتب رسالتك…" value={input} onChange={e => setInput(e.target.value)} />
+                  <span className="nq-sr">{tr('رسالتك')}</span>
+                  <input placeholder={tr('اكتب رسالتك…')} value={input} onChange={e => setInput(e.target.value)} />
                 </label>
-                <button type="submit" className={`nq-btn gold ${styles.send}`} disabled={sending || !input.trim()} aria-label="إرسال">
-                  {sending ? <span className={styles.spinnerSm} aria-hidden="true" /> : <SendIcon />}
-                  <span className={styles.sendTxt}>إرسال</span>
+                <button type="submit" className={`nq-btn gold ${styles.send}`} disabled={sending || !input.trim()} aria-label={tr('إرسال')}>
+                  {sending ? <span className={styles.spinnerSm} aria-hidden="true" /> : <SendIcon flip={tr.dir === 'rtl'} />}
+                  <span className={styles.sendTxt}>{tr('إرسال')}</span>
                 </button>
               </form>
             )}
@@ -390,65 +396,70 @@ function SupportView() {
   );
 }
 
-function SendIcon() {
+function SendIcon({ flip }) {
   return (
-    <svg className="nq-ico" viewBox="0 0 24 24" aria-hidden="true" style={{ transform: 'scaleX(-1)' }}>
+    <svg className="nq-ico" viewBox="0 0 24 24" aria-hidden="true" style={flip ? { transform: 'scaleX(-1)' } : undefined}>
       <path d="M4 12 20 4l-5 16-3.5-6.5z M11.5 13.5 20 4" />
     </svg>
   );
 }
 
 function Faq() {
+  const tr = useTr();
   const [open, setOpen] = useState(null);
   return (
     <section className={styles.faq} aria-labelledby="sp-faq">
-      <h2 id="sp-faq" className={styles.faqTitle}>أسئلة شائعة</h2>
+      <h2 id="sp-faq" className={styles.faqTitle}>{tr('أسئلة شائعة')}</h2>
       <div className={styles.faqList}>
         {FAQ.map(([q, a], i) => (
           <div key={q} className={styles.faqItem}>
             <h3>
               <button type="button" className={styles.faqQ} aria-expanded={open === i} aria-controls={`sp-faq-${i}`}
                 onClick={() => setOpen(o => (o === i ? null : i))}>
-                <span>{q}</span>
+                <span>{tr(q)}</span>
                 <Icon name="chev" className={styles.faqChev} />
               </button>
             </h3>
-            <div id={`sp-faq-${i}`} hidden={open !== i} className={styles.faqA}>{a}</div>
+            <div id={`sp-faq-${i}`} hidden={open !== i} className={styles.faqA}>{tr(a)}</div>
           </div>
         ))}
       </div>
       <p className={styles.faqMore}>
-        المزيد في <Link to="/help">شرح الاستخدام</Link> و<Link to="/docs">دليل المميزات</Link>.
+        {rich(tr('المزيد في {help} و{docs}.'), {
+          help: <Link to="/help">{tr('شرح الاستخدام')}</Link>,
+          docs: <Link to="/docs">{tr('دليل المميزات')}</Link>,
+        })}
       </p>
     </section>
   );
 }
 
 function NotLoggedIn() {
+  const tr = useTr();
   return (
     <div className={`nq-card ${styles.gate}`}>
       <Pattern />
       <Corners />
       <Badge8 icon="lock" size={72} />
-      <h2 className={styles.welcomeTitle}>سجّل الدخول لمراسلة الدعم</h2>
-      <p className={styles.welcomeSub}>نحتاج حسابك لنحفظ استفساراتك ونُعلمك بالرد. التسجيل مجاني ولا يستغرق دقيقة.</p>
+      <h2 className={styles.welcomeTitle}>{tr('سجّل الدخول لمراسلة الدعم')}</h2>
+      <p className={styles.welcomeSub}>{tr('نحتاج حسابك لنحفظ استفساراتك ونُعلمك بالرد. التسجيل مجاني ولا يستغرق دقيقة.')}</p>
       <div className={styles.actions} style={{ justifyContent: 'center' }}>
-        <Link to="/login" className="nq-btn gold"><Icon name="user" />تسجيل الدخول</Link>
-        <Link to="/signup" className="nq-btn ghost"><Icon name="plus" />إنشاء حساب جديد</Link>
+        <Link to="/login" className="nq-btn gold"><Icon name="user" />{tr('تسجيل الدخول')}</Link>
+        <Link to="/signup" className="nq-btn ghost"><Icon name="plus" />{tr('إنشاء حساب جديد')}</Link>
       </div>
-      <p className={styles.gateAlt}>أو راسلنا بالبريد: <a href="mailto:support@webek.org" dir="ltr">support@webek.org</a></p>
+      <p className={styles.gateAlt}>{rich(tr('أو راسلنا بالبريد: {email}'), { email: <a href="mailto:support@webek.org" dir="ltr">support@webek.org</a> })}</p>
     </div>
   );
 }
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, tr) {
   if (!dateStr) return '—';
   const m = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
-  if (m < 1)  return 'الآن';
-  if (m < 60) return `منذ ${toAr(m)} دقيقة`;
+  if (m < 1)  return tr('الآن');
+  if (m < 60) return tr('منذ {n} دقيقة', { n: toAr(m) });
   const h = Math.floor(m / 60);
-  if (h < 24) return `منذ ${toAr(h)} ساعة`;
+  if (h < 24) return tr('منذ {n} ساعة', { n: toAr(h) });
   const d = Math.floor(h / 24);
-  if (d < 30) return `منذ ${toAr(d)} يوم`;
-  return `منذ ${toAr(Math.floor(d / 30))} شهر`;
+  if (d < 30) return tr('منذ {n} يوم', { n: toAr(d) });
+  return tr('منذ {n} شهر', { n: toAr(Math.floor(d / 30)) });
 }

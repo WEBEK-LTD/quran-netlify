@@ -5,6 +5,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import styles from './RadioPage.module.css';
 import { PageHero, Icon, Badge8, toAr } from '../components/ornaments/Ornaments';
+import { useTr, intlLocale } from '../l10n';
+import { getLang } from '../i18n';
 
 // ── Radio Browser API — قاعدة بيانات مفتوحة بمحطات متحقق منها ──────────────
 const RB = 'https://de1.api.radio-browser.info/json/stations/search';
@@ -100,12 +102,13 @@ const CAT_QUERIES = {
   ],
 };
 
-let _regions = null;
-function countryName(code, fallback) {
+// Country names in the interface language (cached per language)
+const _regions = {};
+function countryName(code, fallback, lang = getLang()) {
   if (!code || code.length !== 2) return fallback || '';
   try {
-    if (!_regions) _regions = new Intl.DisplayNames(['ar'], { type: 'region' });
-    return _regions.of(code.toUpperCase()) || fallback || code;
+    if (!_regions[lang]) _regions[lang] = new Intl.DisplayNames([lang === 'ar' ? 'ar' : intlLocale(lang)], { type: 'region' });
+    return _regions[lang].of(code.toUpperCase()) || fallback || code;
   } catch { return fallback || code; }
 }
 
@@ -115,6 +118,8 @@ function rbToStation(s, cat) {
   return {
     id: s.stationuuid,
     cat,
+    cc: s.countrycode || '',
+    countryRaw: s.country || '',
     name: (s.name || 'Islamic Radio').trim().slice(0, 50),
     country,
     desc: [s.country, s.language].filter(Boolean).slice(0, 2).join(' · ') || 'Islamic Radio',
@@ -128,6 +133,20 @@ function rbToStation(s, cat) {
 }
 
 const LANGS_AR = { arabic: 'العربية', english: 'الإنجليزية', turkish: 'التركية', urdu: 'الأردية', french: 'الفرنسية', indonesian: 'الإندونيسية', malay: 'الملايوية', persian: 'الفارسية', bengali: 'البنغالية', german: 'الألمانية' };
+// Radio Browser gives language names in English: map them to ISO codes for Intl.DisplayNames
+const LANG_CODES = { arabic: 'ar', english: 'en', turkish: 'tr', urdu: 'ur', french: 'fr', indonesian: 'id', malay: 'ms', persian: 'fa', bengali: 'bn', german: 'de', spanish: 'es', russian: 'ru', hindi: 'hi', somali: 'so', swahili: 'sw', hausa: 'ha', pashto: 'ps', kurdish: 'ku', albanian: 'sq', bosnian: 'bs', dutch: 'nl', italian: 'it' };
+const _langNames = {};
+function langName(raw, lang = getLang()) {
+  const k = String(raw || '').toLowerCase();
+  if (lang === 'ar') return LANGS_AR[k] || raw;
+  const code = LANG_CODES[k];
+  if (!code) return raw;
+  try {
+    if (!_langNames[lang]) _langNames[lang] = new Intl.DisplayNames([intlLocale(lang)], { type: 'language' });
+    const n = _langNames[lang].of(code);
+    return n ? n.charAt(0).toLocaleUpperCase(intlLocale(lang)) + n.slice(1) : raw;
+  } catch { return raw; }
+}
 
 function fmtTime(s) {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
@@ -136,6 +155,7 @@ function fmtTime(s) {
 }
 
 export default function RadioPage() {
+  const tr = useTr();
   const [cat,      setCat]      = useState('all');
   const [stations, setStations] = useState({ quran: [], religious: [], anasheed: [] });
   const [fetching, setFetching] = useState({ quran: false, religious: false, anasheed: false });
@@ -283,9 +303,13 @@ export default function RadioPage() {
     ? (loaded.quran && loaded.religious && loaded.anasheed)
     : loaded[cat];
 
+  // station country in the interface language (stations are fetched once, the language can change)
+  const countryOf = s => countryName(s.cc, s.countryRaw, tr.lang) || s.country;
   const displayed = (cat === 'all' ? allSt : stations[cat] || [])
     .filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.desc.toLowerCase().includes(search.toLowerCase()) || (s.country || '').includes(search.trim()));
+      s.desc.toLowerCase().includes(search.toLowerCase()) || (s.country || '').includes(search.trim()) ||
+      countryOf(s).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()) ||
+      (s.lang && langName(s.lang, tr.lang).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())));
 
   const currentStation = allSt.find(s => s.id === playing);
   const isAnyFetching = Object.values(fetching).some(Boolean);
@@ -295,43 +319,43 @@ export default function RadioPage() {
   return (
     <div className={styles.page}>
       <PageHero
-        eyebrow="بثّ مباشر"
-        title="الإذاعة"
-        sub="إذاعات القرآن الكريم والبرامج الإسلامية والأناشيد من حول العالم. نعرض المحطات المتحقَّق من عملها فقط."
+        eyebrow={tr('بثّ مباشر')}
+        title={tr('الإذاعة')}
+        sub={tr('إذاعات القرآن الكريم والبرامج الإسلامية والأناشيد من حول العالم. نعرض المحطات المتحقَّق من عملها فقط.')}
       />
 
       <div className={`nq-wrap ${styles.wrap}`}>
         <div className={styles.tools}>
-          <div className={`nq-seg ${styles.cats}`} role="group" aria-label="فئات المحطات">
+          <div className={`nq-seg ${styles.cats}`} role="group" aria-label={tr('فئات المحطات')}>
             {CATS.map(c => (
               <button key={c.id} type="button" aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>
-                <Icon name={c.icon} />{c.label}
+                <Icon name={c.icon} />{tr(c.label)}
                 {(c.id === 'all' ? catLoaded : loaded[c.id]) && <small className="nq-num">{toAr(catCount(c.id))}</small>}
               </button>
             ))}
           </div>
           <label className={`nq-input ${styles.search}`}>
             <Icon name="search" />
-            <span className="nq-sr">ابحث في المحطات</span>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث باسم المحطة أو البلد أو اللغة…" dir="rtl" type="search" />
-            {search && <button type="button" className={styles.clear} onClick={() => setSearch('')} aria-label="مسح البحث"><Icon name="x" /></button>}
+            <span className="nq-sr">{tr('ابحث في المحطات')}</span>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={tr('ابحث باسم المحطة أو البلد أو اللغة…')} dir={tr.dir} type="search" />
+            {search && <button type="button" className={styles.clear} onClick={() => setSearch('')} aria-label={tr('مسح البحث')}><Icon name="x" /></button>}
           </label>
         </div>
 
-        {audioErr && <div className={styles.error} role="alert"><Icon name="x" />{audioErr}</div>}
+        {audioErr && <div className={styles.error} role="alert"><Icon name="x" />{tr(audioErr)}</div>}
 
         {isAnyFetching && (
           <div className={styles.fetching} role="status">
             <span className={styles.spinner} aria-hidden="true" />
-            <span>جارٍ تحميل المحطات المتحقَّق منها…</span>
+            <span>{tr('جارٍ تحميل المحطات المتحقَّق منها…')}</span>
           </div>
         )}
 
         {!isAnyFetching && displayed.length === 0 && catLoaded && (
           <div className={`nq-card ${styles.empty}`}>
             <Badge8 icon="radio" size={64} />
-            <p>{search ? 'لا توجد محطات مطابقة لبحثك.' : 'لا توجد محطات في هذه الفئة حالياً. حاول لاحقاً.'}</p>
-            {search && <button type="button" className="nq-btn ghost sm" onClick={() => setSearch('')}>مسح البحث</button>}
+            <p>{search ? tr('لا توجد محطات مطابقة لبحثك.') : tr('لا توجد محطات في هذه الفئة حالياً. حاول لاحقاً.')}</p>
+            {search && <button type="button" className="nq-btn ghost sm" onClick={() => setSearch('')}>{tr('مسح البحث')}</button>}
           </div>
         )}
 
@@ -340,11 +364,14 @@ export default function RadioPage() {
             {displayed.map(st => {
               const isOn = playing === st.id;
               const isLoading = isOn && buffering;
+              const country = countryOf(st);
               return (
                 <li key={st.id}>
                   <button type="button" className={`nq-card ${styles.card} ${isOn ? styles.cardOn : ''}`}
                     onClick={() => playStation(st)} aria-pressed={isOn}
-                    aria-label={`${isOn ? 'إيقاف' : 'تشغيل'} ${st.name}${st.country ? '، ' + st.country : ''}`}>
+                    aria-label={country
+                      ? tr(isOn ? 'إيقاف {name}، {country}' : 'تشغيل {name}، {country}', { name: st.name, country })
+                      : tr(isOn ? 'إيقاف {name}' : 'تشغيل {name}', { name: st.name })}>
                     <span className={styles.cardHead}>
                       <Badge8 icon={st.icon} size={46} />
                       {isOn && !isLoading && <span className={styles.wave} aria-hidden="true"><i /><i /><i /><i /></span>}
@@ -352,13 +379,13 @@ export default function RadioPage() {
                     </span>
                     <span className={styles.name} dir="auto">{st.name}</span>
                     <span className={styles.desc}>
-                      {st.country && <span><Icon name="globe" />{st.country}</span>}
-                      {st.lang && <span>{LANGS_AR[st.lang.toLowerCase()] || st.lang}</span>}
+                      {country && <span><Icon name="globe" />{country}</span>}
+                      {st.lang && <span>{langName(st.lang, tr.lang)}</span>}
                     </span>
                     <span className={styles.cardFoot}>
                       <span className={styles.tags}>
-                        {cat === 'all' && st.catLabel && <span className="nq-pill">{st.catLabel}</span>}
-                        {st.bitrate > 0 && <span className="nq-pill nq-num">{toAr(st.bitrate)} ك.ب/ث</span>}
+                        {cat === 'all' && st.catLabel && <span className="nq-pill">{tr(st.catLabel)}</span>}
+                        {st.bitrate > 0 && <span className="nq-pill nq-num">{tr('{n} ك.ب/ث', { n: toAr(st.bitrate) })}</span>}
                       </span>
                       <span className={`${styles.play} ${isOn ? styles.playOn : ''}`} aria-hidden="true">
                         <Icon name={isOn ? 'pause' : 'play'} fill />
@@ -371,33 +398,33 @@ export default function RadioPage() {
           </ul>
         )}
 
-        <p className={styles.note}><Icon name="shield" />المحطات من دليل Radio Browser المفتوح، ونعرض فقط المحطات الآمنة (HTTPS) التي تعمل في متصفحك.</p>
+        <p className={styles.note}><Icon name="shield" />{tr('المحطات من دليل Radio Browser المفتوح، ونعرض فقط المحطات الآمنة (HTTPS) التي تعمل في متصفحك.')}</p>
 
         {playing && currentStation && (
-          <div className={`nq-card ${styles.np}`} role="region" aria-label="المحطة قيد التشغيل">
+          <div className={`nq-card ${styles.np}`} role="region" aria-label={tr('المحطة قيد التشغيل')}>
             <span className={styles.npIcon}>
               {buffering ? <span className={styles.spinner} aria-hidden="true" /> : <Badge8 icon={currentStation.icon} size={50} />}
             </span>
             <span className={styles.npInfo}>
               <span className={styles.live} aria-live="polite">
                 <i className={buffering ? styles.dotWait : styles.dot} aria-hidden="true" />
-                {buffering ? 'جارٍ الاتصال…' : 'يبث الآن'}
+                {buffering ? tr('جارٍ الاتصال…') : tr('يبث الآن')}
                 {!buffering && <b className="nq-num">{fmtTime(elapsed)}</b>}
               </span>
               <span className={styles.npName} dir="auto">{currentStation.name}</span>
-              {currentStation.country && <span className={styles.npDesc}>{currentStation.country}</span>}
+              {currentStation.country && <span className={styles.npDesc}>{countryOf(currentStation)}</span>}
             </span>
             <span className={styles.vol}>
               <button type="button" className="nq-ibtn" onClick={() => setMuted(m => !m)} aria-pressed={muted}
-                aria-label={muted ? 'إلغاء كتم الصوت' : 'كتم الصوت'}>
+                aria-label={muted ? tr('إلغاء كتم الصوت') : tr('كتم الصوت')}>
                 <Icon name={muted ? 'x' : 'head'} />
               </button>
-              <input type="range" min="0" max="1" step="0.05" aria-label="مستوى الصوت"
+              <input type="range" min="0" max="1" step="0.05" aria-label={tr('مستوى الصوت')}
                 value={muted ? 0 : volume} className={styles.slider} style={{ '--v': `${(muted ? 0 : volume) * 100}%` }}
                 onChange={e => { setVolume(+e.target.value); setMuted(false); }} />
-              <span className={`${styles.volVal} nq-num`}>{toAr(Math.round((muted ? 0 : volume) * 100))}٪</span>
+              <span className={`${styles.volVal} nq-num`}>{tr('{n}٪', { n: toAr(Math.round((muted ? 0 : volume) * 100)) })}</span>
             </span>
-            <button type="button" className={styles.stop} onClick={stop} aria-label="إيقاف البث">
+            <button type="button" className={styles.stop} onClick={stop} aria-label={tr('إيقاف البث')}>
               <Icon name="pause" fill />
             </button>
           </div>

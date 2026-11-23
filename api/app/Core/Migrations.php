@@ -14,7 +14,7 @@ namespace NQ\Core;
 final class Migrations
 {
     /** Bump when a step is added below. */
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     /** Whether every column of VERSION is known to exist (false only when an upgrade failed). */
     private static bool $ready = true;
@@ -55,6 +55,8 @@ final class Migrations
         // v2: language of the account's emails, and the language carried through Google sign-in
         self::addColumn('users', 'lang', "VARCHAR(5) NOT NULL DEFAULT 'ar' AFTER name");
         self::addColumn('oauth_states', 'lang', 'VARCHAR(5) NULL AFTER client');
+        // v3: uploaded profile photo (file name in storage/avatars; avatar_url keeps the Google picture)
+        self::addColumn('users', 'avatar_file', 'VARCHAR(100) NULL AFTER avatar_url');
     }
 
     private static function addColumn(string $table, string $column, string $definition): void

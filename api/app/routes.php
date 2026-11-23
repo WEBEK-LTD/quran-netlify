@@ -4,6 +4,7 @@ declare(strict_types=1);
 use NQ\Controllers\AdminController as Admin;
 use NQ\Controllers\AiController as Ai;
 use NQ\Controllers\AuthController as AuthC;
+use NQ\Controllers\AvatarController as Avatar;
 use NQ\Controllers\GoogleController as Google;
 use NQ\Controllers\GroupController as Group;
 use NQ\Controllers\MeController as Me;
@@ -37,6 +38,9 @@ return static function (Router $r): void {
     $r->get('/auth/google/callback', [Google::class, 'callback']);
 
     // Personal data
+    $r->post('/me/avatar', [Avatar::class, 'upload']);
+    $r->delete('/me/avatar', [Avatar::class, 'remove']);
+    $r->get('/avatars/{file}', [Avatar::class, 'serve']);
     $r->get('/me/bookmarks', [Me::class, 'bookmarks']);
     $r->put('/me/bookmarks', [Me::class, 'replaceBookmarks']);
     $r->post('/me/bookmarks', [Me::class, 'addBookmark']);

@@ -130,11 +130,6 @@
 .lang { display: flex; }
 .lang button { min-height: 44px; }
 
-.about { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; margin: 8px 0 0; }
-.about div { display: flex; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
-.about dt { color: var(--muted); font-size: .9rem; }
-.about dd { margin: 0; font-weight: 600; }
-.aboutLinks { display: flex; gap: 8px; flex-wrap: wrap; padding: 18px 0 16px; }
 
 /* saved toast */
 .saved { position: fixed; left: 50%; bottom: 28px; z-index: 70; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
@@ -168,6 +163,5 @@
   .rowDesc, .rowStack .rowCtl { padding-inline-start: 0; }
   .select { width: 100%; }
   .selectWrap { width: 100%; }
-  .about { grid-template-columns: 1fr; }
   .trans { grid-template-columns: 1fr; }
 }

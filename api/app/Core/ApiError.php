@@ -32,6 +32,10 @@ final class ApiError extends \RuntimeException
         'ai_error'            => 'تعذّر الحصول على رد من المساعد الآن. يرجى المحاولة لاحقاً.',
         'limit_reached'       => 'وصلت إلى الحد الأقصى المسموح.',
         'conflict'            => 'تعارض في البيانات.',
+        'avatar_unavailable'  => 'رفع الصور غير متاح على الخادم حالياً.',
+        'avatar_too_large'    => 'حجم الصورة كبير جداً (الحد الأقصى 5 ميغابايت).',
+        'unsupported_image'   => 'نوع الصورة غير مدعوم. استخدم صورة JPEG أو PNG أو WebP أو GIF.',
+        'image_dimensions'    => 'أبعاد الصورة غير مناسبة (من 64×64 إلى 6000×6000 بكسل).',
     ];
 
     /** @param array<string,mixed> $extra @param array<string,string> $headers */

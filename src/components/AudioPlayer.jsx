@@ -4,6 +4,8 @@ import { SURAHS_META, READERS } from '../data';
 import { getAudioUrl } from '../api';
 import { Icon, toAr } from './ornaments/Ornaments';
 import { displayNumber } from './reader/ayahItems';
+import { readerName, readerShortName } from './reader/readerNames';
+import { useTr, trNow, num, surahName, intlLocale } from '../l10n';
 import styles from './AudioPlayer.module.css';
 
 // ─── Modes ───────────────────────────────────────────────────────────────────
@@ -17,6 +19,8 @@ const SPEEDS = [1, 1.25, 1.5, 0.75];
 // In repeat mode each ayah is played this many times, then playback moves on.
 const REPEAT_TIMES = 3;
 const LOAD_ERROR_TOAST = 'تعذّر تحميل تلاوة هذا القارئ، جرّب قارئاً آخر';
+// Speed in the visitor's digits and decimal separator (١٫٢٥ · 1.25 · 1,25).
+const fmtSpeed = v => { try { return num(new Intl.NumberFormat(intlLocale(), { maximumFractionDigits: 2 }).format(v)); } catch { return num(v); } };
 
 // play() rejects with AbortError when src changes quickly (next/prev, reciter change)
 // and NotSupportedError when the file fails to load (handled by onError) — not real failures.
@@ -26,6 +30,7 @@ function isBenignPlayError(err) {
 
 export default function AudioPlayer() {
   const [state]  = useStore();
+  const tr = useTr();
   const audioRef    = useRef(null);
   const modeRef     = useRef('surah');  // ref avoids stale closure in onEnded
   const ayahRef     = useRef(state.audioAyah);
@@ -56,7 +61,7 @@ export default function AudioPlayer() {
 
   function handlePlayError(err, toast = 'تعذّر تشغيل الصوت') {
     if (isBenignPlayError(err)) return;
-    setGlobal({ toast, isPlaying: false });
+    setGlobal({ toast: trNow(toast), isPlaying: false });
   }
 
   // ── load + play whenever playTrigger fires ────────────────────────────────
@@ -80,12 +85,12 @@ export default function AudioPlayer() {
   // ── Media Session API (lock screen / notification controls) ──────────────
   function updateMediaSession(surah = surahRef.current, ayah = ayahRef.current) {
     if (!('mediaSession' in navigator)) return;
-    const meta = SURAHS_META[surah - 1];
     const reader = READERS.find(r => r.id === state.reader);
+    const shown = displayNumber(surah, ayah);
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: `${meta[0]} — ${displayNumber(surah, ayah) === null ? 'البسملة' : 'الآية ' + displayNumber(surah, ayah)}`,
-      artist: reader?.name || 'القرآن الكريم',
-      album: 'نور القرآن',
+      title: `${surahName(surah)} — ${shown === null ? trNow('البسملة') : trNow('الآية {n}', { n: num(shown) })}`,
+      artist: reader ? readerName(reader) : trNow('القرآن الكريم'),
+      album: trNow('نور القرآن'),
     });
     navigator.mediaSession.setActionHandler('previoustrack', prev);
     navigator.mediaSession.setActionHandler('nexttrack',     next);
@@ -141,7 +146,7 @@ export default function AudioPlayer() {
     if (ayahRef.current < max)
       setGlobal({ audioAyah: ayahRef.current + 1, playTrigger: Date.now() });
     else
-      setGlobal({ isPlaying: false, toast: `انتهت سورة ${SURAHS_META[surah - 1][0]}` });
+      setGlobal({ isPlaying: false, toast: trNow('انتهت سورة {name}', { name: surahName(surah) }) });
   }
 
   // Play whole surah from ayah 1
@@ -186,7 +191,7 @@ export default function AudioPlayer() {
         .catch(err => handlePlayError(err));
       setGlobal({ audioAyah: nextAyah, isPlaying: true });
     } else {
-      setGlobal({ isPlaying: false, toast: `انتهت سورة ${SURAHS_META[curSurah - 1][0]}` });
+      setGlobal({ isPlaying: false, toast: trNow('انتهت سورة {name}', { name: surahName(curSurah) }) });
     }
   }
 
@@ -238,7 +243,7 @@ export default function AudioPlayer() {
     const audio = audioRef.current;
     if (!audio || !audio.getAttribute('src')) return;
     audio.pause();
-    setGlobal({ isPlaying: false, toast: LOAD_ERROR_TOAST });
+    setGlobal({ isPlaying: false, toast: trNow(LOAD_ERROR_TOAST) });
   }
 
   function seekTo(e) {
@@ -265,17 +270,18 @@ export default function AudioPlayer() {
 
   if (!state.showAudio) return null;
 
-  const meta       = SURAHS_META[state.currentSurah - 1];
+  const sName      = surahName(state.currentSurah);
   const readerObj  = READERS.find(r => r.id === state.reader) || READERS[0];
   const currentMode = MODES.find(m => m.id === mode);
   const shownAyah  = displayNumber(state.currentSurah, state.audioAyah);
-  const ayahText   = shownAyah === null ? 'البسملة' : `الآية ${toAr(shownAyah)}`;
-  const readerShort = readerObj.name.split(/\s+—\s+/)[0];
-  const initial    = readerShort.replace(/^(ال|عبد\s*ال)/, '').trim().charAt(0) || readerShort.charAt(0);
-  const speedTxt   = `${toAr(String(speed).replace('.', '٫'))}×`;
+  const ayahText   = shownAyah === null ? tr('البسملة') : tr('الآية {n}', { n: toAr(shownAyah) });
+  const readerFull = readerName(readerObj, tr.lang);
+  const readerShort = readerShortName(readerObj, tr.lang);
+  const initial    = readerShort.replace(/^(ال|عبد\s*ال|Abd(ul|ur|u)?[\s-]*|A[lrsd]-)/i, '').trim().charAt(0) || readerShort.charAt(0);
+  const speedTxt   = `${fmtSpeed(speed)}×`;
 
   return (
-    <div className={styles.dock} role="region" aria-label="مشغّل التلاوة">
+    <div className={styles.dock} role="region" aria-label={tr('مشغّل التلاوة')}>
       <audio
         ref={audioRef}
         onEnded={onEnded}
@@ -293,13 +299,13 @@ export default function AudioPlayer() {
       </span>
 
       <div className={styles.meta}>
-        <b title={`${readerObj.name} · ${meta[0]} · ${ayahText}`}>
-          <span className={styles.rName}>{readerShort} · </span>{meta[0]} · <span className={styles.ayahNo}>{ayahText}</span>
+        <b title={`${readerFull} · ${sName} · ${ayahText}`}>
+          <span className={styles.rName}>{readerShort} · </span>{sName} · <span className={styles.ayahNo}>{ayahText}</span>
         </b>
         <div className={styles.track} onClick={seekTo} onKeyDown={seekKey}
-          role="slider" tabIndex={0} aria-label="موضع التلاوة"
+          role="slider" tabIndex={0} aria-label={tr('موضع التلاوة')}
           aria-valuemin={0} aria-valuemax={Math.round(duration) || 0} aria-valuenow={Math.round(current) || 0}
-          aria-valuetext={`${fmt(current)} من ${fmt(duration)}`}>
+          aria-valuetext={tr('{a} من {b}', { a: fmt(current), b: fmt(duration) })}>
           <i style={{ width: `${progress}%` }} />
         </div>
         <small className="nq-num">{toAr(fmt(current))} / {toAr(fmt(duration))}</small>
@@ -308,55 +314,55 @@ export default function AudioPlayer() {
       <div className={styles.chips}>
         <button type="button" className={`nq-pill ${mode !== 'single' ? 'on' : ''} ${styles.chip}`}
           onClick={() => { const i = MODES.findIndex(m => m.id === mode); setModeAndRef(MODES[(i + 1) % MODES.length].id); }}
-          aria-label={`وضع التشغيل: ${currentMode.label}`} title="تغيير وضع التشغيل">
-          <Icon name="repeat" />{mode === 'repeat' ? `تكرار ×${toAr(REPEAT_TIMES)}` : currentMode.label}
+          aria-label={tr('وضع التشغيل: {mode}', { mode: tr(currentMode.label) })} title={tr('تغيير وضع التشغيل')}>
+          <Icon name="repeat" />{mode === 'repeat' ? tr('تكرار ×{n}', { n: toAr(REPEAT_TIMES) }) : tr(currentMode.label)}
         </button>
         <button type="button" className={`nq-pill ${speed !== 1 ? 'on' : ''} ${styles.chip}`} onClick={cycleSpeed}
-          aria-label={`سرعة التلاوة ${speedTxt}`} title="سرعة التلاوة">
+          aria-label={tr('سرعة التلاوة {v}', { v: speedTxt })} title={tr('سرعة التلاوة')}>
           {speedTxt}
         </button>
       </div>
 
       <div className={styles.ctl}>
-        <button type="button" className={styles.sm} onClick={prev} aria-label="الآية السابقة" title="السابقة">
+        <button type="button" className={styles.sm} onClick={prev} aria-label={tr('الآية السابقة')} title={tr('السابقة')}>
           <Icon name="prev" fill />
         </button>
-        <button type="button" className={styles.play} onClick={togglePlay} aria-label={state.isPlaying ? 'إيقاف مؤقت' : 'تشغيل'}>
+        <button type="button" className={styles.play} onClick={togglePlay} aria-label={state.isPlaying ? tr('إيقاف مؤقت') : tr('تشغيل')}>
           <Icon name={state.isPlaying ? 'pause' : 'play'} fill />
         </button>
-        <button type="button" className={styles.sm} onClick={next} aria-label="الآية التالية" title="التالية">
+        <button type="button" className={styles.sm} onClick={next} aria-label={tr('الآية التالية')} title={tr('التالية')}>
           <Icon name="next" fill />
         </button>
       </div>
 
       <div className={styles.moreWrap} ref={moreRef}>
         <button type="button" className={`${styles.sm} ${showMore ? styles.smOn : ''}`} onClick={() => setShowMore(v => !v)}
-          aria-label="خيارات التلاوة" aria-expanded={showMore} aria-haspopup="dialog" title="خيارات التلاوة">
+          aria-label={tr('خيارات التلاوة')} aria-expanded={showMore} aria-haspopup="dialog" title={tr('خيارات التلاوة')}>
           <Icon name="gear" />
         </button>
         {showMore && (
-          <div className={styles.menu} role="dialog" aria-label="خيارات التلاوة">
+          <div className={styles.menu} role="dialog" aria-label={tr('خيارات التلاوة')}>
             <div className={styles.menuSec}>
-              <span className={styles.menuLbl} id="nqModeLbl">وضع التشغيل</span>
+              <span className={styles.menuLbl} id="nqModeLbl">{tr('وضع التشغيل')}</span>
               <div className="nq-seg" role="group" aria-labelledby="nqModeLbl" style={{ display: 'flex' }}>
                 {MODES.map(m => (
-                  <button key={m.id} type="button" style={{ flex: 1 }} aria-pressed={mode === m.id} onClick={() => setModeAndRef(m.id)}>{m.label}</button>
+                  <button key={m.id} type="button" style={{ flex: 1 }} aria-pressed={mode === m.id} onClick={() => setModeAndRef(m.id)}>{tr(m.label)}</button>
                 ))}
               </div>
             </div>
             <div className={styles.menuSec}>
-              <span className={styles.menuLbl} id="nqSpeedLbl">السرعة</span>
+              <span className={styles.menuLbl} id="nqSpeedLbl">{tr('السرعة')}</span>
               <div className="nq-seg" role="group" aria-labelledby="nqSpeedLbl" style={{ display: 'flex' }}>
                 {[0.75, 1, 1.25, 1.5].map(v => (
                   <button key={v} type="button" style={{ flex: 1 }} aria-pressed={speed === v}
                     onClick={() => { speedRef.current = v; setSpeed(v); const a = audioRef.current; if (a) { a.defaultPlaybackRate = v; a.playbackRate = v; } }}>
-                    {toAr(String(v).replace('.', '٫'))}×
+                    {fmtSpeed(v)}×
                   </button>
                 ))}
               </div>
             </div>
             <div className={styles.menuSec}>
-              <label className={styles.menuLbl} htmlFor="nqVol">مستوى الصوت</label>
+              <label className={styles.menuLbl} htmlFor="nqVol">{tr('مستوى الصوت')}</label>
               <div className={styles.volRow}>
                 <Icon name="head" />
                 <input id="nqVol" type="range" min="0" max="1" step="0.05" value={volume}
@@ -366,24 +372,24 @@ export default function AudioPlayer() {
                     setVolume(v);
                     if (audioRef.current) audioRef.current.volume = v;
                   }} />
-                <span className="nq-num">{toAr(Math.round(volume * 100))}٪</span>
+                <span className="nq-num">{tr('{n}٪', { n: toAr(Math.round(volume * 100)) })}</span>
               </div>
             </div>
             <button type="button" className={`nq-btn ghost sm ${styles.fromStart}`} onClick={() => { playSurah(); setShowMore(false); }}>
-              <Icon name="play" />تشغيل السورة من أولها
+              <Icon name="play" />{tr('تشغيل السورة من أولها')}
             </button>
             <button type="button" className={`nq-btn ghost sm ${styles.menuClose}`}
               onClick={() => { audioRef.current?.pause(); setShowMore(false); setGlobal({ showAudio: false, isPlaying: false }); }}>
-              <Icon name="x" />إغلاق المشغّل
+              <Icon name="x" />{tr('إغلاق المشغّل')}
             </button>
             <div className={styles.menuSec}>
-              <span className={styles.menuLbl}>القارئ</span>
+              <span className={styles.menuLbl}>{tr('القارئ')}</span>
               <div className={styles.readers}>
                 {READERS.map(r => (
                   <button key={r.id} type="button"
                     className={styles.readerItem} aria-pressed={r.id === state.reader}
                     onClick={() => changeReader(r.id)}>
-                    <span>{r.name}</span>
+                    <span>{readerName(r, tr.lang)}</span>
                     {r.id === state.reader && <Icon name="check" />}
                   </button>
                 ))}
@@ -395,7 +401,7 @@ export default function AudioPlayer() {
 
       <button type="button" className={`${styles.sm} ${styles.close}`}
         onClick={() => { audioRef.current?.pause(); setGlobal({ showAudio: false, isPlaying: false }); }}
-        aria-label="إغلاق المشغّل" title="إغلاق">
+        aria-label={tr('إغلاق المشغّل')} title={tr('إغلاق')}>
         <Icon name="x" />
       </button>
     </div>

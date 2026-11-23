@@ -16,7 +16,7 @@ final class Auth
     /** USER_COLS plus columns added by Migrations (only once they exist, so an old schema keeps working). */
     public static function userCols(): string
     {
-        return self::USER_COLS . (Migrations::ready() ? ', u.lang' : '');
+        return self::USER_COLS . (Migrations::ready() ? ', u.lang, u.avatar_file' : '');
     }
 
     /** Resolve the session from `Authorization: Bearer` or the cookie. Never throws for a bad token. */
@@ -176,7 +176,7 @@ final class Auth
             'email' => (string) $u['email'],
             'name' => (string) $u['name'],
             'lang' => MailText::lang($u['lang'] ?? null),
-            'avatar_url' => $u['avatar_url'] !== null && $u['avatar_url'] !== '' ? (string) $u['avatar_url'] : null,
+            'avatar_url' => self::avatarUrl($u),
             'gender' => in_array($u['gender'], ['male', 'female'], true) ? $u['gender'] : null,
             'birthdate' => $u['birthdate'] ?: null,
             'is_admin' => (int) $u['is_admin'] === 1,
@@ -185,6 +185,17 @@ final class Auth
             'has_password' => ($u['password_hash'] ?? null) !== null,
             'created_at' => Db::iso((string) $u['created_at']),
         ];
+    }
+
+    /** Uploaded photo if any, else the Google picture, else null. @param array<string,mixed> $u */
+    public static function avatarUrl(array $u): ?string
+    {
+        $file = $u['avatar_file'] ?? null;
+        if (is_string($file) && Avatar::validName($file)) {
+            return Avatar::url($file);
+        }
+        $pic = $u['avatar_url'] ?? null;
+        return is_string($pic) && $pic !== '' ? $pic : null;
     }
 
     public static function requireUser(Request $r): int

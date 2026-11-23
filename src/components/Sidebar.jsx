@@ -5,6 +5,7 @@ import { useStore, setGlobal } from '../store';
 import { SURAHS_META, JUZ_DATA, HIZB_DATA } from '../data';
 import { Icon, Badge8, toAr } from './ornaments/Ornaments';
 import { displayNumber, normWord } from './reader/ayahItems';
+import { useTr, trNow, surahName, revelationLabel, isRtl } from '../l10n';
 import styles from './Sidebar.module.css';
 
 const MOBILE = 860;
@@ -26,11 +27,13 @@ const TABS = [
 
 function ayahLabel(surah, kufi) {
   const n = displayNumber(surah, kufi);
-  return n === null ? 'البسملة' : `الآية ${toAr(n)}`;
+  return n === null ? trNow('البسملة') : trNow('الآية {n}', { n: toAr(n) });
 }
 
 export default function Sidebar() {
   const [state]     = useStore();
+  const tr = useTr();
+  const rtl = isRtl(tr.lang);
   const [tab, setTab]       = useState('surahs');
   const [filter, setFilter] = useState('');
   const [openJuz, setOpenJuz] = useState(null); // expanded juz number
@@ -67,7 +70,7 @@ export default function Sidebar() {
     .map((m, i) => ({ meta: m, num: i + 1 }))
     .filter(({ meta, num }) =>
       !q ||
-      String(num) === q ||
+      String(num) === q.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)) ||
       meta[0].includes(q) ||
       (qn && normWord(meta[0]).includes(qn)) ||
       meta[1].toLowerCase().includes(q.toLowerCase())
@@ -81,20 +84,20 @@ export default function Sidebar() {
           onClick={() => setGlobal({ sidebarOpen: false })} />
       )}
 
-      <aside ref={asideRef} className={`${styles.side} ${open ? styles.open : ''}`} aria-label="فهرس المصحف" id="nq-side">
+      <aside ref={asideRef} className={`${styles.side} ${open ? styles.open : ''}`} aria-label={tr('فهرس المصحف')} id="nq-side">
         <div className={styles.head}>
-          <span className="nq-eyebrow">فهرس المصحف</span>
-          <button type="button" className={styles.close} onClick={() => setGlobal({ sidebarOpen: false })} aria-label="إغلاق الفهرس">
+          <span className="nq-eyebrow">{tr('فهرس المصحف')}</span>
+          <button type="button" className={styles.close} onClick={() => setGlobal({ sidebarOpen: false })} aria-label={tr('إغلاق الفهرس')}>
             <Icon name="x" />
           </button>
         </div>
 
         {/* ── Tabs ── */}
-        <div className={`nq-seg ${styles.tabs}`} role="group" aria-label="تصفّح حسب">
+        <div className={`nq-seg ${styles.tabs}`} role="group" aria-label={tr('تصفّح حسب')}>
           {TABS.map(t => (
             <button key={t.id} type="button" aria-pressed={tab === t.id}
               onClick={() => { setTab(t.id); setFilter(''); setOpenJuz(null); }}>
-              {t.label}
+              {tr(t.label)}
             </button>
           ))}
         </div>
@@ -103,10 +106,10 @@ export default function Sidebar() {
         {tab === 'surahs' && (
           <label className={`nq-input ${styles.search}`}>
             <Icon name="search" />
-            <input type="search" placeholder="اسم السورة أو رقمها" value={filter}
-              onChange={e => setFilter(e.target.value)} dir="rtl" aria-label="ابحث عن سورة" />
+            <input type="search" placeholder={tr('اسم السورة أو رقمها')} value={filter}
+              onChange={e => setFilter(e.target.value)} dir="auto" aria-label={tr('ابحث عن سورة')} />
             {filter && (
-              <button type="button" className={styles.clear} onClick={() => setFilter('')} aria-label="مسح البحث"><Icon name="x" /></button>
+              <button type="button" className={styles.clear} onClick={() => setFilter('')} aria-label={tr('مسح البحث')}><Icon name="x" /></button>
             )}
           </label>
         )}
@@ -122,14 +125,14 @@ export default function Sidebar() {
               onClick={() => goTo(num)}>
               <Badge8 size={36}>{toAr(num)}</Badge8>
               <span className={styles.info}>
-                <span className={styles.name}>{meta[0]}</span>
-                <span className={styles.sub}>{meta[3]} · {toAr(meta[2])} آية</span>
+                <span className={styles.name}>{surahName(num)}</span>
+                <span className={styles.sub}>{revelationLabel(meta[3])} · {tr('{n} آية', { n: toAr(meta[2]) })}</span>
               </span>
-              <span className={styles.en} dir="ltr">{meta[1]}</span>
+              {rtl ? <span className={styles.en} dir="ltr">{meta[1]}</span> : <span className={styles.en} dir="rtl" lang="ar">{meta[0]}</span>}
             </button>
           ))}
           {tab === 'surahs' && filteredSurahs.length === 0 && (
-            <div className={styles.empty}>لا توجد سورة بهذا الاسم.</div>
+            <div className={styles.empty}>{tr('لا توجد سورة بهذا الاسم.')}</div>
           )}
 
           {/* ════ JUZ ════ */}
@@ -143,8 +146,8 @@ export default function Sidebar() {
                   onClick={() => setOpenJuz(isOpen ? null : j.juz)}>
                   <Badge8 size={36}>{toAr(j.juz)}</Badge8>
                   <span className={styles.info}>
-                    <span className={styles.name}>الجزء {toAr(j.juz)}</span>
-                    <span className={styles.sub}>{SURAHS_META[j.surah - 1][0]} · {ayahLabel(j.surah, j.ayah)} · {toAr(j.surahs.length)} سورة</span>
+                    <span className={styles.name}>{tr('الجزء {n}', { n: toAr(j.juz) })}</span>
+                    <span className={styles.sub}>{surahName(j.surah)} · {ayahLabel(j.surah, j.ayah)} · {tr('{n} سورة', { n: toAr(j.surahs.length) })}</span>
                   </span>
                   <Icon name="chev" className={`${styles.chev} ${isOpen ? styles.chevOpen : ''}`} />
                 </button>
@@ -153,8 +156,8 @@ export default function Sidebar() {
                   <div className={styles.sublist}>
                     <button type="button" className={styles.start} onClick={() => goTo(j.surah, j.ayah)}>
                       <Icon name="play" />
-                      <span>ابدأ من الجزء {toAr(j.juz)}</span>
-                      <small>{SURAHS_META[j.surah - 1][0]} {toAr(displayNumber(j.surah, j.ayah) ?? 1)}</small>
+                      <span>{tr('ابدأ من الجزء {n}', { n: toAr(j.juz) })}</span>
+                      <small>{surahName(j.surah)} {toAr(displayNumber(j.surah, j.ayah) ?? 1)}</small>
                     </button>
                     {j.surahs.map(sNum => {
                       const m = SURAHS_META[sNum - 1];
@@ -163,8 +166,8 @@ export default function Sidebar() {
                           aria-current={state.currentSurah === sNum ? 'true' : undefined}
                           onClick={() => goTo(sNum)}>
                           <span className={styles.subNum}>{toAr(sNum)}</span>
-                          <span className={styles.name}>{m[0]}</span>
-                          <span className={styles.sub}>{toAr(m[2])} آية</span>
+                          <span className={styles.name}>{surahName(sNum)}</span>
+                          <span className={styles.sub}>{tr('{n} آية', { n: toAr(m[2]) })}</span>
                         </button>
                       );
                     })}
@@ -184,10 +187,10 @@ export default function Sidebar() {
                 onClick={() => goTo(h.surah, h.ayah)}>
                 <Badge8 size={36}>{toAr(h.hizb)}</Badge8>
                 <span className={styles.info}>
-                  <span className={styles.name}>الحزب {toAr(h.hizb)}</span>
-                  <span className={styles.sub}>{m[0]} · {ayahLabel(h.surah, h.ayah)}</span>
+                  <span className={styles.name}>{tr('الحزب {n}', { n: toAr(h.hizb) })}</span>
+                  <span className={styles.sub}>{surahName(h.surah)} · {ayahLabel(h.surah, h.ayah)}</span>
                 </span>
-                <span className={styles.tag}>الجزء {toAr(h.juz)}</span>
+                <span className={styles.tag}>{tr('الجزء {n}', { n: toAr(h.juz) })}</span>
               </button>
             );
           })}
@@ -198,8 +201,8 @@ export default function Sidebar() {
               ? (
                 <div className={styles.empty}>
                   <Badge8 icon="bookmark" />
-                  <p>لا توجد آيات محفوظة بعد.</p>
-                  <small>اختر آية ثم اضغط «المفضلة» لحفظها هنا.</small>
+                  <p>{tr('لا توجد آيات محفوظة بعد.')}</p>
+                  <small>{tr('اختر آية ثم اضغط «المفضلة» لحفظها هنا.')}</small>
                 </div>
               )
               : state.bookmarks.map((b, i) => {
@@ -210,7 +213,7 @@ export default function Sidebar() {
                       onClick={() => goTo(b.surah, b.ayah)}>
                       <Badge8 icon="bookmark" size={36} />
                       <span className={styles.info}>
-                        <span className={styles.name}>{m[0]}</span>
+                        <span className={styles.name}>{surahName(b.surah)}</span>
                         <span className={styles.sub}>{ayahLabel(b.surah, b.ayah)}</span>
                       </span>
                     </button>

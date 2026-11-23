@@ -2,6 +2,8 @@
 // Shared by the qibla page (large, turns with the device) and the prayer page
 // (small card). Pure SVG; colours come from theme tokens.
 import { toAr } from '../../components/ornaments/Ornaments';
+import { useTr, num, intlLocale } from '../../l10n';
+import { getLang } from '../../i18n';
 
 // الكعبة المشرفة
 export const KAABA = { lat: 21.4225, lon: 39.8262 };
@@ -28,8 +30,10 @@ export function calcDistance(lat, lon) {
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
-export function fmtKm(n) {
-  return toAr(Math.round(n).toLocaleString('en-US').replace(/,/g, '٬'));
+export function fmtKm(n, lang = getLang()) {
+  if (lang === 'ar') return toAr(Math.round(n).toLocaleString('en-US').replace(/,/g, '٬'));
+  try { return num(Math.round(n).toLocaleString(intlLocale(lang), { numberingSystem: 'latn' }), lang); }
+  catch { return num(Math.round(n), lang); }
 }
 
 const pt = (deg, r) => {
@@ -47,7 +51,9 @@ const STAR = (() => {
   return s.trim();
 })();
 
-const CARD = [['ش', 0], ['ق', 90], ['ج', 180], ['غ', 270]];
+// Cardinal letters: شمال / شرق / جنوب / غرب in Arabic and Urdu, N E S W in Latin-script languages
+const CARD_AR = [['ش', 0], ['ق', 90], ['ج', 180], ['غ', 270]];
+const CARD_LATIN = { en: 'NESW', tr: 'KDGB', fr: 'NESO', id: 'UTSB' };
 
 /**
  * bearing  qibla bearing from true north (deg) or null
@@ -55,6 +61,9 @@ const CARD = [['ش', 0], ['ق', 90], ['ج', 180], ['غ', 270]];
  * large    adds degree numbers, fine ticks and the fixed forward marker
  */
 export default function QiblaRose({ bearing, heading = null, large = false, aligned = false, className = '', label }) {
+  const tr = useTr();
+  const latin = CARD_LATIN[tr.lang];
+  const CARD = latin ? [...latin].map((c, i) => [c, i * 90]) : CARD_AR;
   const rot = heading != null ? -heading : 0;
   const ticks = [];
   const step = large ? 5 : 10;
@@ -68,7 +77,7 @@ export default function QiblaRose({ bearing, heading = null, large = false, alig
     );
   }
   const q = bearing != null ? pt(bearing, 124) : null;
-  const aria = label || (bearing != null ? `القبلة ${toAr(Math.round(bearing))} درجة من الشمال` : 'بوصلة القبلة');
+  const aria = label || (bearing != null ? tr('القبلة {deg} درجة من الشمال', { deg: toAr(Math.round(bearing)) }) : tr('بوصلة القبلة'));
 
   return (
     <svg className={className} viewBox={large ? '-178 -178 356 356' : '-160 -160 320 320'} role="img" aria-label={aria}>

@@ -81,10 +81,20 @@ final class App
             }
             $path = substr($path, 3);
 
+            if ((int) ($req->header('content-length') ?? 0) > Request::bodyLimit($req->method, $path)) {
+                throw new ApiError(413, $path === '/me/avatar' ? 'avatar_too_large' : 'payload_too_large');
+            }
+
             $router = new Router();
             (require dirname(__DIR__) . '/routes.php')($router);
             [$handler, $params] = $router->match($req->method, $path);
             $req->params = $params;
+
+            // Profile photos: static files, no session or database needed (served even in maintenance).
+            if (str_starts_with($path, '/avatars/')) {
+                self::emit($handler($req));
+                return;
+            }
 
             Migrations::ensure();
             Auth::resolve($req);
@@ -126,6 +136,10 @@ final class App
             http_response_code(302);
             return;
         }
+        if ($result instanceof FileReply) {
+            self::sendFile($result);
+            return;
+        }
         if ($result instanceof Reply) {
             foreach ($result->headers as $k => $v) {
                 header($k . ': ' . $v);
@@ -134,6 +148,26 @@ final class App
             return;
         }
         self::send(200, ['ok' => true, 'data' => $result]);
+    }
+
+    /** Stream a file with its own caching and isolation headers (replacing the JSON defaults). */
+    private static function sendFile(FileReply $f): void
+    {
+        $size = @filesize($f->path);
+        if ($size === false) {
+            throw ApiError::notFound();
+        }
+        http_response_code(200);
+        header('Content-Type: ' . $f->contentType);
+        header('Content-Length: ' . $size);
+        header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'");
+        header('X-Content-Type-Options: nosniff');
+        foreach ($f->headers as $k => $v) {
+            header($k . ': ' . $v);
+        }
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'HEAD') {
+            readfile($f->path);
+        }
     }
 
     /** @param array<string,mixed> $payload */

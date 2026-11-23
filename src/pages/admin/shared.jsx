@@ -1,5 +1,6 @@
 // Shared hooks, building blocks and helpers for the admin dashboard tabs.
 import { useState, useEffect, useRef, useCallback, useId } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon, Badge8, Pattern } from '../../components/ornaments/Ornaments';
 import styles from '../AdminPage.module.css';
 
@@ -230,7 +231,7 @@ export function Modal({ title, icon, onClose, busy, children, tone }) {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, busy]);
-  return (
+  return createPortal(
     <div className={styles.modalOverlay} onMouseDown={e => { if (e.target === e.currentTarget && !busy) onClose(); }}>
       <div ref={boxRef} className={`nq-card ${styles.modalBox} ${tone === 'danger' ? styles.modalDanger : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className={styles.modalHead}>
@@ -240,7 +241,8 @@ export function Modal({ title, icon, onClose, busy, children, tone }) {
         </div>
         <div className={styles.modalBody}>{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -274,12 +276,13 @@ export function FormError({ text, bar }) {
 export function Toast({ notice, onClose }) {
   if (!notice) return null;
   const err = notice.type === 'err';
-  return (
+  return createPortal(
     <div key={notice.at} className={`${styles.toast} ${err ? styles.toastErr : styles.toastOk}`} role={err ? 'alert' : 'status'}>
       <span className={styles.toastIco}>{err ? <XIcon name="alert"/> : <Icon name="check"/>}</span>
       <span className={styles.toastText}>{notice.text}</span>
       <button type="button" className={styles.toastX} onClick={onClose} aria-label="إغلاق التنبيه"><Icon name="x"/></button>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -341,6 +344,9 @@ export function PageLoader({ label = 'جارٍ التحميل...' }) {
     </div>
   );
 }
+
+// Overlays live on <body> so no transformed/animated ancestor can trap them.
+export function Portal({ children }) { return createPortal(children, document.body); }
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 const HUES = ['var(--emerald)', 'var(--gold)', 'var(--info)', 'var(--tile)', 'var(--warn)', 'var(--gold-deep)'];

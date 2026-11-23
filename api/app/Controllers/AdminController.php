@@ -378,7 +378,7 @@ final class AdminController
             case 'ai':
                 $cfg = AiClient::config();
                 if ($cfg === null) {
-                    return ['ok' => false, 'message' => 'لم يتم إعداد مزوّد الذكاء الاصطناعي أو مفتاحه.'];
+                    return ['ok' => false, 'message' => 'لم يتم إعداد مزوّد المساعد أو مفتاحه.'];
                 }
                 try {
                     AiClient::complete($cfg, 'أجب بكلمة واحدة.', [['role' => 'user', 'content' => 'قل: تم']], 64);

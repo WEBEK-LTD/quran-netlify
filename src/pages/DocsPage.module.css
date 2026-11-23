@@ -24,6 +24,7 @@
 .arrow { color: var(--faint); align-self: center; transform: scaleX(-1); transition: transform .2s, color .2s; }
 :global([dir="ltr"]) .arrow { transform: none; }
 .card:hover .arrow { color: var(--gold); transform: scaleX(-1) translateX(-3px); }
+:global([dir="ltr"]) .arrow { transform: none; }
 :global([dir="ltr"]) .card:hover .arrow { transform: translateX(3px); }
 
 .install { position: relative; overflow: hidden; display: grid; grid-template-columns: auto 1fr auto; gap: 22px; align-items: center; padding: 30px 32px; }

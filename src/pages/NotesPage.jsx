@@ -10,6 +10,7 @@ import { normalizeArabic } from '../arabic';
 import { PageHero, Icon, Badge8, Corners, Divider, AyahMark, toAr } from '../components/ornaments/Ornaments';
 import { useAyahText } from './FavoritesPage/ayahText';
 import { useTr, num, surahName, intlLocale } from '../l10n';
+import { trCount } from '../locales/library';
 import styles from './NotesPage.module.css';
 
 const LOCAL_KEY = 'nq_notes';
@@ -17,8 +18,6 @@ function loadLocal() { try { const v = JSON.parse(localStorage.getItem(LOCAL_KEY
 function saveLocal(notes) { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(notes)); } catch {} }
 const noteKey = n => `${n.surah}:${n.ayah}`;
 const sameAyah = (n, surah, ayah) => n.surah === surah && n.ayah === ayah;
-// "1|2" plural forms in a translation: singular for 1, plural otherwise
-const pick = (s, n) => { if (!s.includes('|')) return s; const [one, many] = s.split('|'); return Number(n) === 1 ? one : many; };
 
 // دمج ملاحظات الحساب مع المحلية — عند التعارض نأخذ الأحدث
 function mergeNotes(server, local) {
@@ -34,6 +33,7 @@ function mergeNotes(server, local) {
 
 export default function NotesPage() {
   const tr = useTr();
+  const trc = (key, n, vars) => trCount(tr, key, n, vars);
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [notes,   setNotes]   = useState([]);
@@ -188,8 +188,8 @@ export default function NotesPage() {
               </div>
             </div>
             <p className={styles.count} aria-live="polite">
-              <b className="nq-num">{toAr(filtered.length)}</b> {filtered.length === notes.length ? pick(tr('ملاحظة'), filtered.length) : pick(tr('من {total} ملاحظة', { total: toAr(notes.length) }), notes.length)}
-              <span aria-hidden="true"> · </span>{pick(tr('على {n} سورة', { n: toAr(surahCount) }), surahCount)}
+              <b className="nq-num">{toAr(filtered.length)}</b> {filtered.length === notes.length ? trc('ملاحظة', filtered.length) : trc('من {total} ملاحظة', notes.length, { total: toAr(notes.length) })}
+              <span aria-hidden="true"> · </span>{trc('على {n} سورة', surahCount, { n: toAr(surahCount) })}
             </p>
 
             {filtered.length === 0 ? (

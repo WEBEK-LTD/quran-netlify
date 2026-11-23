@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import styles from './InstallPWA.module.css';
+import { useTr, num } from '../l10n';
 
 export default function InstallPWA() {
+  const tr = useTr();
   const [prompt,    setPrompt]    = useState(null); // beforeinstallprompt event
   const [show,      setShow]      = useState(false);
   const [installed, setInstalled] = useState(false);
@@ -55,7 +57,7 @@ export default function InstallPWA() {
   return (
     <>
       {/* Compact install button */}
-      <button className={styles.installBtn} onClick={handleInstall} title="تثبيت التطبيق">
+      <button className={styles.installBtn} onClick={handleInstall} title={tr('تثبيت التطبيق')} aria-label={tr('تثبيت التطبيق')}>
         📲
       </button>
 
@@ -63,54 +65,54 @@ export default function InstallPWA() {
       {showGuide && (
         <div className={styles.backdrop} onClick={e => e.target === e.currentTarget && setShowGuide(false)}>
           <div className={styles.guide}>
-            <button className={styles.closeBtn} onClick={() => setShowGuide(false)}>✕</button>
+            <button className={styles.closeBtn} onClick={() => setShowGuide(false)} aria-label={tr('إغلاق')}>✕</button>
             <div className={styles.guideIcon}>📱</div>
-            <h3>تثبيت نور القرآن</h3>
+            <h3>{tr('تثبيت نور القرآن')}</h3>
 
             {isIOS ? (
               <>
-                <p className={styles.guideSub}>على iPhone / iPad</p>
+                <p className={styles.guideSub}>{tr('على iPhone / iPad')}</p>
                 <div className={styles.steps}>
                   <div className={styles.step}>
-                    <span className={styles.stepNum}>١</span>
-                    <span>اضغط على زر المشاركة <strong>⬆️</strong> في شريط Safari</span>
+                    <span className={styles.stepNum}>{num(1)}</span>
+                    <span>{tr('اضغط على زر المشاركة')} <strong>⬆️</strong> {tr('في شريط Safari')}</span>
                   </div>
                   <div className={styles.step}>
-                    <span className={styles.stepNum}>٢</span>
-                    <span>اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong></span>
+                    <span className={styles.stepNum}>{num(2)}</span>
+                    <span>{tr('اختر')} <strong>"{tr('إضافة إلى الشاشة الرئيسية')}"</strong></span>
                   </div>
                   <div className={styles.step}>
-                    <span className={styles.stepNum}>٣</span>
-                    <span>اضغط <strong>"إضافة"</strong> في الزاوية اليمنى العليا</span>
+                    <span className={styles.stepNum}>{num(3)}</span>
+                    <span>{tr('اضغط')} <strong>"{tr('إضافة')}"</strong> {tr('في الزاوية اليمنى العليا')}</span>
                   </div>
                 </div>
                 <div className={styles.iosHint}>
                   <span className={styles.iosArrow}>⬆️</span>
-                  <span>زر المشاركة في أسفل Safari</span>
+                  <span>{tr('زر المشاركة في أسفل Safari')}</span>
                 </div>
               </>
             ) : (
               <>
-                <p className={styles.guideSub}>على Android</p>
+                <p className={styles.guideSub}>{tr('على Android')}</p>
                 <div className={styles.steps}>
                   <div className={styles.step}>
-                    <span className={styles.stepNum}>١</span>
-                    <span>افتح قائمة المتصفح <strong>⋮</strong></span>
+                    <span className={styles.stepNum}>{num(1)}</span>
+                    <span>{tr('افتح قائمة المتصفح')} <strong>⋮</strong></span>
                   </div>
                   <div className={styles.step}>
-                    <span className={styles.stepNum}>٢</span>
-                    <span>اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong></span>
+                    <span className={styles.stepNum}>{num(2)}</span>
+                    <span>{tr('اختر')} <strong>"{tr('إضافة إلى الشاشة الرئيسية')}"</strong></span>
                   </div>
                   <div className={styles.step}>
-                    <span className={styles.stepNum}>٣</span>
-                    <span>اضغط <strong>"إضافة"</strong></span>
+                    <span className={styles.stepNum}>{num(3)}</span>
+                    <span>{tr('اضغط')} <strong>"{tr('إضافة')}"</strong></span>
                   </div>
                 </div>
               </>
             )}
 
             <button className={styles.doneBtn} onClick={() => { setShowGuide(false); dismiss(); }}>
-              فهمت ✓
+              {tr('فهمت')} ✓
             </button>
           </div>
         </div>
