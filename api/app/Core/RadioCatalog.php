@@ -37,6 +37,7 @@ final class RadioCatalog
                 'https://stream.radiojar.com/8s5u5tpdtwzuv',       // [brief] Egyptian Radio and TV Union (Maspero) via Radiojar
                 'https://n01.radiojar.com/8s5u5tpdtwzuv',          // [memory] a Radiojar edge node for the same mount
                 'http://stream.radiojar.com/8s5u5tpdtwzuv',        // [memory] http mirror — only used if it redirects to https
+                'https://radio.xecod.com/station/quran-cairo', // [radio-browser 2026-11] OmniRadio relay of Cairo Quran radio (fallback)
             ],
         ],
         // ── Saudi Arabia ────────────────────────────────────────────────────────
@@ -99,6 +100,7 @@ final class RadioCatalog
             'id' => 'kw-quran', 'country' => 'KW', 'category' => 'quran', 'featured' => true,
             'name_ar' => 'إذاعة القرآن الكريم من الكويت', 'name_en' => 'Kuwait Holy Quran Radio',
             'streams' => [
+                'https://radio.mp3islam.com/listen/quran_radio/radio.mp3', // [radio-browser 2026-11, verified by server check]
                 'https://kwtquranfm.cdn.mangomolo.com/quranfm/smil:quranfm.stream.smil/playlist.m3u8', // [guess] Ministry of Information on Mangomolo
                 'https://kwtradio.cdn.mangomolo.com/quran/smil:quran.stream.smil/playlist.m3u8',       // [guess]
             ],
@@ -108,6 +110,7 @@ final class RadioCatalog
             'id' => 'jo-quran', 'country' => 'JO', 'category' => 'quran',
             'name_ar' => 'إذاعة القرآن الكريم الأردنية', 'name_en' => 'Jordan Holy Quran Radio',
             'streams' => [
+                'https://jrtv-live.ercdn.net/jrradio/quranradio.m3u8', // [radio-browser 2026-11, verified by server check]
                 'https://jrtv-live.ercdn.net/quranradio/quranradio.m3u8', // [guess] JRTV radio on its CDN
             ],
         ],
@@ -115,6 +118,7 @@ final class RadioCatalog
             'id' => 'jo-hayat-fm', 'country' => 'JO', 'category' => 'programs',
             'name_ar' => 'حياة إف إم', 'name_en' => 'Hayat FM',
             'streams' => [
+                'https://dc1.serverse.com/proxy/kjxwtpdt/stream', // [radio-browser 2026-11, verified by server check]
                 // TODO: no stream URL known — copy the one from Hayat FM's own web player (the station stays hidden until then)
             ],
         ],
@@ -132,6 +136,7 @@ final class RadioCatalog
             'id' => 'tn-zitouna', 'country' => 'TN', 'category' => 'quran',
             'name_ar' => 'إذاعة الزيتونة للقرآن الكريم', 'name_en' => 'Radio Zitouna — Holy Quran',
             'streams' => [
+                'https://radio.radiotunisienne.tn/radiozaitouna', // [radio-browser 2026-11, verified by server check]
                 'https://stream.zitounafm.net/zitounafm', // [guess]
                 'http://stream6.tanitweb.com/zitounafm',  // [memory] http — only if it redirects to https
             ],
@@ -165,6 +170,7 @@ final class RadioCatalog
             'id' => 'dz-quran', 'country' => 'DZ', 'category' => 'quran',
             'name_ar' => 'إذاعة القرآن الكريم الجزائرية', 'name_en' => 'Algerian Holy Quran Radio',
             'streams' => [
+                'https://webradio1.tda.dz:8001/Coran_64K.mp3', // [radio-browser 2026-11, verified by server check]
                 'https://webradio.tda.dz/Coran_64K.mp3', // [memory] TDA (Télédiffusion d'Algérie) web radio
                 'http://webradio.tda.dz/Coran_64K.mp3',  // [memory] http — only if it redirects to https
             ],
@@ -172,8 +178,10 @@ final class RadioCatalog
         // ── Libya ───────────────────────────────────────────────────────────────
         [
             'id' => 'ly-quran', 'country' => 'LY', 'category' => 'quran',
-            'name_ar' => 'إذاعة القرآن الكريم الليبية', 'name_en' => 'Libyan Holy Quran Radio',
+            'name_ar' => 'إذاعة المنير للقرآن الكريم — ليبيا', 'name_en' => 'Almunir Quran Radio — Libya',
             'streams' => [
+                'https://live.munir.ly/proxy/almunir/stream', // [radio-browser 2026-11, verified by server check]
+                'https://live.munir.ly/proxy/almunirtip/stream', // [radio-browser 2026-11, verified by server check]
                 // TODO: no stream URL known — add the official stream (the station stays hidden until then)
             ],
         ],
@@ -195,6 +203,28 @@ final class RadioCatalog
         ],
         // ── mp3quran.net channels that keep the page useful when the mp3quran API is unreachable ──────────────
         // (the same URLs come back from the API; the duplicate is dropped there and this entry is kept)
+        // ── Lebanon / Saudi (found in the radio-browser directory, verified by server check) ──
+        [
+            'id' => 'lb-quran-933', 'country' => 'LB', 'category' => 'quran',
+            'name_ar' => 'إذاعة القرآن الكريم ٩٣٫٣ — لبنان', 'name_en' => 'Quran Radio 93.3 FM — Lebanon',
+            'streams' => [
+                'https://audio.osina.cloud:7987/stream', // [radio-browser 2026-11]
+            ],
+        ],
+        [
+            'id' => 'lb-ayat-quran', 'country' => 'LB', 'category' => 'quran',
+            'name_ar' => 'إذاعة آيات القرآن', 'name_en' => 'Ayat Al Quran Radio',
+            'streams' => [
+                'https://stream.zeno.fm/1fatuk10fkhvv', // [radio-browser 2026-11]
+            ],
+        ],
+        [
+            'id' => 'sa-tarteel', 'country' => 'SA', 'category' => 'recitation',
+            'name_ar' => 'إذاعة ترتيل — ترتيل القرآن الكريم', 'name_en' => 'Tarteel Radio — Quran recitation',
+            'streams' => [
+                'https://live.trtel.vip/live', // [radio-browser 2026-11]
+            ],
+        ],
         [
             'id' => 'mp3q-mix', 'country' => '', 'category' => 'recitation',
             'name_ar' => 'إذاعة تلاوات متنوعة لنخبة من القرّاء', 'name_en' => 'Mixed recitations by renowned reciters',
