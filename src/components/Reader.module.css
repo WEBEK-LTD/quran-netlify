@@ -69,7 +69,8 @@
   -webkit-box-decoration-break: clone; box-decoration-break: clone;
   transition: background .2s, color .2s, box-shadow .2s;
 }
-.ay:hover { background: var(--hl); }
+@media (hover: hover) { .ay:hover { background: var(--hl); } }
+.ay:active { background: var(--hl); }
 .ay:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 8px; }
 .ay.sel { background: var(--hl); box-shadow: inset 0 -2px 0 var(--gold); }
 .playing { background: color-mix(in srgb, var(--gold) 15%, transparent); color: var(--gold2); }
@@ -77,6 +78,13 @@
 :root[data-mode="contrast"] .playing { color: var(--gold); background: transparent; text-decoration: underline 2px; text-underline-offset: .35em; }
 :root[data-mode="contrast"] .ay.sel { background: #222; box-shadow: inset 0 -3px 0 var(--gold); }
 .ay.playing.sel { box-shadow: inset 0 -2px 0 var(--gold); }
+/* tapped, the recitation is loading: a soft pulse until the sound starts */
+.buffering { animation: ayPulse 1.1s ease-in-out infinite; }
+@keyframes ayPulse { 50% { background-color: color-mix(in srgb, var(--gold) 26%, transparent); } }
+/* phones: a long press opens the ayah tools, so it must not start a text selection */
+@media (hover: none) and (pointer: coarse) {
+  .ay, .card { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+}
 
 .pfoot { padding-top: 4px; padding-bottom: 6px; }
 
@@ -91,12 +99,23 @@
 /* ── Ayah-by-ayah view ─────────────────────────────────────────────────── */
 .list { display: grid; gap: 14px; width: 100%; max-width: 900px; margin-inline: auto; margin-top: 6px; }
 .listHead { padding: 16px 18px 12px; display: grid; gap: 8px; }
-.card { padding: 16px 22px 18px; display: grid; gap: 12px; cursor: pointer; scroll-margin-top: 160px; transition: box-shadow .2s, background .2s; }
+.card { padding: 16px 22px 18px; display: grid; gap: 12px; cursor: pointer; scroll-margin-top: 160px; transition: box-shadow .2s, background .2s;
+  /* long surahs: cards off screen are neither laid out nor painted */
+  content-visibility: auto; contain-intrinsic-size: auto 230px; }
+.card:active { background: var(--hl); }
 .card:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
 .cardTop { display: flex; align-items: center; gap: 12px; }
 .cardTop :global(.nq-badge8 b) { font-size: .8rem; }
 .cardRef { color: var(--muted); font-size: .84rem; flex: 1; min-width: 0; }
 .nowPill :global(.nq-ico) { width: 15px; height: 15px; }
+.bmMark { width: 18px !important; height: 18px !important; color: var(--gold); fill: currentColor !important; }
+.moreBtn {
+  width: 40px; height: 40px; flex: none; display: grid; place-items: center; padding: 0;
+  border-radius: 12px; border: var(--bw) solid var(--line); background: transparent; color: var(--muted);
+}
+.moreBtn :global(.nq-ico) { width: 20px; height: 20px; }
+@media (hover: hover) { .moreBtn:hover { color: var(--gold); border-color: var(--line2); background: var(--hl); } }
+.moreBtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .cardText { font-size: var(--font-size, 26px); line-height: 2.25; color: var(--text); text-align: start; }
 .trans { color: var(--muted); font-size: .98rem; line-height: 1.85; border-top: 1px dashed var(--line); padding-top: 10px; font-family: var(--f-ui); }
 .trans[dir="ltr"] { text-align: left; font-family: system-ui, 'Segoe UI', sans-serif; }

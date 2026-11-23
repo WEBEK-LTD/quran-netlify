@@ -171,7 +171,7 @@ export default function QiblaPage() {
               </div>
             )}
             {compassStatus === 'active' && !calibrate && place && Math.abs(decl) >= 0.5 && (
-              <p className={styles.note}>{tr('الاتجاه مُصحَّح بالانحراف المغناطيسي لموقعك ({d}°).', { d: toAr(Math.abs(decl).toFixed(1)).replace('.', '٫') })}</p>
+              <p className={styles.note}>{tr('الاتجاه مُصحَّح بالانحراف المغناطيسي لموقعك ({d}°).', { d: tr.lang === 'ar' ? toAr(Math.abs(decl).toFixed(1)).replace('.', '٫') : toAr(Math.abs(decl).toFixed(1)) })}</p>
             )}
             {compassStatus === 'unavailable' && (
               <div className={styles.nosensor} role="status">
