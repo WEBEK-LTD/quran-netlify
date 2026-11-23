@@ -1,4 +1,61 @@
-export async function fetchSurahAyahs(surahNum) {
+// ─── Surah text (Uthmani) ─────────────────────────────────────────────────────
+// Kept in memory for the session and in localStorage for the last few surahs, so
+// reopening the mushaf (or going back to a surah) shows the text at once instead
+// of a skeleton. Requests for the same surah share one fetch.
+const _ayahCache = new Map();      // surah → ayahs
+const _ayahInflight = new Map();   // surah → promise
+const AYAH_LS = 'nq_text_';        // + surah
+const AYAH_LS_INDEX = 'nq_text_idx';
+const AYAH_LS_MAX = 12;
+
+function readCachedAyahs(surahNum) {
+  if (_ayahCache.has(surahNum)) return _ayahCache.get(surahNum);
+  try {
+    const raw = localStorage.getItem(AYAH_LS + surahNum);
+    if (!raw) return null;
+    const list = JSON.parse(raw);
+    if (Array.isArray(list) && list.length) { _ayahCache.set(surahNum, list); return list; }
+  } catch {}
+  return null;
+}
+
+function rememberAyahs(surahNum, list) {
+  _ayahCache.set(surahNum, list);
+  try {
+    let idx = [];
+    try { idx = JSON.parse(localStorage.getItem(AYAH_LS_INDEX) || '[]') || []; } catch {}
+    idx = [surahNum, ...idx.filter(n => n !== surahNum)];
+    while (idx.length > AYAH_LS_MAX) localStorage.removeItem(AYAH_LS + idx.pop());
+    localStorage.setItem(AYAH_LS + surahNum, JSON.stringify(list));
+    localStorage.setItem(AYAH_LS_INDEX, JSON.stringify(idx));
+  } catch {
+    // storage full: the memory copy is enough for this session
+  }
+}
+
+/** The surah's ayahs if they are already on this device (sync), else null. */
+export function cachedSurahAyahs(surahNum) {
+  return readCachedAyahs(surahNum);
+}
+
+export function fetchSurahAyahs(surahNum) {
+  const hit = readCachedAyahs(surahNum);
+  if (hit) return Promise.resolve(hit);
+  if (_ayahInflight.has(surahNum)) return _ayahInflight.get(surahNum);
+  const p = loadSurahAyahs(surahNum)
+    .then(list => { rememberAyahs(surahNum, list); return list; })
+    .finally(() => { _ayahInflight.delete(surahNum); });
+  _ayahInflight.set(surahNum, p);
+  return p;
+}
+
+/** Warm the cache for a surah the visitor is likely to open next (fire and forget). */
+export function prefetchSurahAyahs(surahNum) {
+  if (!(surahNum >= 1 && surahNum <= 114) || readCachedAyahs(surahNum) || _ayahInflight.has(surahNum)) return;
+  fetchSurahAyahs(surahNum).catch(() => {});
+}
+
+async function loadSurahAyahs(surahNum) {
   // Primary: alquran.cloud (no CORS issues)
   try {
     const res = await fetch(
@@ -90,18 +147,28 @@ export async function fetchAyahWithTafsir(surahNum, ayahNum, edition = 'ar.muyas
 }
 
 /**
- * Fetch full surah tafsir for a given edition (returns array keyed by ayahNum)
+ * Fetch full surah tafsir for a given edition (returns array keyed by ayahNum).
+ * Kept in memory for the session; requests for the same surah/edition share one fetch.
  */
-export async function fetchSurahTafsir(surahNum, edition = 'ar.muyassar') {
-  const res = await fetch(
-    `https://api.alquran.cloud/v1/surah/${surahNum}/${edition}`
-  );
-  if (!res.ok) throw new Error('Tafsir API error');
-  const data = await res.json();
-  return data.data.ayahs.map(a => ({
-    number: a.numberInSurah,
-    tafsir: a.text,
-  }));
+const _tafsirCache = new Map();
+export function cachedSurahTafsir(surahNum, edition = 'ar.muyassar') {
+  const v = _tafsirCache.get(`${surahNum}:${edition}`);
+  return Array.isArray(v) ? v : null;
+}
+export function fetchSurahTafsir(surahNum, edition = 'ar.muyassar') {
+  const key = `${surahNum}:${edition}`;
+  const hit = _tafsirCache.get(key);
+  if (hit) return Array.isArray(hit) ? Promise.resolve(hit) : hit;
+  const p = fetch(`https://api.alquran.cloud/v1/surah/${surahNum}/${edition}`)
+    .then(res => { if (!res.ok) throw new Error('Tafsir API error'); return res.json(); })
+    .then(data => {
+      const list = data.data.ayahs.map(a => ({ number: a.numberInSurah, tafsir: a.text }));
+      _tafsirCache.set(key, list);
+      return list;
+    })
+    .catch(err => { _tafsirCache.delete(key); throw err; });
+  _tafsirCache.set(key, p);
+  return p;
 }
 
 

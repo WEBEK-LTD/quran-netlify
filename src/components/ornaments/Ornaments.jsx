@@ -77,6 +77,7 @@ const ICONS = {
   download: '<path d="M12 4v11 M7.5 10.5 12 15l4.5-4.5 M5 19.5h14"/>',
   plus: '<path d="M12 5v14 M5 12h14"/>',
   live: '<circle cx="12" cy="11" r="2"/><path d="M8.5 14.5a5 5 0 0 1 0-7M15.5 7.5a5 5 0 0 1 0 7M5.6 17.4a9 9 0 0 1 0-12.8M18.4 4.6a9 9 0 0 1 0 12.8"/>',
+  dots: '<path d="M5.5 12h.01 M12 12h.01 M18.5 12h.01" stroke-width="3.2"/>',
   shieldUser: '<path d="M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6z"/><circle cx="12" cy="10" r="2.3"/><path d="M8.5 16a3.6 3.6 0 0 1 7 0"/>',
 };
 

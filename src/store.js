@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 
 export const DEFAULT_READER = 'Abdul_Basit_Murattal_192kbps';
 
@@ -106,4 +106,23 @@ export function useStore() {
   }, []);
 
   return [state, setGlobal];
+}
+
+// Subscribe to a few keys only: the component re-renders when one of THESE
+// changes, not on every store update (audio progress, toasts, …). Long lists
+// (the reader, the index) use this so a recitation stepping from ayah to ayah
+// does not re-render the whole page.
+//   const s = useStoreKeys(['currentSurah', 'audioAyah']);
+const subscribeAll = fn => subscribe(() => fn());
+export function useStoreKeys(keys) {
+  const ref = useRef(null);
+  const get = () => {
+    const prev = ref.current;
+    if (prev && keys.every(k => prev[k] === globalState[k])) return prev;
+    const next = {};
+    keys.forEach(k => { next[k] = globalState[k]; });
+    ref.current = next;
+    return next;
+  };
+  return useSyncExternalStore(subscribeAll, get, get);
 }
