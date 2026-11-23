@@ -1,4 +1,5 @@
-// Integrations (التكاملات): Google sign-in, the assistant provider, the mail sender (+ SMTP).
+// Integrations (التكاملات): Google sign-in, the assistant provider, the mail sender (+ SMTP),
+// the voice-rooms server (LiveKit) and push notifications (FCM, APNs).
 // Secrets are write-only: the server returns only whether they are set and a short preview.
 import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { getIntegrations, updateIntegrations, testIntegration } from '../../adminApi';
@@ -26,6 +27,16 @@ const FIELD_META = {
   smtp_username:        { label: 'اسم المستخدم', placeholder: 'no-reply@nuralquran.net', ltr: true },
   smtp_password:        { label: 'كلمة المرور', secret: true, ltr: true },
   smtp_encryption:      { label: 'التشفير', select: [['', 'تلقائي حسب المنفذ'], ['tls', 'TLS — المنفذ 587'], ['ssl', 'SSL — المنفذ 465'], ['none', 'بدون']] },
+  livekit_url:          { label: 'عنوان خادم الصوت للتطبيق', placeholder: 'wss://rtc.nuralquran.net:7443', ltr: true },
+  livekit_api_url:      { label: 'عنوان خادم الصوت من السيرفر', placeholder: 'http://127.0.0.1:7880', ltr: true },
+  livekit_api_key:      { label: 'المفتاح (API Key)', placeholder: 'API…', ltr: true },
+  livekit_api_secret:   { label: 'السر (API Secret)', secret: true, ltr: true },
+  fcm_service_account:  { label: 'محتوى ملف حساب الخدمة (JSON)', secret: true, ltr: true, multiline: true, placeholder: '{ "type": "service_account", … }' },
+  apns_key_p8:          { label: 'محتوى ملف المفتاح ‎.p8', secret: true, ltr: true, multiline: true, placeholder: '-----BEGIN PRIVATE KEY-----' },
+  apns_key_id:          { label: 'معرّف المفتاح (Key ID)', placeholder: 'ABC123DEFG', ltr: true },
+  apns_team_id:         { label: 'معرّف الفريق (Team ID)', placeholder: 'ABCDE12345', ltr: true },
+  apns_bundle_id:       { label: 'معرّف التطبيق (Bundle ID)', placeholder: 'net.nuralquran.app', ltr: true },
+  apns_environment:     { label: 'البيئة', select: [['', 'production (المتجر و TestFlight)'], ['production', 'production'], ['sandbox', 'sandbox (التطوير)']] },
 };
 const SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_username', 'smtp_password', 'smtp_encryption'];
 
@@ -45,6 +56,21 @@ const INTEGRATION_GROUPS = [
     hint: 'العنوان والاسم اللذان تُرسل بهما رسائل الموقع (تأكيد البريد، واستعادة كلمة المرور، والتنبيهات الأمنية، ورسائل الدعم)، وطريقة الإرسال: من خادم الموقع أو عبر SMTP.',
     smtpHint: 'لصندوق بريد cPanel: الخادم mail.<نطاقك> (مثل mail.nuralquran.net)، والمنفذ 465 مع SSL، واسم المستخدم هو عنوان البريد كاملاً، ويُفضَّل أن يكون هو نفسه «عنوان المرسل».',
     keys: ['mail_from_address', 'mail_from_name', 'mail_transport', ...SMTP_KEYS],
+  },
+  {
+    id: 'livekit', icon: 'users', title: 'خادم الغرف الصوتية', test: 'livekit',
+    hint: 'خادم الصوت المباشر للغرف على سيرفرك (rtc.nuralquran.net). القيم الأربع يطبعها سكربت التسطيب، والمفتاح والسر موجودان أيضاً في الملف ‎/etc/livekit/keys.yaml على السيرفر.',
+    keys: ['livekit_url', 'livekit_api_url', 'livekit_api_key', 'livekit_api_secret'],
+  },
+  {
+    id: 'fcm', icon: 'bell', title: 'إشعارات أندرويد (Firebase)', test: 'fcm',
+    hint: 'من Firebase Console ← إعدادات المشروع ← Service accounts ← Generate new private key، ثم الصق محتوى ملف JSON كاملاً.',
+    keys: ['fcm_service_account'],
+  },
+  {
+    id: 'apns', icon: 'bell', title: 'إشعارات آيفون (Apple)', test: 'apns',
+    hint: 'من Apple Developer ← Certificates, Identifiers & Profiles ← Keys: أنشئ مفتاحاً مفعّلاً عليه Apple Push Notifications service، ثم الصق محتوى ملف ‎.p8 ومعرّفه.',
+    keys: ['apns_key_p8', 'apns_key_id', 'apns_team_id', 'apns_bundle_id', 'apns_environment'],
   },
 ];
 
@@ -223,11 +249,19 @@ function IntegrationField({ k, meta, item, value, cleared, disabled, onChange, o
       ) : isSecret ? (
         <>
           <div className={styles.inlineRow}>
+            {meta.multiline ? (
+              <textarea id={id} rows={5} autoComplete="off" spellCheck={false}
+                className={`${styles.input} ${styles.ltr} ${styles.secretArea}`}
+                value={value} disabled={disabled || cleared}
+                placeholder={cleared ? 'سيُحذف عند الحفظ' : isSet ? 'اتركه فارغاً للإبقاء على القيمة الحالية' : meta.placeholder || 'الصق القيمة هنا'}
+                onChange={e => onChange(e.target.value)}/>
+            ) : (
             <input id={id} type="password" autoComplete="new-password" spellCheck={false}
               className={`${styles.input} ${styles.ltr}`}
               value={value} disabled={disabled || cleared}
               placeholder={cleared ? 'سيُحذف عند الحفظ' : isSet ? 'اتركه فارغاً للإبقاء على القيمة الحالية' : 'الصق القيمة هنا'}
               onChange={e => onChange(e.target.value)}/>
+            )}
             {isSet && (
               <button type="button" className={`nq-btn ghost sm ${cleared ? '' : styles.btnTextDanger}`} disabled={disabled}
                 aria-label={cleared ? `تراجع عن حذف ${label}` : `حذف ${label}`}

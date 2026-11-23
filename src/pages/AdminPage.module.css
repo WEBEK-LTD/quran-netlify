@@ -556,3 +556,6 @@ textarea.input { resize:vertical; min-height:84px; }
   .barLabel { font-size:.58rem; }
   .barPlot { gap:3px; }
 }
+
+/* Multi-line secrets (service-account JSON, .p8 key) */
+.secretArea { flex: 1 1 auto; min-width: 0; min-height: 120px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.5; white-space: pre; }
