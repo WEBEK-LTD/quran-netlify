@@ -11,6 +11,7 @@ import { AuthStage, AuthBrand, Spinner } from './auth/AuthShell';
 import { Icon } from '../components/ornaments/Ornaments';
 import styles from './AuthPage.module.css';
 import { rich } from './legal/LegalDoc';
+import { isNative } from '../native/platform';
 
 // Only same-site relative paths are accepted as ?next= (no open redirects)
 function safeNext(next) {
@@ -42,6 +43,11 @@ export default function AuthCallbackPage() {
     const token  = searchParams.get('token');
     const reason = searchParams.get('reason');
     const next   = safeNext(searchParams.get('next'));
+    // Google sign-in started in the native app failed: this page is open in the system
+    // browser sheet — hand the error back to the app (it shows the message itself).
+    if (status === 'error' && searchParams.get('client') === 'app' && !isNative()) {
+      try { window.location.href = `nuralquran://auth?status=error&reason=${encodeURIComponent(reason || '')}`; } catch {}
+    }
     // Don't leave tokens in the address bar / history
     window.history.replaceState(null, '', window.location.pathname);
 

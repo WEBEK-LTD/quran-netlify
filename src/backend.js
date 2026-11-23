@@ -80,7 +80,14 @@ export function googleStartUrl(next = '/dashboard') {
   return `${API_BASE}/auth/google/start?next=${enc(next)}&client=${CLIENT}&lang=${uiLang()}`;
 }
 export function signInWithGoogle(next = '/dashboard') {
-  window.location.href = googleStartUrl(next);
+  const url = googleStartUrl(next);
+  // App: Google refuses OAuth in a WebView → system browser sheet; the API sends
+  // the app back with nuralquran://auth?token=… (src/native/links.js).
+  // Resolves when the sheet closes (signed in or cancelled); undefined on the web.
+  if (CLIENT === 'app') {
+    return import('./native/browser').then(m => m.openAuthBrowser(url)).catch(() => { window.location.href = url; });
+  }
+  window.location.href = url;
 }
 
 export async function signOut() { return signOutAuth(); }

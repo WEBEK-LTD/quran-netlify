@@ -27,14 +27,25 @@ export function readAlarms() {
   } catch { return {}; }
 }
 
-/** Same reading as prayerToday.savedCity(), without the network module. */
+// Same default as PrayerTimesPage.suggestMethod() (the page only stores the method
+// once the visitor changes it), so the adhan uses the method the page shows.
+function suggestMethod(tz) {
+  tz = tz || '';
+  const table = [['Cairo', '5'], ['Riyadh', '4'], ['Kuwait', '9'], ['Qatar', '10'], ['Dubai', '16'], ['Bahrain', '8'], ['Muscat', '8'],
+    ['Istanbul', '13'], ['Baghdad', '3'], ['Amman', '23'], ['Beirut', '3'], ['Damascus', '3'], ['Casablanca', '21'], ['Tunis', '18'],
+    ['Algiers', '19'], ['Gaza', '3'], ['Hebron', '3'], ['Paris', '12'], ['London', '3'], ['America/', '2']];
+  const hit = table.find(([k]) => tz.includes(k));
+  return hit ? hit[1] : '3';
+}
+
+/** The prayer page's saved city (nq_pray_*), or null when none was chosen yet. */
 export function readCity() {
   try {
     const lat = parseFloat(localStorage.getItem('nq_pray_lat'));
     const lon = parseFloat(localStorage.getItem('nq_pray_lon'));
     if (!isFinite(lat) || !isFinite(lon)) return null;
     const tz = localStorage.getItem('nq_pray_tz') || Intl.DateTimeFormat().resolvedOptions().timeZone || '';
-    const method = localStorage.getItem('nq_pray_method_v2') || '3';
+    const method = localStorage.getItem('nq_pray_method_v2') || suggestMethod(Intl.DateTimeFormat().resolvedOptions().timeZone || '');
     return { lat, lon, tz, method, name: localStorage.getItem('nq_pray_city') || '' };
   } catch { return null; }
 }

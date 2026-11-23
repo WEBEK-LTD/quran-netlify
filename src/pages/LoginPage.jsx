@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { signInWithEmail, googleStartUrl, forgotPassword } from '../backend';
+import { signInWithEmail, signInWithGoogle, forgotPassword } from '../backend';
 import { usePublicSettings } from '../hooks/usePublicSettings';
 import { afterLoginPath } from '../store';
 import { authErrorText, googleErrorText } from '../authErrors';
@@ -42,7 +42,8 @@ export default function LoginPage() {
 
   function handleGoogle() {
     setLoading(true); setError('');
-    window.location.href = googleStartUrl(afterLoginPath());
+    const sheet = signInWithGoogle(afterLoginPath());   // native app: system browser sheet
+    if (sheet) sheet.then(() => setLoading(false));
   }
 
   async function handleForgot(e) {

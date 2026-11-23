@@ -1,0 +1,29 @@
+.wrap {
+  position: fixed; inset: 0; z-index: 2147482000;
+  display: grid; place-items: center; overflow: auto;
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  background: radial-gradient(120% 80% at 50% 30%, color-mix(in srgb, var(--gold, #C9A84C) 14%, var(--bg, #060D0A)) 0%, var(--bg, #060D0A) 70%);
+  color: var(--text, #F1EEE3);
+  animation: nqAdhanIn .35s ease both;
+}
+.inner { position: relative; max-width: 520px; width: 100%; text-align: center; display: grid; justify-items: center; gap: 10px; }
+.eyebrow { margin: 12px 0 0; color: var(--gold, #C9A84C); letter-spacing: .02em; font-size: .95rem; }
+.title { margin: 0; font-family: var(--f-title, inherit); font-size: clamp(2.2rem, 9vw, 3.4rem); line-height: 1.2; color: var(--text, #F1EEE3); }
+.sub { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: center; color: var(--muted, #B9B4A3); font-size: 1.05rem; }
+.sub span { display: inline-flex; align-items: center; gap: 6px; }
+.sub svg { width: 18px; height: 18px; }
+.ayah { margin: 18px 0 6px; padding: 16px 18px; border-block: 1px solid var(--line2, rgba(201,168,76,.35)); }
+.ayah blockquote { margin: 0; font-family: var(--font-quran, 'Amiri Quran', 'Amiri', serif); font-size: clamp(1.35rem, 5.4vw, 1.75rem); line-height: 2.1; color: var(--gold2, #E2C47A); }
+.ayah figcaption { margin-top: 4px; font-size: .9rem; color: var(--muted, #B9B4A3); }
+.actions { display: grid; gap: 10px; width: 100%; max-width: 360px; margin-top: 8px; }
+.actions :global(.nq-btn) { justify-content: center; min-height: 52px; font-size: 1.05rem; }
+.credit { margin: 6px 0 0; font-size: .82rem; color: var(--muted, #B9B4A3); }
+.close {
+  position: absolute; inset-block-start: calc(12px + env(safe-area-inset-top, 0px)); inset-inline-end: 12px;
+  width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  background: transparent; color: var(--muted, #B9B4A3); border: 1px solid var(--line, rgba(255,255,255,.12));
+}
+.close svg { width: 20px; height: 20px; }
+@keyframes nqAdhanIn { from { opacity: 0; transform: scale(.985); } to { opacity: 1; transform: none; } }
+:global(html[data-reduce="on"]) .wrap { animation: none; }
+@media (prefers-reduced-motion: reduce) { .wrap { animation: none; } }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signUpWithEmail, googleStartUrl } from '../backend';
+import { signUpWithEmail, signInWithGoogle } from '../backend';
 import { usePublicSettings } from '../hooks/usePublicSettings';
 import { afterLoginPath } from '../store';
 import { authErrorText } from '../authErrors';
@@ -39,7 +39,8 @@ export default function SignupPage() {
 
   function handleGoogle() {
     setLoading(true);
-    window.location.href = googleStartUrl(afterLoginPath());
+    const sheet = signInWithGoogle(afterLoginPath());   // native app: system browser sheet
+    if (sheet) sheet.then(() => setLoading(false));
   }
 
   if (settings.loaded && settings.allow_signup === false) return (

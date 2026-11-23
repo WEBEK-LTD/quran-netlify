@@ -1,0 +1,33 @@
+.box { display: grid; gap: 14px; margin-top: 12px; }
+.intro { display: flex; gap: 10px; align-items: flex-start; color: var(--muted); line-height: 1.8; }
+.intro p { margin: 0; }
+.intro svg, .warn svg, .dnd svg, .status svg { width: 20px; height: 20px; flex: none; margin-top: 3px; color: var(--gold); }
+.warn, .dnd {
+  display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center;
+  padding: 12px 14px; border-radius: 14px; border: var(--bw, 1px) solid var(--line); background: var(--raise);
+  color: var(--muted); line-height: 1.7; font-size: .92rem;
+}
+.warn { border-color: var(--line2); }
+.warn span, .dnd span { flex: 1 1 220px; }
+.rows { display: grid; gap: 8px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.pname { font-weight: 600; min-width: 64px; }
+.row :global(.nq-seg) button { padding: 6px 10px; font-size: .85rem; min-height: 36px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.field { display: grid; gap: 6px; font-size: .9rem; color: var(--muted); }
+.field select, .field input[type="time"] {
+  min-height: 42px; padding: 8px 12px; border-radius: 12px; border: var(--bw, 1px) solid var(--line);
+  background: var(--surface); color: var(--text); font: inherit; max-width: 100%;
+}
+.inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.inline select { flex: 1 1 160px; }
+.tog { width: 52px; height: 30px; border-radius: 999px; background: var(--raise); border: var(--bw, 1px) solid var(--line); position: relative; padding: 0; flex: none; }
+.tog::after { content: ""; position: absolute; top: 3px; inset-inline-start: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--muted); transition: inset-inline-start .2s, background .2s; }
+.tog[aria-checked="true"] { background: var(--hl, var(--raise)); border-color: var(--gold); }
+.tog[aria-checked="true"]::after { inset-inline-start: 25px; background: var(--gold); }
+.foot { display: grid; gap: 8px; }
+.status { margin: 0; display: flex; gap: 8px; align-items: flex-start; color: var(--muted); font-size: .9rem; line-height: 1.7; }
+.credits { font-size: .85rem; color: var(--muted); line-height: 1.8; }
+.credits summary { cursor: pointer; color: var(--text); }
+.credits ul { margin: 6px 0 0; padding-inline-start: 18px; }
+.link { background: none; border: 0; padding: 0; color: var(--gold); text-decoration: underline; font: inherit; cursor: pointer; }

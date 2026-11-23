@@ -2,7 +2,7 @@
 // Mihrab hero → next prayer with the sun's path + qibla card → the five prayers
 // as mihrab windows (each with its adhan alarm) → settings → the week ahead.
 // Times come from api.aladhan.com in the city's own time zone.
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './PrayerTimesPage.module.css';
 import { PageHero, Icon, Badge8, Pattern, Corners, toAr } from '../components/ornaments/Ornaments';
@@ -10,6 +10,11 @@ import QiblaRose, { calcQibla, calcDistance, fmtKm } from './qibla/QiblaRose';
 import { useTr, trNow, num, intlLocale, isRtl, surahName } from '../l10n';
 import { getLang } from '../i18n';
 import { HIJRI_MONTHS } from '../locales/worship';
+import { isNative } from '../native/platform';
+
+// Native app only: adhan notifications, muezzins, reminders (src/native/NativeAdhanSettings.jsx)
+const NativeAdhanSettings = lazy(() => import('../native/NativeAdhanSettings'));
+const NATIVE = isNative();
 
 const PRAYERS_INFO = [
   { key: 'Fajr',    name: 'الفجر',  icon: 'moon' },
@@ -642,22 +647,27 @@ export default function PrayerTimesPage() {
                 </button>
               ))}
             </div>
-            {notifSupported && notifPerm === 'default' && (
+            {NATIVE && (
+              <Suspense fallback={null}>
+                <NativeAdhanSettings alarms={alarms} onToggle={toggleAlarm} coords={coords} method={method} tz={tz} city={city} />
+              </Suspense>
+            )}
+            {!NATIVE && notifSupported && notifPerm === 'default' && (
               <div className={styles.notice}>
                 <Icon name="bell" />
                 <span>{tr('فعّل الإشعارات ليصلك تنبيه عند دخول وقت الصلاة التي فعّلت أذانها (أثناء فتح هذه الصفحة).')}</span>
                 <button type="button" className="nq-btn gold sm" onClick={requestNotifPermission}>{tr('تفعيل الإشعارات')}</button>
               </div>
             )}
-            {notifSupported && notifPerm === 'denied' && (
+            {!NATIVE && notifSupported && notifPerm === 'denied' && (
               <div className={`${styles.notice} ${styles.noticeWarn}`}>
                 <Icon name="bell" /><span>{tr('الإشعارات محظورة لهذا الموقع. فعّلها من إعدادات المتصفح ليعمل التنبيه.')}</span>
               </div>
             )}
-            {notifSupported && notifPerm === 'granted' && (
+            {!NATIVE && notifSupported && notifPerm === 'granted' && (
               <p className={styles.hint}><Icon name="check" /> {anyAlarm ? tr('الإشعارات مفعّلة.') : tr('الإشعارات مفعّلة، اختر الصلوات التي تريد التنبيه لها.')}</p>
             )}
-            {!notifSupported && anyAlarm && (
+            {!NATIVE && !notifSupported && anyAlarm && (
               <div className={`${styles.notice} ${styles.noticeWarn}`}>
                 <Icon name="bell" /><span>{tr('هذا المتصفح لا يدعم الإشعارات، لذلك لن يعمل التنبيه.')}</span>
               </div>
