@@ -148,7 +148,7 @@ export default function WelcomePage() {
 
 // ── live prayer bar ─────────────────────────────────────────────────────────
 function hijriToday() {
-  try { return new Intl.DateTimeFormat(`${intlLocale()}-u-ca-islamic-umalqura`, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()); } catch { return ''; }
+  try { return num(new Intl.DateTimeFormat(`${intlLocale()}-u-ca-islamic-umalqura`, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())); } catch { return ''; }
 }
 
 function PrayerBar() {

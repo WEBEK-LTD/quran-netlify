@@ -25,7 +25,7 @@ const ROWS = [
   ['لوحة التقدّم', 'Progress dashboard', 'İlerleme paneli', 'Tableau de progression', 'پیش رفت کا ڈیش بورڈ', 'Dasbor kemajuan'],
   ['سورة محفوظة', 'surahs memorised', 'ezberlenen sure', 'sourates mémorisées', 'حفظ شدہ سورتیں', 'surah dihafal'],
   ['{a} آية من {b}', '{a} of {b} ayahs', '{b} ayetten {a}', '{a} versets sur {b}', '{b} میں سے {a} آیات', '{a} dari {b} ayat'],
-  ['{n}٪', '{n}%', '%{n}', '{n} %', '{n}٪', '{n}%'],
+  ['{n}٪', '{n}%', '%{n}', '{n}\u00a0%', '{n}٪', '{n}%'],
   ['من القرآن الكريم', 'of the Holy Quran', 'Kur’an-ı Kerim’in', 'du Noble Coran', 'قرآنِ کریم کا', 'dari Al-Qur’an'],
   ['يوم ورد', 'day in a row', 'gün üst üste', 'jour d’affilée', 'دن مسلسل', 'hari berturut-turut'],
   ['يوماً متتالياً', 'days in a row', 'gün üst üste', 'jours d’affilée', 'دن مسلسل', 'hari berturut-turut'],

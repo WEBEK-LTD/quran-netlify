@@ -191,8 +191,8 @@ export function Drawer() {
           <button ref={closeRef} type="button" className="nq-ibtn" onClick={closeOverlays} aria-label={tr('إغلاق')}><Icon name="x" /></button>
         </div>
         {!user && <Link to="/login" className="nq-btn gold" onClick={closeOverlays}>{tr('تسجيل الدخول')}</Link>}
-        <button type="button" className="nq-input" style={{ cursor: 'pointer' }} onClick={openPalette}>
-          <Icon name="search" style={{ color: 'var(--gold)' }} /><span style={{ color: 'var(--muted)' }}>{tr('ابحث عن سورة أو ميزة…')}</span>
+        <button type="button" className="nq-input" style={{ cursor: 'pointer', textAlign: 'start' }} onClick={openPalette}>
+          <Icon name="search" style={{ color: 'var(--gold)' }} /><span style={{ color: 'var(--muted)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tr('ابحث عن سورة أو ميزة…')}</span>
         </button>
         <div className="nq-mgroup">
           <h4>{tr('المظهر')}</h4>
