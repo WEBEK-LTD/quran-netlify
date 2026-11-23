@@ -67,7 +67,7 @@
 - **الإشعارات:** في التكاملات الصق ملف حساب الخدمة من Firebase (JSON كاملاً) لأندرويد، ومفتاح Apple ‏`.p8` مع
   Key ID و Team ID و Bundle ID لـ iOS، واضغط «اختبار» لكل منهما.
 - ارفع `api/tools/push-worker.php` إلى `/home/nuralqur/nuralquran-api/tools/`، وأضف في cPanel ← *Cron Jobs* (كل دقيقة):
-  `/usr/local/bin/php /home/nuralqur/nuralquran-api/tools/push-worker.php --loop=55 --quiet >/dev/null 2>&1`
+  `/opt/cpanel/ea-php82/root/usr/bin/php /home/nuralqur/nuralquran-api/tools/push-worker.php --loop=55 --quiet >/dev/null 2>&1`
   — يرسل الإشعارات، ويغلق الغرف التي بقيت 10 دقائق بلا متحدث، ويرسل تذكير «ذكّرني». (الخادم يفعل ذلك أيضاً بعد الطلبات،
   لكن المهمة المجدولة تجعله لا يعتمد على الزيارات.)
 - حدود الغرف (500 مستمع، 20 غرفة مفتوحة، 3 غرف لكل شخص، الإغلاق بعد 10 دقائق) والقاموس والبلاغات من لوحة الإدارة.

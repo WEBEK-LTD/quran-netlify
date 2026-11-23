@@ -12,7 +12,7 @@ declare(strict_types=1);
  *   php ~/nuralquran-api/tools/push-worker.php --batch=50 --no-tick
  *
  * cPanel → Cron Jobs (every minute):
- *   * * * * * /usr/local/bin/php /home/nuralqur/nuralquran-api/tools/push-worker.php --loop=55 >/dev/null 2>&1
+ *   * * * * * /opt/cpanel/ea-php82/root/usr/bin/php /home/nuralqur/nuralquran-api/tools/push-worker.php --loop=55 >/dev/null 2>&1
  * Only one worker runs at a time (lock file in storage/).
  */
 

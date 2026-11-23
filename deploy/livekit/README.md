@@ -60,7 +60,7 @@ LiveKit ──https──▶ https://api.nuralquran.net/v1/livekit/webhook  (م�
    يظهر «تم الاتصال بخادم LiveKit»). لا تنسخ السر إلى أي ملف آخر. (لرؤيته لاحقاً: `cat /etc/livekit/keys.yaml`.)
 6. **عامل الإشعارات** — cPanel ← *Cron Jobs* ← كل دقيقة:
    ```
-   * * * * * /usr/local/bin/php /home/nuralqur/nuralquran-api/tools/push-worker.php --loop=55 --quiet >/dev/null 2>&1
+   * * * * * /opt/cpanel/ea-php82/root/usr/bin/php /home/nuralqur/nuralquran-api/tools/push-worker.php --loop=55 --quiet >/dev/null 2>&1
    ```
    (يرسل إشعارات FCM/APNs، ويغلق الغرف التي بقيت 10 دقائق بلا متحدث، ويرسل تذكير «ذكّرني» قبل 10 دقائق.)
 7. **اختبار** — `bash smoke-test.sh` (ولاختبار حمل قصير: `LOADTEST=1 bash smoke-test.sh` بعد تثبيت `lk`، انظر أدناه).
@@ -160,7 +160,7 @@ The UDP range is 10 001 ports (not 1 001) because each participant uses two peer
    `livekit_api_key`, `livekit_api_secret` → Save → *Test* (LiveKit). Also enter FCM (service-account JSON) and APNs
    (`.p8`, key id, team id, bundle id, environment) there.
 6. **Cron** (cPanel → *Cron Jobs*, every minute):
-   `/usr/local/bin/php /home/nuralqur/nuralquran-api/tools/push-worker.php --loop=55 --quiet >/dev/null 2>&1`
+   `/opt/cpanel/ea-php82/root/usr/bin/php /home/nuralqur/nuralquran-api/tools/push-worker.php --loop=55 --quiet >/dev/null 2>&1`
    — sends pushes, auto-closes rooms with nobody on stage for 10 min, sends the 10-minute reminders.
 7. **Smoke test:** `bash smoke-test.sh` — service state + resource limits, `http://127.0.0.1:7880/` → `OK`,
    `https://rtc.nuralquran.net:7443/` → `OK` with a valid certificate, TURN/TLS certificate on 5349, a Twirp `ListRooms`
