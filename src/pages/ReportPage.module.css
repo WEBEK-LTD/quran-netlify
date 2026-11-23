@@ -49,11 +49,16 @@
 
 /* Ward chart */
 .wardChart{display:flex;align-items:flex-end;gap:4px;height:80px;}
-.wardBar{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;}
+.wardBar{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;height:100%;min-width:0;}
+.wardTrack{flex:1;width:100%;display:flex;align-items:flex-end;min-height:0;}
 .wardBarFill{width:100%;border-radius:4px;transition:height .3s;}
 .wardDone{background:#52b788;}
 .wardMiss{background:var(--border);}
 .wardLabel{font-size:10px;color:var(--text3);}
+
+/* Notices */
+.notice{font-size:13px;color:var(--text2);background:var(--gold-dim);border:1px solid rgba(201,168,76,.3);border-radius:12px;padding:10px 14px;margin-bottom:16px;text-align:center;}
+.noticeLink{color:var(--gold);font-weight:700;}
 
 /* Actions */
 .actions{display:flex;gap:10px;justify-content:center;margin-top:8px;}
@@ -62,7 +67,7 @@
 
 /* Print styles */
 @media print {
-  .topBar, .actions, .monthSelector { display:none !important; }
+  .topBar, .actions, .monthSelector, .notice { display:none !important; }
   .page { padding:0; }
   .section { break-inside:avoid; }
 }

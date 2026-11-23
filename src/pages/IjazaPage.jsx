@@ -62,7 +62,7 @@ const QIRAAT = [
     imam: 'حمزة', rawi: 'خلف وخلاد', full: 'قراءة حمزة الكوفي',
     region: 'الكوفة', edition: 'ar.uthmani', color: '#38bdf8',
     desc: 'إحدى القراءات الكوفية المعروفة بالمدّ والإمالة',
-    audioPrefix: 'Maher_AlMuaiqly_128kbps', reciter: 'ماهر المعيقلي',
+    audioPrefix: 'MaherAlMuaiqly128kbps', reciter: 'ماهر المعيقلي',
     audioAvailable: false, audioNote: 'تسجيل رواية خلف وخلاد غير متاح — يُعرض تلاوة بديلة بحفص',
   },
   {
@@ -77,7 +77,7 @@ const QIRAAT = [
     imam: 'أبو جعفر', rawi: 'ابن وردان وابن جماز', full: 'قراءة أبي جعفر المدني',
     region: 'المدينة', edition: 'ar.uthmani', color: '#94a3b8',
     desc: 'العاشرة من القراءات المتواترة، مدنية الأصل',
-    audioPrefix: 'Abdurrahman_as-Sudais_192kbps', reciter: 'عبد الرحمن السديس',
+    audioPrefix: 'Abdurrahmaan_As-Sudais_192kbps', reciter: 'عبد الرحمن السديس',
     audioAvailable: false, audioNote: 'تسجيل رواية ابن وردان وابن جماز غير متاح — يُعرض تلاوة بديلة بحفص',
   },
 ];
@@ -93,18 +93,39 @@ const IJAZA_CHAIN = [
   { level: 8, text: 'الطالب / الحافظ', icon: '🎓' },
 ];
 
+const HAFS_EDITION   = 'ar.uthmani';
+const FALLBACK_AUDIO = 'Alafasy_128kbps';            // تلاوة حفص البديلة
+const HAFS_TEXT_NOTICE = 'النص المعروض برواية حفص؛ نص هذه الرواية غير متاح بعد';
+const HAFS_AUDIO_LABEL = 'تلاوة بديلة برواية حفص';
+
+// Is the text shown for this riwaya actually the Hafs text?
+const isHafsQ = q => q.id === 'hafs';
+const textIsHafs = (q, fellBack) => !isHafsQ(q) && (q.edition === HAFS_EDITION || fellBack);
+
+// All audio on everyayah here is Hafs — never present it as this riwaya
+function audioLabel(q) {
+  if (isHafsQ(q)) return q.reciter;
+  const voice = q.audioAvailable === false ? 'مشاري راشد العفاسي' : q.reciter;
+  return `${HAFS_AUDIO_LABEL} — ${voice}`;
+}
+
 // ─── API fetch for a specific qiraa edition ───────────────────────────────────
+// Returns { ayahs, fellBack } — fellBack=true when the requested edition was
+// unavailable and the Hafs (ar.uthmani) text was returned instead.
 async function fetchQiraaSurah(surahNum, edition) {
+  const load = async (ed) => {
+    const res = await fetch(`https://api.alquran.cloud/v1/surah/${surahNum}/${ed}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    if (!d?.data?.ayahs?.length) throw new Error('no data');
+    return d.data.ayahs.map(a => ({ number: a.numberInSurah, text: a.text }));
+  };
+  if (edition === HAFS_EDITION) return { ayahs: await load(HAFS_EDITION), fellBack: false };
   try {
-    const res = await fetch(`https://api.alquran.cloud/v1/surah/${surahNum}/${edition}`);
-    if (!res.ok) throw new Error();
-    const d = await res.json();
-    return d.data.ayahs.map(a => ({ number: a.numberInSurah, text: a.text }));
+    return { ayahs: await load(edition), fellBack: false };
   } catch {
-    // Fallback to uthmani
-    const res = await fetch(`https://api.alquran.cloud/v1/surah/${surahNum}/ar.uthmani`);
-    const d = await res.json();
-    return d.data.ayahs.map(a => ({ number: a.numberInSurah, text: a.text }));
+    // Fallback to the Hafs text — callers must tell the user
+    return { ayahs: await load(HAFS_EDITION), fellBack: true };
   }
 }
 
@@ -173,6 +194,9 @@ export default function IjazaPage() {
   const activeQ   = QIRAAT.find(q => q.id === qiraaId) || QIRAAT[0];
   const compareQ  = QIRAAT.find(q => q.id === compareId) || QIRAAT[1];
   const [cmpAyahs, setCmpAyahs] = useState([]);
+  const [fellBack,    setFellBack]    = useState(false);   // active text fell back to Hafs
+  const [cmpFellBack, setCmpFellBack] = useState(false);
+  const [loadErr,     setLoadErr]     = useState('');
 
   // ─── Audio state ────────────────────────────────────────────────────────────
   const [playingAyah, setPlayingAyah] = useState(null);   // ayah number playing
@@ -187,20 +211,41 @@ export default function IjazaPage() {
     return `https://everyayah.com/data/${qiraa.audioPrefix}/${s}${a}.mp3`;
   }
 
-  const [audioError, setAudioError] = useState(false);  // true = 404/failed
+  const [audioError, setAudioError] = useState(false);  // true = primary source failed → using fallback
+  const [audioMsg,   setAudioMsg]   = useState('');     // shown when even the fallback failed
+  const useFallbackRef  = useRef(false);                 // stick to fallback for this surah/qiraa
+  const fallbackTriedRef = useRef(false);                // fallback already tried for current ayah
 
   function playAyah(ayahNum) {
     if (!audioRef.current) return;
-    setAudioError(false);
+    setAudioMsg('');
+    fallbackTriedRef.current = false;
     setPlayingAyah(ayahNum);
     setIsPlaying(true);
 
-    const prefix = (activeQ.audioAvailable === false || audioError)
-      ? 'Alafasy_128kbps'   // fallback حفص
-      : activeQ.audioPrefix;
+    const useFallback = activeQ.audioAvailable === false || useFallbackRef.current;
+    if (useFallback) fallbackTriedRef.current = true;   // no further fallback exists
+    const prefix = useFallback ? FALLBACK_AUDIO : activeQ.audioPrefix;
 
     audioRef.current.src = audioUrl(ayahNum, { audioPrefix: prefix });
     audioRef.current.play().catch(() => setIsPlaying(false));
+  }
+
+  // Fall back to the Alafasy recording once; if that fails too, stop with a message
+  function handleAudioError() {
+    const el = audioRef.current;
+    if (!el || !playingAyah) { setIsPlaying(false); return; }
+    if (fallbackTriedRef.current) {
+      el.pause();
+      setIsPlaying(false);
+      setAudioMsg('تعذّر تشغيل الصوت لهذه الآية — تحقق من الاتصال وحاول لاحقاً');
+      return;
+    }
+    fallbackTriedRef.current = true;
+    useFallbackRef.current = true;
+    setAudioError(true);
+    el.src = audioUrl(playingAyah, { audioPrefix: FALLBACK_AUDIO });
+    el.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
   }
 
   function togglePlay() {
@@ -221,7 +266,7 @@ export default function IjazaPage() {
   function playNext() {
     const total = ayahs.length;
     if (!total) return;
-    const next = playingAyah ? Math.min(playingAyah + 1, total) : 1;
+    const next = playingAyah ? playingAyah + 1 : 1;
     if (next > total) { setIsPlaying(false); setPlayingAyah(null); return; }
     playAyah(next);
   }
@@ -254,24 +299,45 @@ export default function IjazaPage() {
     setIsPlaying(false);
     setPlayingAyah(null);
     setAudioError(false);
+    setAudioMsg('');
+    useFallbackRef.current = false;
+    fallbackTriedRef.current = false;
   }, [surah, qiraaId]);
 
   useEffect(() => {
+    let alive = true;
     setLoading(true);
     setAyahs([]);
+    setFellBack(false);
+    setLoadErr('');
     fetchQiraaSurah(surah, activeQ.edition)
-      .then(data => {
+      .then(({ ayahs: data, fellBack: fb }) => {
+        if (!alive) return;
         setAyahs(data.map((a, i) => i === 0 ? { ...a, text: stripBismillah(a.text, surah) } : a));
+        setFellBack(fb);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => { if (alive) { setLoading(false); setLoadErr('تعذّر تحميل السورة — تحقق من الاتصال'); } });
+    return () => { alive = false; };
   }, [surah, qiraaId]);
 
   useEffect(() => {
     if (!compare) return;
+    let alive = true;
+    setCmpAyahs([]);
+    setCmpFellBack(false);
     fetchQiraaSurah(surah, compareQ.edition)
-      .then(data => setCmpAyahs(data.map((a, i) => i === 0 ? { ...a, text: stripBismillah(a.text, surah) } : a)));
+      .then(({ ayahs: data, fellBack: fb }) => {
+        if (!alive) return;
+        setCmpAyahs(data.map((a, i) => i === 0 ? { ...a, text: stripBismillah(a.text, surah) } : a));
+        setCmpFellBack(fb);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
   }, [surah, compareId, compare]);
+
+  const activeTextHafs  = textIsHafs(activeQ, fellBack);
+  const compareTextHafs = textIsHafs(compareQ, cmpFellBack);
 
   const hasBasmala = surah !== 1 && surah !== 9;
 
@@ -362,42 +428,40 @@ export default function IjazaPage() {
             </div>
             <div className={styles.qiraaInfoRight}>
               <span className={styles.qiraaDesc}>{activeQ.desc}</span>
-              <span className={styles.qiraaReciter}>🎙 {activeQ.reciter}</span>
+              <span className={styles.qiraaReciter}>🎙 {audioLabel(activeQ)}</span>
             </div>
           </div>
 
-          {/* ─── Audio Player Bar ─── */}
-          {activeQ.audioAvailable === false && (
-            <div className={styles.audioUnavailBanner}>
-              🎙 تسجيل رواية <strong>{activeQ.rawi}</strong> غير متاح حالياً على مصدر الصوت — الأزرار تشغّل حفص كبديل
+          {/* ─── Text / audio honesty notices ─── */}
+          {activeTextHafs && (
+            <div className={styles.audioUnavailBanner} role="note">
+              📖 {HAFS_TEXT_NOTICE}
             </div>
           )}
+          {!isHafsQ(activeQ) && (
+            <div className={styles.audioUnavailBanner} role="note">
+              🎙 {activeQ.audioNote || <>تسجيل رواية <strong>{activeQ.rawi}</strong> غير متاح حالياً</>}
+              {!(activeQ.audioNote || '').includes('بديلة') && <> — الصوت المتاح: {HAFS_AUDIO_LABEL}</>}
+            </div>
+          )}
+          {loadErr && <div className={styles.audioUnavailBanner} role="alert">⚠️ {loadErr}</div>}
+
+          {/* ─── Audio Player Bar ─── */}
           <div className={styles.audioBar}>
             <audio ref={audioRef} preload="none"
-              onError={() => {
-                setAudioError(true);
-                setIsPlaying(false);
-                if (audioRef.current && playingAyah) {
-                  const s = String(surah).padStart(3,'0');
-                  const a = String(playingAyah).padStart(3,'0');
-                  audioRef.current.src = `https://everyayah.com/data/Alafasy_128kbps/${s}${a}.mp3`;
-                  audioRef.current.play().catch(()=>{});
-                  setIsPlaying(true);
-                }
-              }}
+              onError={handleAudioError}
             />
 
             {/* Ayah indicator */}
             <div className={styles.audioAyah}>
               {playingAyah ? (
-                <span>🎧 الآية {toArabicNum(playingAyah)} {audioError ? '— حفص (بديل)' : `— ${activeQ.reciter}`}</span>
+                <span>🎧 الآية {toArabicNum(playingAyah)} — {audioError && !isHafsQ(activeQ) ? `${HAFS_AUDIO_LABEL} — مشاري راشد العفاسي` : audioLabel(activeQ)}</span>
               ) : (
                 <span className={styles.audioHint}>
-                  {activeQ.audioAvailable === false
-                    ? `🎙 ${activeQ.reciter} — اضغط آية`
-                    : `اضغط على أي آية للاستماع · 🎙 ${activeQ.reciter}`}
+                  {`اضغط على أي آية للاستماع · 🎙 ${audioLabel(activeQ)}`}
                 </span>
               )}
+              {audioMsg && <span className={styles.audioUnavail} role="alert">⚠️ {audioMsg}</span>}
             </div>
 
             {/* Controls */}
@@ -423,6 +487,7 @@ export default function IjazaPage() {
               <div className={styles.compareCol}>
                 <div className={styles.compareHeader} style={{ borderColor: activeQ.color }}>
                   <span style={{ color: activeQ.color }}>{activeQ.full}</span>
+                  {activeTextHafs && <span className={styles.audioUnavail}>📖 {HAFS_TEXT_NOTICE}</span>}
                 </div>
                 {hasBasmala && <div className={styles.basmala}>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>}
                 <div className={styles.mushafText} style={{ fontSize }}>
@@ -441,6 +506,7 @@ export default function IjazaPage() {
               <div className={styles.compareCol}>
                 <div className={styles.compareHeader} style={{ borderColor: compareQ.color }}>
                   <span style={{ color: compareQ.color }}>{compareQ.full}</span>
+                  {compareTextHafs && <span className={styles.audioUnavail}>📖 {HAFS_TEXT_NOTICE}</span>}
                 </div>
                 {hasBasmala && <div className={styles.basmala}>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>}
                 <div className={styles.mushafText} style={{ fontSize }}>
@@ -519,7 +585,9 @@ export default function IjazaPage() {
                 </div>
                 <div className={styles.qiraaCardRegion}>📍 {q.region}</div>
                 <p className={styles.qiraaCardDesc}>{q.desc}</p>
-                <span className={styles.qiraaCardReciter}>🎙 {q.reciter}</span>
+                <span className={styles.qiraaCardReciter}>🎙 {audioLabel(q)}</span>
+                {q.audioNote && <span className={styles.audioUnavail}>{q.audioNote}</span>}
+                {textIsHafs(q, false) && <span className={styles.audioUnavail}>📖 {HAFS_TEXT_NOTICE}</span>}
                 <button className={styles.readThisBtn}
                   onClick={() => { setQiraaId(q.id); setTab('mushaf'); }}>
                   اقرأ بهذه الرواية ←

@@ -291,7 +291,7 @@ export default function PrayerTimesPage() {
 
   // تجاوز منتصف الليل (الصفحة مفتوحة) — إعادة جلب مواعيد اليوم الجديد
   useEffect(() => {
-    if (coords && loadedKey && todayKey !== loadedKey && !loading) {
+    if (coords && loadedKey && todayKey !== loadedKey) {
       setTomorrowTimes(null);
       loadTimes(coords.lat, coords.lon, method);
     }

@@ -61,24 +61,34 @@ export default function LeaderboardPage() {
   const [tab, setTab]       = useState('reading');
   const [data, setData]     = useState([]);
   const [loading, setLoading] = useState(false);
-  const [myRank, setMyRank]   = useState(null);
+  const [loadErr, setLoadErr] = useState('');
 
   const activeTab = TABS.find(tk => tk.id === tab);
 
   useEffect(() => {
     if (!configured) return;
+    let alive = true;
     setLoading(true);
+    setLoadErr('');
     setData([]);
-    fetchLeaderboard(tab).then(({ data: rows, err }) => {
-      setData(rows);
-      if (err) console.warn('[Leaderboard error]', err);
-      if (user) {
-        const idx = rows.findIndex(r => r.user_id === user.id);
-        setMyRank(idx >= 0 ? idx + 1 : null);
-      }
-      setLoading(false);
-    });
-  }, [tab, configured]);
+    fetchLeaderboard(tab)
+      .then(({ data: rows, err }) => {
+        if (!alive) return;
+        setData(rows || []);
+        if (err) { console.warn('[Leaderboard error]', err); setLoadErr(err); }
+      })
+      .catch(e => { if (alive) setLoadErr(e?.message || 'network error'); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [tab, configured, user?.id]);
+
+  // Derived from the loaded rows + current user (so it appears once auth resolves)
+  const myRank = (() => {
+    if (!user) return null;
+    const idx = data.findIndex(r => r.user_id === user.id);
+    return idx >= 0 ? idx + 1 : null;
+  })();
+  const hasPodium = data.length >= 3;
 
   return (
     <div className={styles.page}>
@@ -129,8 +139,19 @@ export default function LeaderboardPage() {
         </div>
       )}
 
+      {/* Error */}
+      {configured && !loading && loadErr && (
+        <div className={styles.emptyBox}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
+          <p style={{ fontWeight: 700, marginBottom: 8 }}>تعذّر تحميل قائمة المتصدرين</p>
+          <p style={{ fontSize: 13, color: 'var(--text3)', lineHeight: 1.8 }}>
+            حدث خطأ أثناء الاتصال بالخادم — حاول مجدداً لاحقاً.
+          </p>
+        </div>
+      )}
+
       {/* Empty */}
-      {configured && !loading && data.length === 0 && (
+      {configured && !loading && !loadErr && data.length === 0 && (
         <div className={styles.emptyBox}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
           <p style={{ fontWeight: 700, marginBottom: 8 }}>لا توجد بيانات بعد</p>
@@ -145,7 +166,7 @@ export default function LeaderboardPage() {
       {configured && !loading && data.length > 0 && (
         <div className={styles.list}>
           {/* Top 3 podium */}
-          {data.length >= 3 && (
+          {hasPodium && (
             <div className={styles.podium}>
               {/* 2nd */}
               <div className={styles.podiumItem} style={{ '--c': '#94a3b8' }}>
@@ -172,9 +193,9 @@ export default function LeaderboardPage() {
             </div>
           )}
 
-          {/* Rest of the list (4th onwards) */}
-          {data.slice(3).map((row, i) => {
-            const rank = i + 4;
+          {/* Rest of the list (4th onwards — or everyone when fewer than 3) */}
+          {data.slice(hasPodium ? 3 : 0).map((row, i) => {
+            const rank = i + (hasPodium ? 4 : 1);
             const isMe = user && row.user_id === user.id;
             return (
               <div key={rank} className={`${styles.row} ${isMe ? styles.rowMe : ''}`}>

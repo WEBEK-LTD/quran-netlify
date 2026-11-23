@@ -30,15 +30,16 @@ export default function DeleteDataPage() {
           return;
         }
       }
-      // 2. مسح بيانات التطبيق من هذا الجهاز (مع إبقاء إعدادات العرض فقط)
+      // 2. تسجيل خروج
+      try { await signOut(); } catch {}
+      // 3. مسح بيانات التطبيق من هذا الجهاز (مع إبقاء إعدادات العرض فقط)
       const keysToKeep = ['nq_theme', 'nq_fontSize', 'nq_fontStyle', 'nq_reader', 'nq_translation'];
       try {
         Object.keys(localStorage).forEach(k => {
           if (!keysToKeep.includes(k)) localStorage.removeItem(k);
         });
+        sessionStorage.removeItem('nq_pending_join');
       } catch {}
-      // 3. تسجيل خروج
-      try { await signOut(); } catch {}
       setStep(3);
     } catch (e) {
       setError('تعذّر إكمال الحذف: ' + (e?.message || 'خطأ غير معروف') + ' — حاول مجدداً.');

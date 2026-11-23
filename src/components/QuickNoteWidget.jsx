@@ -6,7 +6,7 @@ import styles from './QuickNoteWidget.module.css';
 
 const LOCAL_KEY = 'nq_notes';
 function getLocal() { try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); } catch { return []; } }
-function setLocal(n) { localStorage.setItem(LOCAL_KEY, JSON.stringify(n)); }
+function setLocal(n) { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(n)); } catch {} }
 
 export default function QuickNoteWidget() {
   const { user } = useAuth();
@@ -14,22 +14,26 @@ export default function QuickNoteWidget() {
   const [text,    setText]    = useState('');
   const [saving,  setSaving]  = useState(false);
   const [saved,   setSaved]   = useState(false);
+  const [saveErr, setSaveErr] = useState('');
   const textareaRef = useRef(null);
 
   useEffect(() => {
     async function handler(e) {
       const { surah, ayah } = e.detail;
-      let existing = '';
+      // نأخذ الأحدث بين نسخة الحساب والنسخة المحلية
+      const local = getLocal().find(n => n.surah === surah && n.ayah === ayah) || null;
+      let remote = null;
       if (user) {
         const notes = await loadNotes(user.id).catch(() => []);
-        existing = notes.find(n => n.surah === surah && n.ayah === ayah)?.text || '';
+        remote = notes.find(n => n.surah === surah && n.ayah === ayah) || null;
       }
-      if (!existing) {
-        existing = getLocal().find(n => n.surah === surah && n.ayah === ayah)?.text || '';
-      }
+      const best = remote && local
+        ? (String(local.updated_at || '') > String(remote.updated_at || '') ? local : remote)
+        : (remote || local);
       setNote({ surah, ayah });
-      setText(existing);
+      setText(best?.text || '');
       setSaved(false);
+      setSaveErr('');
       setTimeout(() => textareaRef.current?.focus(), 100);
     }
     window.addEventListener('openNote', handler);
@@ -44,8 +48,15 @@ export default function QuickNoteWidget() {
     const existing = getLocal().filter(n => !(n.surah === surah && n.ayah === ayah));
     setLocal([{ surah, ayah, text: text.trim(), updated_at: new Date().toISOString() }, ...existing]);
     // Sync to Supabase if logged in
-    if (user) await saveNote(user.id, surah, ayah, text.trim()).catch(() => {});
-    setSaving(false); setSaved(true);
+    if (user) {
+      const ok = await saveNote(user.id, surah, ayah, text.trim()).catch(() => false);
+      if (ok === false) {
+        setSaving(false);
+        setSaveErr('⚠️ تعذّر الحفظ على حسابك — حُفظت الملاحظة على هذا الجهاز فقط');
+        return;
+      }
+    }
+    setSaving(false); setSaved(true); setSaveErr('');
     setTimeout(() => setNote(null), 800);
   }
 
@@ -70,6 +81,9 @@ export default function QuickNoteWidget() {
         <textarea ref={textareaRef} className={styles.textarea} value={text}
           onChange={e => setText(e.target.value)} onKeyDown={handleKey}
           placeholder="اكتب ملاحظتك... تأمل، فكرة، سؤال، فائدة..." rows={5} dir="rtl" />
+        {saveErr && (
+          <p role="alert" style={{ color: '#f87171', fontSize: 12, margin: '6px 0 0' }}>{saveErr}</p>
+        )}
         <div className={styles.footer}>
           <span className={styles.hint}>Ctrl+Enter للحفظ • Esc للإغلاق</span>
           <div className={styles.actions}>

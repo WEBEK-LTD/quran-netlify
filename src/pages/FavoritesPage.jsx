@@ -48,8 +48,9 @@ export default function FavoritesPage() {
           setBookmarks(merged);
           writeLocal(merged);
           setGlobal({ bookmarks: merged });
-          // ارفع المحفوظات المحلية التي لم تصل للحساب بعد
-          if (merged.length !== (server || []).length) {
+          // ارفع المحفوظات المحلية التي لم تصل للحساب بعد.
+          // (loadBookmarks يعيد [] عند الخطأ أيضاً — لا نكتب فوق الحساب إلا إن قرأنا قائمته فعلاً)
+          if ((server || []).length > 0 && merged.length !== server.length) {
             syncBookmarks(user.id, merged).catch(() => {});
           }
           setLoading(false);

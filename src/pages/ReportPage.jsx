@@ -77,6 +77,7 @@ export default function ReportPage() {
   const dateMap     = {};
   monthSess.forEach(s => { dateMap[s.date] = (dateMap[s.date] || 0) + (s.ayah_count || 0); });
   const maxAyahs = Math.max(...Object.values(dateMap), 1);
+  const activeDates = new Set(monthSess.map(s => s.date));
 
   // All-time totals
   const allAyahs = sessions.reduce((s, r) => s + (r.ayah_count || 0), 0);
@@ -172,16 +173,17 @@ export default function ReportPage() {
             const day  = i + 1;
             const date = `${selYear}-${String(selMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
             const cnt  = dateMap[date] || 0;
+            const active = activeDates.has(date);
             const pct  = cnt / maxAyahs;
             const isToday = date === localDateStr();
             return (
               <div key={day} className={`${styles.calDay} ${isToday ? styles.calToday : ''}`}
                 title={cnt ? `${day} — ${cnt} آية` : String(day)}
                 style={{
-                  background: cnt > 0
+                  background: active
                     ? `rgba(82,183,136,${0.15 + pct * 0.75})`
                     : 'var(--surface)',
-                  borderColor: cnt > 0 ? `rgba(82,183,136,${0.3 + pct*0.4})` : undefined,
+                  borderColor: active ? `rgba(82,183,136,${0.3 + pct*0.4})` : undefined,
                 }}>
                 <span className={styles.calDayNum}>{toAr(day)}</span>
                 {cnt > 0 && <span className={styles.calCount}>{toAr(cnt)}</span>}
@@ -223,9 +225,11 @@ export default function ReportPage() {
           <h3 className={styles.sectionTitle}>📿 سجل الورد — آخر 14 يوم</h3>
           <div className={styles.wardChart}>
             {(hifz.wardHistory || []).slice(-14).map((w, i) => (
-              <div key={i} className={styles.wardBar}>
-                <div className={`${styles.wardBarFill} ${w.completed ? styles.wardDone : styles.wardMiss}`}
-                  style={{ height: w.completed ? '100%' : '20%' }} />
+              <div key={i} className={styles.wardBar} title={w.date}>
+                <div className={styles.wardTrack}>
+                  <div className={`${styles.wardBarFill} ${w.completed ? styles.wardDone : styles.wardMiss}`}
+                    style={{ height: w.completed ? '100%' : '20%' }} />
+                </div>
                 <span className={styles.wardLabel}>
                   {parseLocalDate(w.date)?.getDate()}
                 </span>

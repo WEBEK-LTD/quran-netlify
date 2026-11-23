@@ -5,6 +5,34 @@ import styles from './RadioPage.module.css';
 // ── Radio Browser API — قاعدة بيانات مفتوحة بمحطات متحقق منها ──────────────
 const RB = 'https://de1.api.radio-browser.info/json/stations/search';
 
+// ── هل يستطيع المتصفح تشغيل هذه المحطة؟ ─────────────────────────────────────
+let _probe = null;
+function canPlayMime(mime) {
+  try {
+    if (!_probe) _probe = document.createElement('audio');
+    return !!(_probe.canPlayType && _probe.canPlayType(mime));
+  } catch { return true; }
+}
+const CODEC_MIME = {
+  'MP3':      ['audio/mpeg'],
+  'AAC':      ['audio/aac', 'audio/mp4; codecs="mp4a.40.2"'],
+  'AAC+':     ['audio/aac', 'audio/mp4; codecs="mp4a.40.5"', 'audio/mp4; codecs="mp4a.40.2"'],
+  'HE-AAC':   ['audio/aac', 'audio/mp4; codecs="mp4a.40.5"', 'audio/mp4; codecs="mp4a.40.2"'],
+  'OGG':      ['audio/ogg', 'audio/ogg; codecs="vorbis"'],
+  'VORBIS':   ['audio/ogg; codecs="vorbis"'],
+  'OPUS':     ['audio/ogg; codecs="opus"', 'audio/webm; codecs="opus"'],
+  'FLAC':     ['audio/flac', 'audio/ogg; codecs="flac"'],
+};
+function browserCanPlay(s) {
+  const url = (s.url_resolved || '').toLowerCase();
+  const isHls = s.hls === 1 || /\.m3u8(\?|$)/.test(url);
+  if (isHls) return canPlayMime('application/vnd.apple.mpegurl');
+  const codec = String(s.codec || '').toUpperCase().trim();
+  const mimes = CODEC_MIME[codec];
+  if (!mimes) return true; // UNKNOWN / غير مذكور — نجرّب
+  return mimes.some(canPlayMime);
+}
+
 async function rbSearch(params) {
   const servers = [
     'https://de1.api.radio-browser.info',
@@ -21,16 +49,16 @@ async function rbSearch(params) {
 
   for (const server of servers) {
     try {
-      const res = await fetch(`${server}/json/stations/search?${q}`, {
-        headers: { 'User-Agent': 'NurAlQuran/1.0' },
-      });
+      // ملاحظة: المتصفح يمنع تعديل User-Agent، لذا لا نرسله
+      const res = await fetch(`${server}/json/stations/search?${q}`);
       if (!res.ok) continue;
       const data = await res.json();
-      // فقط اللي عنده URL وتم التحقق منه
+      // فقط اللي عنده URL وتم التحقق منه ويستطيع المتصفح تشغيله
       return data.filter(s =>
         s.url_resolved &&
         s.lastcheckok === 1 &&
-        s.url_resolved.startsWith('https')
+        s.url_resolved.startsWith('https') &&
+        browserCanPlay(s)
       );
     } catch { continue; }
   }
@@ -116,10 +144,13 @@ export default function RadioPage() {
   const [search,   setSearch]   = useState('');
   const audioRef = useRef(null);
   const timerRef = useRef(null);
+  const stoppedRef = useRef(true);           // إيقاف مقصود — لا نعرض خطأ
+  const loadStateRef = useRef({});           // catId → 'fetching' | 'done' (يمنع التحميل المكرر)
 
   // ── Load category stations on demand ────────────────────────────────────────
   const loadCat = useCallback(async (catId) => {
-    if (catId === 'all' || loaded[catId] || fetching[catId]) return;
+    if (catId === 'all' || loadStateRef.current[catId]) return;
+    loadStateRef.current[catId] = 'fetching';
     setFetching(f => ({ ...f, [catId]: true }));
 
     const queries = CAT_QUERIES[catId] || [];
@@ -139,15 +170,13 @@ export default function RadioPage() {
     // Sort by votes desc
     results.sort((a, b) => b.votes - a.votes);
 
+    loadStateRef.current[catId] = 'done';
     setStations(prev => ({ ...prev, [catId]: results }));
     setLoaded(prev => ({ ...prev, [catId]: true }));
     setFetching(f => ({ ...f, [catId]: false }));
-  }, [loaded, fetching]);
+  }, []);
 
-  // Load quran by default
-  useEffect(() => { loadCat('quran'); }, []);
-
-  // Load when cat changes
+  // Load when cat changes (also runs on mount)
   useEffect(() => {
     if (cat !== 'all') loadCat(cat);
     else {
@@ -171,6 +200,8 @@ export default function RadioPage() {
     audio.addEventListener('waiting', () => setBuffering(true));
     audio.addEventListener('stalled', () => setBuffering(true));
     audio.addEventListener('error', () => {
+      // تجاهل الخطأ الناتج عن الإيقاف المقصود أو إزالة المصدر
+      if (stoppedRef.current || !audio.getAttribute('src')) return;
       setAudioErr('تعذّر الاتصال بهذه المحطة — جرّب محطة أخرى');
       setBuffering(false);
       setPlaying(null);
@@ -178,10 +209,21 @@ export default function RadioPage() {
     });
 
     return () => {
-      audio.pause(); audio.src = '';
+      stoppedRef.current = true;
+      audio.pause();
+      audio.removeAttribute('src');
+      try { audio.load(); } catch {}
       clearInterval(timerRef.current);
     };
   }, []);
+
+  // إيقاف البث بدون إطلاق حدث error
+  function silence(audio) {
+    stoppedRef.current = true;
+    audio.pause();
+    audio.removeAttribute('src');
+    try { audio.load(); } catch {}
+  }
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = muted ? 0 : volume;
@@ -193,7 +235,7 @@ export default function RadioPage() {
     if (!audio) return;
 
     if (playing === station.id) {
-      audio.pause(); audio.src = '';
+      silence(audio);
       clearInterval(timerRef.current);
       setPlaying(null); setBuffering(false); setElapsed(0);
       return;
@@ -201,11 +243,17 @@ export default function RadioPage() {
 
     setAudioErr(''); setElapsed(0); setBuffering(true);
     setPlaying(station.id);
+    clearInterval(timerRef.current);
     audio.pause();
+    stoppedRef.current = false;
     audio.src = station.url;
     audio.volume = muted ? 0 : volume;
     audio.load();
-    audio.play().catch(() => {
+    const url = station.url;
+    audio.play().catch(err => {
+      // AbortError: تم تبديل المحطة أو إيقافها قبل بدء التشغيل — ليس خطأ
+      if (err && err.name === 'AbortError') return;
+      if (stoppedRef.current || audio.getAttribute('src') !== url) return;
       setAudioErr('تعذّر تشغيل المحطة — جرّب محطة أخرى');
       setBuffering(false); setPlaying(null);
     });
@@ -214,17 +262,21 @@ export default function RadioPage() {
   function stop() {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.pause(); audio.src = '';
+    silence(audio);
     clearInterval(timerRef.current);
     setPlaying(null); setBuffering(false); setElapsed(0); setAudioErr('');
   }
 
   // ── Filtered stations ────────────────────────────────────────────────────────
-  const allSt = [
-    ...stations.quran,
-    ...stations.religious,
-    ...stations.anasheed,
-  ];
+  // نفس المحطة قد تظهر في أكثر من فئة — نزيل التكرار
+  const allSt = (() => {
+    const seen = new Set();
+    return [...stations.quran, ...stations.religious, ...stations.anasheed]
+      .filter(s => (seen.has(s.id) ? false : (seen.add(s.id), true)));
+  })();
+  const catLoaded = cat === 'all'
+    ? (loaded.quran && loaded.religious && loaded.anasheed)
+    : loaded[cat];
 
   const displayed = (cat === 'all' ? allSt : stations[cat] || [])
     .filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -305,7 +357,7 @@ export default function RadioPage() {
       )}
 
       {/* Empty */}
-      {!isAnyFetching && displayed.length === 0 && loaded[cat] && (
+      {!isAnyFetching && displayed.length === 0 && catLoaded && (
         <div className={styles.empty}>
           <div>📭</div>
           <p>لا توجد محطات في هذه الفئة حالياً</p>
