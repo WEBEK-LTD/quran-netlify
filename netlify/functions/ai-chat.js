@@ -1,7 +1,7 @@
 // netlify/functions/ai-chat.js
 // Secure proxy — OPENAI_KEY lives in process.env only, never in the client bundle
 
-exports.handler = async function (event) {
+export const handler = async function (event) {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
