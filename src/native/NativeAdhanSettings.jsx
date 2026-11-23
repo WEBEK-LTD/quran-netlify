@@ -1,7 +1,7 @@
 // ─── App-only adhan settings (mounted in the prayer page's «تنبيه الأذان» row) ─
 // The page keeps its per-prayer on/off toggles (nq_pray_alarms); this adds the
 // style per prayer (adhan / notification / silent), muezzins, the reminder, the
-// daily ayah, Do-Not-Disturb opt-in, the OS permissions and the OS permissions.
+// daily ayah, Do-Not-Disturb opt-in and the OS permissions.
 // Recording sources are listed on the privacy page. Every change re-plans the notifications (adhan/notifications.js).
 import { useEffect, useState, useCallback } from 'react';
 import { useTr, num } from '../l10n';
