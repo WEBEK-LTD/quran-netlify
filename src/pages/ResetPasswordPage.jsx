@@ -2,13 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { resetPassword } from '../backend';
 import { authErrorText } from '../authErrors';
+import { Icon } from '../components/ornaments/Ornaments';
+import { AuthStage, AuthHead, PasswordField, Alert, Spinner } from './auth/AuthShell';
 import styles from './AuthPage.module.css';
-import { useT, useLang, useDir } from '../i18n';
-import LangSwitcher from '../components/LangSwitcher';
+import { useT } from '../i18n';
 
 export default function ResetPasswordPage() {
   const t = useT();
-  const dir = useDir();
   const navigate = useNavigate();
   const [password,  setPassword]  = useState('');
   const [password2, setPassword2] = useState('');
@@ -21,6 +21,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     if (token) window.history.replaceState(null, '', window.location.pathname);
     return () => clearTimeout(timer.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSubmit(e) {
@@ -42,53 +43,38 @@ export default function ResetPasswordPage() {
   }
 
   if (!token) return (
-    <div className={styles.page}>
-      <div className={styles.card} style={{ textAlign:'center' }}>
-        <div style={{ fontSize:48 }}>🔗</div>
-        <h2 style={{ color:'var(--gold)', marginTop:16 }}>رابط غير صالح</h2>
-        <p style={{ color:'var(--text3)', fontSize:14, marginTop:8, lineHeight:1.8 }}>
-          افتح الرابط المرسل إلى بريدك كما هو، أو اطلب رابطاً جديداً من صفحة تسجيل الدخول ← «نسيت كلمة المرور؟».
-        </p>
-        <Link to="/login" className={styles.submitBtn} style={{ display:'block', marginTop:20, textDecoration:'none', textAlign:'center' }}>
-          تسجيل الدخول
-        </Link>
-      </div>
-    </div>
+    <AuthStage label="تعيين كلمة مرور جديدة">
+      <AuthHead icon={{ name: 'lock', tone: 'danger' }} title="رابط غير صالح"
+        sub="افتح الرابط المرسل إلى بريدك كما هو، أو اطلب رابطاً جديداً من صفحة تسجيل الدخول عبر «نسيت كلمة المرور؟»." />
+      <Link to="/login" className={`nq-btn gold ${styles.submit}`}><Icon name="user" />تسجيل الدخول</Link>
+    </AuthStage>
   );
 
   if (done) return (
-    <div className={styles.page}>
-      <div className={styles.card} style={{ textAlign:'center' }}>
-        <div style={{ fontSize:48 }}>✅</div>
-        <h2 style={{ color:'var(--gold)', marginTop:16 }}>{t('success')}</h2>
-        <p style={{ color:'var(--text3)', fontSize:14, marginTop:8 }}>تم تغيير كلمة المرور — سجّل الدخول بها الآن. جارٍ التوجيه...</p>
-      </div>
-    </div>
+    <AuthStage label="تعيين كلمة مرور جديدة">
+      <AuthHead icon={{ name: 'check', tone: 'ok' }} title={t('success')}
+        sub="تم تغيير كلمة المرور. سجّل الدخول بها الآن، وجارٍ تحويلك إلى صفحة الدخول…" />
+      <div className={styles.progress} aria-hidden="true"><span /></div>
+    </AuthStage>
   );
 
   return (
-    <div className={styles.page}>
-      <div className={styles.card}>
-        <div className={styles.logo}>نور القرآن</div>
-        <h1 className={styles.title}>{t('resetTitle')}</h1>
-        <p className={styles.sub}>{t('resetSubtitle')}</p>
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.field}>
-            <label>{t('newPassword')}</label>
-            <input type="password" value={password} required dir="ltr" minLength={8}
-              onChange={e => setPassword(e.target.value)} placeholder="..." />
-          </div>
-          <div className={styles.field}>
-            <label>{t('confirmPassword')}</label>
-            <input type="password" value={password2} required dir="ltr"
-              onChange={e => setPassword2(e.target.value)} placeholder="..." />
-          </div>
-          {error && <div className={styles.error}>⚠️ {error}</div>}
-          <button type="submit" className={styles.submitBtn} disabled={loading}>
-            {loading ? '...' : 'حفظ كلمة المرور'}
-          </button>
-        </form>
+    <AuthStage label="تعيين كلمة مرور جديدة">
+      <AuthHead title="تعيين كلمة مرور جديدة" sub="اختر كلمة مرور جديدة لحسابك، لا تقل عن ٨ أحرف." />
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <PasswordField label={t('newPassword')} value={password} required minLength={8} autoComplete="new-password"
+          hint="٨ أحرف على الأقل" onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+        <PasswordField label={t('confirmPassword')} value={password2} required autoComplete="new-password"
+          onChange={e => setPassword2(e.target.value)} placeholder="••••••••" />
+        <Alert>{error}</Alert>
+        <button type="submit" className={`nq-btn gold ${styles.submit}`} disabled={loading}>
+          {loading ? <Spinner /> : <Icon name="lock" />}
+          {loading ? 'جارٍ الحفظ…' : 'حفظ كلمة المرور'}
+        </button>
+      </form>
+      <div className={styles.foot}>
+        <Link to="/login" className={styles.quiet}>العودة إلى تسجيل الدخول</Link>
       </div>
-    </div>
+    </AuthStage>
   );
 }

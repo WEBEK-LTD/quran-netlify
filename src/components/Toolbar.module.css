@@ -28,6 +28,8 @@
 :global([dir="ltr"]) .navPair .flip { transform: none; }
 .on { border-color: var(--gold) !important; color: var(--gold) !important; background: var(--hl) !important; }
 
+.pop p { max-width: none; }
+
 /* ── Display popover ───────────────────────────────────────────────────── */
 .popWrap { position: relative; }
 .pop {

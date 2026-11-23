@@ -92,8 +92,7 @@
   .play { width: 46px; height: 46px; }
   .play :global(.nq-ico) { width: 21px; height: 21px; }
   .sm { width: 36px; height: 38px; }
-  .menu { position: fixed; bottom: calc(var(--dock-bottom, 78px) + var(--dock-h, 64px) + 10px); inset-inline: 10px; width: auto; }
-}
-@media (max-width: 380px) {
-  .close { display: none; }
+  /* the dock (position: fixed) is the containing block: span its full width */
+  .moreWrap { position: static; }
+  .menu { bottom: calc(100% + 10px); inset-inline: 0; width: auto; max-height: calc(100dvh - 260px); }
 }

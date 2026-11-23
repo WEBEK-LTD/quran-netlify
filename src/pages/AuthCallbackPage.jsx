@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
-import { useT, useLang, useDir } from '../i18n';
-import LangSwitcher from '../components/LangSwitcher';
+import { useT } from '../i18n';
 import { afterLoginPath } from '../store';
 import { refreshAuth } from '../hooks/useAuth';
 import { verifyEmail } from '../backend';
 import { googleErrorText, authErrorText } from '../authErrors';
+import { AuthStage, AuthBrand, Spinner } from './auth/AuthShell';
+import { Icon } from '../components/ornaments/Ornaments';
+import styles from './AuthPage.module.css';
 
 // Only same-site relative paths are accepted as ?next= (no open redirects)
 function safeNext(next) {
@@ -18,7 +20,6 @@ function safeNext(next) {
 
 export default function AuthCallbackPage() {
   const t = useT();
-  const dir = useDir();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [step, setStep] = useState(0); // 0=waiting 1=success 2=error 3=verified
@@ -79,57 +80,31 @@ export default function AuthCallbackPage() {
   }, []);
 
   const STEPS = [
-    { icon: '✦', msg: t('processing'), color: 'var(--gold)' },
-    { icon: '✓', msg: t('auth_success'),          color: '#52b788'     },
-    { icon: '✕', msg: (errMsg || 'حدث خطأ') + ' — جارٍ التوجيه...', color: '#f87171' },
-    { icon: '✓', msg: 'تم تأكيد بريدك الإلكتروني بنجاح', color: '#52b788' },
+    { icon: null,    tone: '',       title: 'لحظات من فضلك',            msg: t('processing') || 'جارٍ التحقق…' },
+    { icon: 'check', tone: 'ok',     title: 'أهلاً بك',                  msg: 'تم تسجيل الدخول بنجاح، جارٍ تحويلك…' },
+    { icon: 'x',     tone: 'danger', title: 'تعذّر إكمال العملية',       msg: (errMsg || 'حدث خطأ') + '. جارٍ تحويلك إلى صفحة الدخول…' },
+    { icon: 'check', tone: 'ok',     title: 'تم تأكيد بريدك',            msg: 'تم تأكيد بريدك الإلكتروني بنجاح، جارٍ تحويلك…' },
   ];
-
   const current = STEPS[step];
 
   return (
-    <div style={{
-      minHeight:'100vh', display:'flex', flexDirection:'column',
-      alignItems:'center', justifyContent:'center', gap:20,
-      background:'var(--bg)', direction:'rtl',
-    }}>
-      <div style={{
-        width:72, height:72, borderRadius:'50%',
-        display:'flex', alignItems:'center', justifyContent:'center',
-        fontSize:32, fontWeight:700,
-        background: step===0 ? 'rgba(201,168,76,.1)'
-          : step===1 ? 'rgba(82,183,136,.1)'
-          : step===3 ? 'rgba(82,183,136,.1)'
-          : 'rgba(248,113,113,.1)',
-        border:`2px solid ${current.color}`,
-        color: current.color,
-        transition: 'all .4s',
-      }}>
-        {current.icon}
-      </div>
-
-      <p style={{ color:'var(--text2)', fontSize:16, margin:0, maxWidth:340, textAlign:'center', lineHeight:1.7, padding:'0 16px' }}>
-        {current.msg}
-      </p>
-
-      {step === 0 && (
-        <div style={{ width:160, height:3, borderRadius:2, background:'var(--border)', overflow:'hidden' }}>
-          <div style={{
-            height:'100%', borderRadius:2, background:'var(--gold)',
-            animation:'cbProgress 2.4s ease-in-out infinite',
-          }}/>
+    <main id="main">
+      <AuthStage full label="إكمال تسجيل الدخول">
+        <div className={styles.head} aria-live="polite">
+          <AuthBrand small />
+          <span className={`${styles.stateIcon} ${step === 0 ? styles.ring : ''}`} data-tone={current.tone} style={{ marginTop: 14 }}>
+            {current.icon ? <Icon name={current.icon} /> : <Spinner />}
+          </span>
+          <h1 className={styles.title}>{current.title}</h1>
+          <p className={styles.sub}>{current.msg}</p>
         </div>
-      )}
-      {step === 0 && <SlowWarning/>}
-
-      <style>{`
-        @keyframes cbProgress {
-          0%   { width:0%;   margin-right:0    }
-          50%  { width:60%;  margin-right:0    }
-          100% { width:0%;   margin-right:100% }
-        }
-      `}</style>
-    </div>
+        {step === 0 && <div className={styles.progress} aria-hidden="true"><span /></div>}
+        {step === 0 && <SlowWarning />}
+        {step === 2 && (
+          <Link to="/login" replace className={`nq-btn ghost ${styles.submit}`}>العودة إلى تسجيل الدخول</Link>
+        )}
+      </AuthStage>
+    </main>
   );
 }
 
@@ -141,10 +116,9 @@ function SlowWarning() {
   }, []);
   if (!show) return null;
   return (
-    <p style={{ fontSize:12, color:'var(--text3)', maxWidth:260, textAlign:'center', lineHeight:1.6 }}>
-      بياخد وقت أطول من المعتاد...
-      <br/>لو مش بيكمل{' '}
-      <a href="/login" style={{ color:'var(--gold)' }}>ارجع لتسجيل الدخول</a>
+    <p className={styles.slow}>
+      يستغرق الأمر وقتاً أطول من المعتاد.
+      <br />إن لم يكتمل، <a href="/login" className={styles.link} style={{ padding: 0 }}>عُد إلى تسجيل الدخول</a>.
     </p>
   );
 }

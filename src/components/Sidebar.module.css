@@ -78,6 +78,7 @@
 .empty { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 36px 12px; color: var(--muted); font-size: .9rem; }
 .empty small { font-size: .78rem; color: var(--faint); }
 
+.side p { max-width: none; }
 .overlay { display: none; }
 
 /* ── off-canvas ≤860px ─────────────────────────────────────────────────── */
