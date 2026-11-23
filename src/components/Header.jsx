@@ -50,7 +50,10 @@ export default function Header() {
         ☰
       </button>
 
-      <div className={styles.logo}>نور القرآن<span>القرآن الكريم</span></div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <img src="/icon.svg" alt="" width="30" height="35" style={{ flex: 'none', display: 'block' }} />
+        <div className={styles.logo}>نور القرآن<span>القرآن الكريم</span></div>
+      </div>
       <LangSwitcher compact={true} />
       <div className={styles.spacer} />
 

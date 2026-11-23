@@ -244,7 +244,7 @@ export default function WelcomePage() {
 
       {/* Logo */}
       <div className={styles.logo}>
-        <div className={styles.logoIcon}>✦</div>
+        <img src="/brand/logo-mark.svg" alt="" width="88" height="104" style={{ display: 'block', margin: '0 auto 12px' }} />
         <h1>{t.title}</h1>
         <p>{t.subtitle}</p>
       </div>

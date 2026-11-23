@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 75.0 89" width="75.0" height="89" role="img" aria-label="نور القرآن"><title>نور القرآن</title><defs><linearGradient id="nqGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F6DFA0"/><stop offset=".45" stop-color="#D4AE5C"/><stop offset=".75" stop-color="#B8893A"/><stop offset="1" stop-color="#E7C77E"/></linearGradient><linearGradient id="nqEmer" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#14573E"/><stop offset="1" stop-color="#072E20"/></linearGradient><linearGradient id="nqInk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8C6A1E"/><stop offset="1" stop-color="#5A3F0E"/></linearGradient><radialGradient id="nqBg" cx="50%" cy="38%" r="75%"><stop offset="0" stop-color="#17503A"/><stop offset="1" stop-color="#06100C"/></radialGradient><radialGradient id="nqGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#F0D89A" stop-opacity=".22"/><stop offset="1" stop-color="#F0D89A" stop-opacity="0"/></radialGradient></defs><svg x="0.00" y="0.00" width="75.00" height="89.00" viewBox="10.5 6.5 75 89" overflow="visible">
+<rect x="22" y="9" width="60" height="84" rx="3.2" fill="#000" opacity=".22" transform="translate(1.6 1.6)"/>
+<rect x="22" y="8" width="60" height="84" rx="3.2" fill="url(#nqEmer)" stroke="url(#nqGold)" stroke-width="1.4"/>
+<rect x="76" y="8" width="6" height="84" rx="2" fill="#062417"/>
+<path d="M76 19H82M76 22H82M76 78H82M76 81H82" stroke="url(#nqGold)" stroke-width=".8"/>
+<rect x="27" y="13" width="44" height="74" rx="1.4" fill="none" stroke="url(#nqGold)" stroke-width="1.1"/>
+<rect x="29.4" y="15.4" width="39.2" height="69.2" rx="1" fill="none" stroke="url(#nqGold)" stroke-width=".45"/>
+<g fill="url(#nqGold)"><path d="M0 0H9.5C8.6 3.6 6.5 6.3 3.6 7.3C2.3 8.3 1 8.9 0 9.5Z" transform="translate(29.4 15.4)"/><path d="M0 0H9.5C8.6 3.6 6.5 6.3 3.6 7.3C2.3 8.3 1 8.9 0 9.5Z" transform="translate(68.6 15.4) scale(-1 1)"/><path d="M0 0H9.5C8.6 3.6 6.5 6.3 3.6 7.3C2.3 8.3 1 8.9 0 9.5Z" transform="translate(29.4 84.6) scale(1 -1)"/><path d="M0 0H9.5C8.6 3.6 6.5 6.3 3.6 7.3C2.3 8.3 1 8.9 0 9.5Z" transform="translate(68.6 84.6) scale(-1 -1)"/></g>
+<path d="M49 37.4V34.2M49 62.6V65.8" stroke="url(#nqGold)" stroke-width=".9"/>
+<path d="M49 25.4C51.8 28.4 51.8 31.6 49 34.4C46.2 31.6 46.2 28.4 49 25.4Z M49 65.6C51.8 68.6 51.8 71.8 49 74.6C46.2 71.8 46.2 68.6 49 65.6Z" fill="url(#nqGold)"/>
+<polygon points="49.00,36.80 51.07,39.60 54.05,37.80 54.89,41.19 58.33,40.67 57.81,44.11 61.20,44.95 59.40,47.93 62.20,50.00 59.40,52.07 61.20,55.05 57.81,55.89 58.33,59.33 54.89,58.81 54.05,62.20 51.07,60.40 49.00,63.20 46.93,60.40 43.95,62.20 43.11,58.81 39.67,59.33 40.19,55.89 36.80,55.05 38.60,52.07 35.80,50.00 38.60,47.93 36.80,44.95 40.19,44.11 39.67,40.67 43.11,41.19 43.95,37.80 46.93,39.60" fill="url(#nqGold)"/>
+<circle cx="49" cy="50" r="9.4" fill="url(#nqEmer)"/>
+<polygon points="49.00,42.60 50.76,45.75 54.23,44.77 53.25,48.24 56.40,50.00 53.25,51.76 54.23,55.23 50.76,54.25 49.00,57.40 47.24,54.25 43.77,55.23 44.75,51.76 41.60,50.00 44.75,48.24 43.77,44.77 47.24,45.75" fill="none" stroke="url(#nqGold)" stroke-width=".9"/>
+<circle cx="49" cy="50" r="2.6" fill="url(#nqGold)"/>
+<path d="M22 31L12.5 50L22 69Z" fill="#073A27" stroke="url(#nqGold)" stroke-width="1.3" stroke-linejoin="round"/>
+<path d="M22 35.6L15.6 50L22 64.4" fill="none" stroke="url(#nqGold)" stroke-width=".45"/>
+<circle cx="16.8" cy="50" r="1.3" fill="url(#nqGold)"/></svg></svg>
