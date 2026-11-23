@@ -143,7 +143,7 @@ final class AuthController
         if (is_string($hash)) {
             $cur = $b['current_password'] ?? null;
             if (!is_string($cur) || !password_verify($cur, $hash)) {
-                throw new ApiError(422, 'invalid_credentials', 'كلمة المرور الحالية غير صحيحة.', ['fields' => ['current_password' => 'كلمة المرور الحالية غير صحيحة.']]);
+                throw ApiError::validation(['current_password' => 'كلمة المرور الحالية غير صحيحة.'], 'كلمة المرور الحالية غير صحيحة.');
             }
         }
         Db::exec('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?', [password_hash($new, PASSWORD_DEFAULT), Db::now(), $uid]);
@@ -194,7 +194,7 @@ final class AuthController
         if (is_string($hash)) {
             $pw = $b['password'] ?? null;
             if (!is_string($pw) || !password_verify($pw, $hash)) {
-                throw new ApiError(422, 'invalid_credentials', 'كلمة المرور غير صحيحة.', ['fields' => ['password' => 'كلمة المرور غير صحيحة.']]);
+                throw ApiError::validation(['password' => 'كلمة المرور غير صحيحة.'], 'كلمة المرور غير صحيحة.');
             }
         } elseif (($b['confirm'] ?? null) !== 'DELETE') {
             throw ApiError::validation(['confirm' => 'اكتب DELETE للتأكيد.']);

@@ -211,7 +211,7 @@ final class Auth
     public static function consumeEmailToken(string $token, string $purpose): int
     {
         if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
-            throw ApiError::of(400, 'invalid_token');
+            throw ApiError::of(422, 'invalid_token');
         }
         return Db::tx(static function () use ($token, $purpose): int {
             $row = Db::one(
@@ -220,7 +220,7 @@ final class Auth
                 [Crypto::hash($token), $purpose, Db::now()]
             );
             if ($row === null || !Crypto::equals((string) $row['token_hash'], Crypto::hash($token))) {
-                throw ApiError::of(400, 'invalid_token');
+                throw ApiError::of(422, 'invalid_token');
             }
             Db::exec('UPDATE email_tokens SET used_at = ? WHERE id = ?', [Db::now(), (int) $row['id']]);
             return (int) $row['user_id'];

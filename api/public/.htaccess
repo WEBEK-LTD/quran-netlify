@@ -1,0 +1,28 @@
+# Noor Al-Quran API — web root (LiteSpeed / Apache)
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+
+# Never serve dotfiles (.htaccess, .env, .git …) or stray logs/backups
+<FilesMatch "(^\.|^error_log$|\.(log|sql|bak|ini|sh|md)$|~$)">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Pass the Authorization header through to PHP (needed on some LiteSpeed/CGI setups)
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+  # Deny any path segment that starts with a dot (except Let's Encrypt / AutoSSL checks)
+  RewriteRule (^|/)\.(?!well-known/) - [F,L]
+  # Everything that is not a real file goes to the front controller
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Security headers are sent by PHP on every response (index.php / install.php).

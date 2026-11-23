@@ -13,6 +13,9 @@ if (PHP_VERSION_ID < 80200) {
     exit;
 }
 
+if (!headers_sent()) {
+    header_remove('X-Powered-By');
+}
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
 ini_set('log_errors', '1');

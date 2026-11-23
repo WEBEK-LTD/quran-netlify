@@ -216,9 +216,25 @@ export function getVisitorId() {
   }
   return id;
 }
-// Never rejects.
+// Never rejects. Throttled to one request per 8 s (the server allows 10/min):
+// quick page-to-page navigation sends only the latest path, a moment later.
+const PRESENCE_GAP_MS = 8000;
+// Kept in sessionStorage too, so reloading pages quickly doesn't reset the throttle.
+let _presenceLast = (() => { try { return Number(sessionStorage.getItem('nq_presence_at')) || 0; } catch { return 0; } })();
+let _presenceTimer = null;
+let _presencePath = '/';
+function sendPresence() {
+  _presenceTimer = null;
+  _presenceLast = Date.now();
+  try { sessionStorage.setItem('nq_presence_at', String(_presenceLast)); } catch {}
+  return api.post('/presence', { visitor_id: getVisitorId(), path: _presencePath }).catch(() => null);
+}
 export function pingPresence(path) {
-  return api.post('/presence', { visitor_id: getVisitorId(), path: String(path || '/').slice(0, 200) }).catch(() => null);
+  _presencePath = String(path || '/').slice(0, 200);
+  const wait = _presenceLast + PRESENCE_GAP_MS - Date.now();
+  if (wait <= 0 && !_presenceTimer) return sendPresence();
+  if (!_presenceTimer) _presenceTimer = setTimeout(sendPresence, Math.max(wait, 0));
+  return Promise.resolve(null);
 }
 
 // ─── GROUP KHATMA ─────────────────────────────────────────────────────────────
