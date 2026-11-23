@@ -150,7 +150,7 @@ export default function Reader() {
     if (state.highlightMode) setHighlightedAyah(num);
     setGlobal({ currentAyah: num });
     localStorage.setItem('nq_lastRead', JSON.stringify({ surah: state.currentSurah, ayah: num }));
-    // حفظ تاريخ اليوم للـ streak المحلي (يشتغل حتى بدون Supabase)
+    // حفظ تاريخ اليوم للـ streak المحلي (يشتغل حتى بدون حساب)
     const today = (() => {
       const d = new Date();
       return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');

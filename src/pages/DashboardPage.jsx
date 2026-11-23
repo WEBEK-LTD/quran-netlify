@@ -116,7 +116,7 @@ export default function DashboardPage() {
   const remoteStreak = calcStreak(sessions);
   const localStreak  = calcStreak(localSessions);
   const streak = Math.max(hifzStreak, remoteStreak, localStreak);
-  // دمج الجلسات المحلية مع Supabase للرسم البياني
+  // دمج الجلسات المحلية مع بيانات الحساب للرسم البياني
   const mergedSessions = (() => {
     const all = [...sessions];
     for (const d of localReadDates) {

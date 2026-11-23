@@ -55,13 +55,13 @@ export default function PrivacyPage() {
         <ul className={styles.list}>
           <li>مزامنة تقدمك في القراءة والحفظ بين أجهزتك</li>
           <li>عرض إحصائياتك الشخصية في لوحة التحكم</li>
-          <li>لوحة المتصدرين (بموافقتك — تُعرَض أول حرفين من اسمك فقط)</li>
+          <li>لوحة المتصدرين (فقط إن فعّلت «إظهار اسمي في لوحة المتصدرين» من الإعدادات — مُعطّل افتراضياً)</li>
         </ul>
       </section>
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>٥. تخزين البيانات وأمانها</h2>
-        <p>بياناتك مخزّنة بأمان في Supabase (PostgreSQL مشفّر). لا يمكن لأحد من الفريق الوصول إليها إلا عبر حسابك. نستخدم HTTPS لتشفير كل الاتصالات.</p>
+        <p>بياناتك مخزّنة على خادمنا الخاص (api.nuralquran.net) في قاعدة بيانات MySQL. كلمات المرور تُحفظ مُجزّأة (hash) ولا يمكن لأحد قراءتها، وجلسات الدخول تُحفظ مُجزّأة أيضاً، ومفاتيح الخدمات الخارجية مشفّرة. يصل إلى البيانات مشرفو التطبيق فقط لأغراض الدعم والإدارة. نستخدم HTTPS لتشفير كل الاتصالات.</p>
       </section>
 
       <section className={styles.section}>
@@ -70,7 +70,7 @@ export default function PrivacyPage() {
           <li>حق الوصول لبياناتك في أي وقت</li>
           <li>حق تصحيح بياناتك</li>
           <li>حق حذف حسابك وكل بياناتك نهائياً — <Link to="/delete-data" className={styles.inlineLink}>طلب حذف البيانات</Link></li>
-          <li>حق تصدير بياناتك (تواصل معنا)</li>
+          <li>حق تصدير بياناتك — زر «تنزيل نسخة من بياناتي» في <Link to="/delete-data" className={styles.inlineLink}>صفحة حذف البيانات</Link></li>
         </ul>
       </section>
 

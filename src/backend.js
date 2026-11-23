@@ -1,5 +1,5 @@
 // ─── Backend: the Noor Al-Quran PHP API (docs/API.md) ────────────────────────
-// Replaces the old Supabase module. Every call goes through apiClient.
+// The single module pages use for server data. Every call goes through apiClient.
 // New-style helpers throw ApiError (its .message is Arabic and safe to show).
 // A few helpers keep their old "returns true/false" shape so pages change little.
 

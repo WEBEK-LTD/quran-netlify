@@ -47,7 +47,7 @@ export default function QuickNoteWidget() {
     // Always save local
     const existing = getLocal().filter(n => !(n.surah === surah && n.ayah === ayah));
     setLocal([{ surah, ayah, text: text.trim(), updated_at: new Date().toISOString() }, ...existing]);
-    // Sync to Supabase if logged in
+    // Sync to the account if logged in
     if (user) {
       const ok = await saveNote(user.id, surah, ayah, text.trim()).catch(() => false);
       if (ok === false) {
