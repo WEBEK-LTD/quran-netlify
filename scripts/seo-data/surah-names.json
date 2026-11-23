@@ -1,0 +1,1715 @@
+{
+ "note": "Surah names for the static SEO pages. ar/tl/ayahs/place mirror SURAHS_META in src/data.js; tr = Turkish name (Diyanet style, without circumflexes); meaning = meaning of the name, written for this site (English after quran-api info.json \"englishname\").",
+ "surahs": [
+  {
+   "n": 1,
+   "ar": "الفاتحة",
+   "tl": "Al-Fatiha",
+   "tr": "Fatiha",
+   "ayahs": 7,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Opening",
+    "tr": "Açılış",
+    "fr": "L'Ouverture",
+    "ur": "افتتاحیہ",
+    "id": "Pembukaan"
+   }
+  },
+  {
+   "n": 2,
+   "ar": "البقرة",
+   "tl": "Al-Baqara",
+   "tr": "Bakara",
+   "ayahs": 286,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Cow",
+    "tr": "İnek",
+    "fr": "La Vache",
+    "ur": "گائے",
+    "id": "Sapi Betina"
+   }
+  },
+  {
+   "n": 3,
+   "ar": "آل عمران",
+   "tl": "Aal-Imran",
+   "tr": "Al-i İmran",
+   "ayahs": 200,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Family of Imran",
+    "tr": "İmran Ailesi",
+    "fr": "La Famille d'Imran",
+    "ur": "عمران کا خاندان",
+    "id": "Keluarga Imran"
+   }
+  },
+  {
+   "n": 4,
+   "ar": "النساء",
+   "tl": "An-Nisa",
+   "tr": "Nisa",
+   "ayahs": 176,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Women",
+    "tr": "Kadınlar",
+    "fr": "Les Femmes",
+    "ur": "عورتیں",
+    "id": "Wanita"
+   }
+  },
+  {
+   "n": 5,
+   "ar": "المائدة",
+   "tl": "Al-Maida",
+   "tr": "Maide",
+   "ayahs": 120,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Table Spread",
+    "tr": "Sofra",
+    "fr": "La Table servie",
+    "ur": "دسترخوان",
+    "id": "Hidangan"
+   }
+  },
+  {
+   "n": 6,
+   "ar": "الأنعام",
+   "tl": "Al-Anam",
+   "tr": "En'am",
+   "ayahs": 165,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Cattle",
+    "tr": "Davarlar",
+    "fr": "Les Bestiaux",
+    "ur": "مویشی",
+    "id": "Binatang Ternak"
+   }
+  },
+  {
+   "n": 7,
+   "ar": "الأعراف",
+   "tl": "Al-Araf",
+   "tr": "A'raf",
+   "ayahs": 206,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Heights",
+    "tr": "Yüksek Yerler",
+    "fr": "Les Hauteurs",
+    "ur": "بلندیاں",
+    "id": "Tempat-tempat Tertinggi"
+   }
+  },
+  {
+   "n": 8,
+   "ar": "الأنفال",
+   "tl": "Al-Anfal",
+   "tr": "Enfal",
+   "ayahs": 75,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Spoils of War",
+    "tr": "Ganimetler",
+    "fr": "Le Butin",
+    "ur": "مالِ غنیمت",
+    "id": "Rampasan Perang"
+   }
+  },
+  {
+   "n": 9,
+   "ar": "التوبة",
+   "tl": "At-Tawba",
+   "tr": "Tevbe",
+   "ayahs": 129,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Repentance",
+    "tr": "Tövbe",
+    "fr": "Le Repentir",
+    "ur": "توبہ",
+    "id": "Tobat"
+   }
+  },
+  {
+   "n": 10,
+   "ar": "يونس",
+   "tl": "Yunus",
+   "tr": "Yunus",
+   "ayahs": 109,
+   "place": "makkah",
+   "meaning": {
+    "en": "Jonah",
+    "tr": "Yunus Peygamber",
+    "fr": "Jonas",
+    "ur": "حضرت یونس",
+    "id": "Nabi Yunus"
+   }
+  },
+  {
+   "n": 11,
+   "ar": "هود",
+   "tl": "Hud",
+   "tr": "Hud",
+   "ayahs": 123,
+   "place": "makkah",
+   "meaning": {
+    "en": "Hud",
+    "tr": "Hud Peygamber",
+    "fr": "Houd",
+    "ur": "حضرت ہود",
+    "id": "Nabi Hud"
+   }
+  },
+  {
+   "n": 12,
+   "ar": "يوسف",
+   "tl": "Yusuf",
+   "tr": "Yusuf",
+   "ayahs": 111,
+   "place": "makkah",
+   "meaning": {
+    "en": "Joseph",
+    "tr": "Yusuf Peygamber",
+    "fr": "Joseph",
+    "ur": "حضرت یوسف",
+    "id": "Nabi Yusuf"
+   }
+  },
+  {
+   "n": 13,
+   "ar": "الرعد",
+   "tl": "Ar-Rad",
+   "tr": "Ra'd",
+   "ayahs": 43,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Thunder",
+    "tr": "Gök Gürültüsü",
+    "fr": "Le Tonnerre",
+    "ur": "گرج",
+    "id": "Guruh"
+   }
+  },
+  {
+   "n": 14,
+   "ar": "إبراهيم",
+   "tl": "Ibrahim",
+   "tr": "İbrahim",
+   "ayahs": 52,
+   "place": "makkah",
+   "meaning": {
+    "en": "Abraham",
+    "tr": "İbrahim Peygamber",
+    "fr": "Abraham",
+    "ur": "حضرت ابراہیم",
+    "id": "Nabi Ibrahim"
+   }
+  },
+  {
+   "n": 15,
+   "ar": "الحجر",
+   "tl": "Al-Hijr",
+   "tr": "Hicr",
+   "ayahs": 99,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Rocky Tract",
+    "tr": "Taşlık Bölge",
+    "fr": "La Vallée rocheuse",
+    "ur": "پتھریلی وادی",
+    "id": "Lembah Berbatu"
+   }
+  },
+  {
+   "n": 16,
+   "ar": "النحل",
+   "tl": "An-Nahl",
+   "tr": "Nahl",
+   "ayahs": 128,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Bee",
+    "tr": "Bal Arısı",
+    "fr": "Les Abeilles",
+    "ur": "شہد کی مکھی",
+    "id": "Lebah"
+   }
+  },
+  {
+   "n": 17,
+   "ar": "الإسراء",
+   "tl": "Al-Isra",
+   "tr": "İsra",
+   "ayahs": 111,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Night Journey",
+    "tr": "Gece Yolculuğu",
+    "fr": "Le Voyage nocturne",
+    "ur": "رات کا سفر",
+    "id": "Perjalanan Malam"
+   }
+  },
+  {
+   "n": 18,
+   "ar": "الكهف",
+   "tl": "Al-Kahf",
+   "tr": "Kehf",
+   "ayahs": 110,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Cave",
+    "tr": "Mağara",
+    "fr": "La Caverne",
+    "ur": "غار",
+    "id": "Gua"
+   }
+  },
+  {
+   "n": 19,
+   "ar": "مريم",
+   "tl": "Maryam",
+   "tr": "Meryem",
+   "ayahs": 98,
+   "place": "makkah",
+   "meaning": {
+    "en": "Mary",
+    "tr": "Meryem",
+    "fr": "Marie",
+    "ur": "حضرت مریم",
+    "id": "Maryam"
+   }
+  },
+  {
+   "n": 20,
+   "ar": "طه",
+   "tl": "Ta-Ha",
+   "tr": "Taha",
+   "ayahs": 135,
+   "place": "makkah",
+   "meaning": {
+    "en": "Ta-Ha",
+    "tr": "Ta-Ha harfleri",
+    "fr": "Les lettres Tâ-Hâ",
+    "ur": "حروفِ طٰہٰ",
+    "id": "Huruf Ta Ha"
+   }
+  },
+  {
+   "n": 21,
+   "ar": "الأنبياء",
+   "tl": "Al-Anbiya",
+   "tr": "Enbiya",
+   "ayahs": 112,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Prophets",
+    "tr": "Peygamberler",
+    "fr": "Les Prophètes",
+    "ur": "انبیاء",
+    "id": "Para Nabi"
+   }
+  },
+  {
+   "n": 22,
+   "ar": "الحج",
+   "tl": "Al-Hajj",
+   "tr": "Hac",
+   "ayahs": 78,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Pilgrimage",
+    "tr": "Hac",
+    "fr": "Le Pèlerinage",
+    "ur": "حج",
+    "id": "Haji"
+   }
+  },
+  {
+   "n": 23,
+   "ar": "المؤمنون",
+   "tl": "Al-Muminun",
+   "tr": "Mü'minun",
+   "ayahs": 118,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Believers",
+    "tr": "Müminler",
+    "fr": "Les Croyants",
+    "ur": "مومن",
+    "id": "Orang-orang Mukmin"
+   }
+  },
+  {
+   "n": 24,
+   "ar": "النور",
+   "tl": "An-Nur",
+   "tr": "Nur",
+   "ayahs": 64,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Light",
+    "tr": "Işık",
+    "fr": "La Lumière",
+    "ur": "روشنی",
+    "id": "Cahaya"
+   }
+  },
+  {
+   "n": 25,
+   "ar": "الفرقان",
+   "tl": "Al-Furqan",
+   "tr": "Furkan",
+   "ayahs": 77,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Criterion",
+    "tr": "Doğruyu Eğriden Ayıran",
+    "fr": "Le Discernement",
+    "ur": "حق و باطل میں فرق کرنے والی",
+    "id": "Pembeda"
+   }
+  },
+  {
+   "n": 26,
+   "ar": "الشعراء",
+   "tl": "Ash-Shuara",
+   "tr": "Şuara",
+   "ayahs": 227,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Poets",
+    "tr": "Şairler",
+    "fr": "Les Poètes",
+    "ur": "شاعر",
+    "id": "Para Penyair"
+   }
+  },
+  {
+   "n": 27,
+   "ar": "النمل",
+   "tl": "An-Naml",
+   "tr": "Neml",
+   "ayahs": 93,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Ant",
+    "tr": "Karınca",
+    "fr": "Les Fourmis",
+    "ur": "چیونٹی",
+    "id": "Semut"
+   }
+  },
+  {
+   "n": 28,
+   "ar": "القصص",
+   "tl": "Al-Qasas",
+   "tr": "Kasas",
+   "ayahs": 88,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Story",
+    "tr": "Kıssalar",
+    "fr": "Le Récit",
+    "ur": "قصے",
+    "id": "Kisah-kisah"
+   }
+  },
+  {
+   "n": 29,
+   "ar": "العنكبوت",
+   "tl": "Al-Ankabut",
+   "tr": "Ankebut",
+   "ayahs": 69,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Spider",
+    "tr": "Örümcek",
+    "fr": "L'Araignée",
+    "ur": "مکڑی",
+    "id": "Laba-laba"
+   }
+  },
+  {
+   "n": 30,
+   "ar": "الروم",
+   "tl": "Ar-Rum",
+   "tr": "Rum",
+   "ayahs": 60,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Romans",
+    "tr": "Rumlar",
+    "fr": "Les Romains",
+    "ur": "رومی",
+    "id": "Bangsa Romawi"
+   }
+  },
+  {
+   "n": 31,
+   "ar": "لقمان",
+   "tl": "Luqman",
+   "tr": "Lokman",
+   "ayahs": 34,
+   "place": "makkah",
+   "meaning": {
+    "en": "Luqman",
+    "tr": "Lokman",
+    "fr": "Luqman",
+    "ur": "حضرت لقمان",
+    "id": "Luqman"
+   }
+  },
+  {
+   "n": 32,
+   "ar": "السجدة",
+   "tl": "As-Sajda",
+   "tr": "Secde",
+   "ayahs": 30,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Prostration",
+    "tr": "Secde",
+    "fr": "La Prosternation",
+    "ur": "سجدہ",
+    "id": "Sujud"
+   }
+  },
+  {
+   "n": 33,
+   "ar": "الأحزاب",
+   "tl": "Al-Ahzab",
+   "tr": "Ahzab",
+   "ayahs": 73,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Confederates",
+    "tr": "Birleşik Gruplar",
+    "fr": "Les Coalisés",
+    "ur": "لشکر",
+    "id": "Golongan yang Bersekutu"
+   }
+  },
+  {
+   "n": 34,
+   "ar": "سبأ",
+   "tl": "Saba",
+   "tr": "Sebe",
+   "ayahs": 54,
+   "place": "makkah",
+   "meaning": {
+    "en": "Sheba",
+    "tr": "Sebe Halkı",
+    "fr": "Saba",
+    "ur": "قومِ سبا",
+    "id": "Kaum Saba'"
+   }
+  },
+  {
+   "n": 35,
+   "ar": "فاطر",
+   "tl": "Fatir",
+   "tr": "Fatır",
+   "ayahs": 45,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Originator",
+    "tr": "Yaratan",
+    "fr": "Le Créateur",
+    "ur": "پیدا کرنے والا",
+    "id": "Pencipta"
+   }
+  },
+  {
+   "n": 36,
+   "ar": "يس",
+   "tl": "Ya-Sin",
+   "tr": "Yasin",
+   "ayahs": 83,
+   "place": "makkah",
+   "meaning": {
+    "en": "Ya-Sin",
+    "tr": "Ya-Sin harfleri",
+    "fr": "Les lettres Yâ-Sîn",
+    "ur": "حروفِ یٰسٓ",
+    "id": "Huruf Ya Sin"
+   }
+  },
+  {
+   "n": 37,
+   "ar": "الصافات",
+   "tl": "As-Saffat",
+   "tr": "Saffat",
+   "ayahs": 182,
+   "place": "makkah",
+   "meaning": {
+    "en": "Those Ranged in Ranks",
+    "tr": "Saf Saf Dizilenler",
+    "fr": "Les Rangés en rangs",
+    "ur": "صف باندھنے والے",
+    "id": "Yang Bershaf-shaf"
+   }
+  },
+  {
+   "n": 38,
+   "ar": "ص",
+   "tl": "Sad",
+   "tr": "Sad",
+   "ayahs": 88,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Letter Sad",
+    "tr": "Sad harfi",
+    "fr": "La lettre Sâd",
+    "ur": "حرفِ ص",
+    "id": "Huruf Shad"
+   }
+  },
+  {
+   "n": 39,
+   "ar": "الزمر",
+   "tl": "Az-Zumar",
+   "tr": "Zümer",
+   "ayahs": 75,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Groups",
+    "tr": "Zümreler",
+    "fr": "Les Groupes",
+    "ur": "گروہ",
+    "id": "Rombongan-rombongan"
+   }
+  },
+  {
+   "n": 40,
+   "ar": "غافر",
+   "tl": "Ghafir",
+   "tr": "Mü'min",
+   "ayahs": 85,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Forgiver",
+    "tr": "Bağışlayan",
+    "fr": "Le Pardonneur",
+    "ur": "بخشنے والا",
+    "id": "Yang Maha Pengampun"
+   }
+  },
+  {
+   "n": 41,
+   "ar": "فصلت",
+   "tl": "Fussilat",
+   "tr": "Fussilet",
+   "ayahs": 54,
+   "place": "makkah",
+   "meaning": {
+    "en": "Explained in Detail",
+    "tr": "Ayrıntılı Açıklanmış",
+    "fr": "Les Versets détaillés",
+    "ur": "تفصیل سے بیان کی گئی",
+    "id": "Yang Dijelaskan"
+   }
+  },
+  {
+   "n": 42,
+   "ar": "الشورى",
+   "tl": "Ash-Shura",
+   "tr": "Şura",
+   "ayahs": 53,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Consultation",
+    "tr": "Danışma",
+    "fr": "La Consultation",
+    "ur": "مشاورت",
+    "id": "Musyawarah"
+   }
+  },
+  {
+   "n": 43,
+   "ar": "الزخرف",
+   "tl": "Az-Zukhruf",
+   "tr": "Zuhruf",
+   "ayahs": 89,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Ornaments of Gold",
+    "tr": "Altın Süsler",
+    "fr": "L'Ornement",
+    "ur": "سونے کی آرائش",
+    "id": "Perhiasan"
+   }
+  },
+  {
+   "n": 44,
+   "ar": "الدخان",
+   "tl": "Ad-Dukhan",
+   "tr": "Duhan",
+   "ayahs": 59,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Smoke",
+    "tr": "Duman",
+    "fr": "La Fumée",
+    "ur": "دھواں",
+    "id": "Kabut"
+   }
+  },
+  {
+   "n": 45,
+   "ar": "الجاثية",
+   "tl": "Al-Jathiya",
+   "tr": "Casiye",
+   "ayahs": 37,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Kneeling",
+    "tr": "Diz Çöken",
+    "fr": "L'Agenouillée",
+    "ur": "گھٹنوں کے بل گری ہوئی",
+    "id": "Yang Berlutut"
+   }
+  },
+  {
+   "n": 46,
+   "ar": "الأحقاف",
+   "tl": "Al-Ahqaf",
+   "tr": "Ahkaf",
+   "ayahs": 35,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Sand Dunes",
+    "tr": "Kum Tepeleri",
+    "fr": "Les Dunes",
+    "ur": "ریت کے ٹیلے",
+    "id": "Bukit-bukit Pasir"
+   }
+  },
+  {
+   "n": 47,
+   "ar": "محمد",
+   "tl": "Muhammad",
+   "tr": "Muhammed",
+   "ayahs": 38,
+   "place": "madinah",
+   "meaning": {
+    "en": "Muhammad",
+    "tr": "Muhammed",
+    "fr": "Muhammad",
+    "ur": "حضرت محمد",
+    "id": "Nabi Muhammad"
+   }
+  },
+  {
+   "n": 48,
+   "ar": "الفتح",
+   "tl": "Al-Fath",
+   "tr": "Fetih",
+   "ayahs": 29,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Victory",
+    "tr": "Fetih",
+    "fr": "La Victoire",
+    "ur": "فتح",
+    "id": "Kemenangan"
+   }
+  },
+  {
+   "n": 49,
+   "ar": "الحجرات",
+   "tl": "Al-Hujurat",
+   "tr": "Hucurat",
+   "ayahs": 18,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Private Rooms",
+    "tr": "Odalar",
+    "fr": "Les Appartements",
+    "ur": "حجرے",
+    "id": "Kamar-kamar"
+   }
+  },
+  {
+   "n": 50,
+   "ar": "ق",
+   "tl": "Qaf",
+   "tr": "Kaf",
+   "ayahs": 45,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Letter Qaf",
+    "tr": "Kaf harfi",
+    "fr": "La lettre Qâf",
+    "ur": "حرفِ ق",
+    "id": "Huruf Qaf"
+   }
+  },
+  {
+   "n": 51,
+   "ar": "الذاريات",
+   "tl": "Adh-Dhariyat",
+   "tr": "Zariyat",
+   "ayahs": 60,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Scattering Winds",
+    "tr": "Savuran Rüzgârlar",
+    "fr": "Qui éparpillent",
+    "ur": "بکھیرنے والی ہوائیں",
+    "id": "Angin yang Menerbangkan"
+   }
+  },
+  {
+   "n": 52,
+   "ar": "الطور",
+   "tl": "At-Tur",
+   "tr": "Tur",
+   "ayahs": 49,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Mount",
+    "tr": "Tur Dağı",
+    "fr": "Le Mont",
+    "ur": "کوہِ طور",
+    "id": "Bukit Tursina"
+   }
+  },
+  {
+   "n": 53,
+   "ar": "النجم",
+   "tl": "An-Najm",
+   "tr": "Necm",
+   "ayahs": 62,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Star",
+    "tr": "Yıldız",
+    "fr": "L'Étoile",
+    "ur": "ستارہ",
+    "id": "Bintang"
+   }
+  },
+  {
+   "n": 54,
+   "ar": "القمر",
+   "tl": "Al-Qamar",
+   "tr": "Kamer",
+   "ayahs": 55,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Moon",
+    "tr": "Ay",
+    "fr": "La Lune",
+    "ur": "چاند",
+    "id": "Bulan"
+   }
+  },
+  {
+   "n": 55,
+   "ar": "الرحمن",
+   "tl": "Ar-Rahman",
+   "tr": "Rahman",
+   "ayahs": 78,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Most Merciful",
+    "tr": "Esirgeyen",
+    "fr": "Le Tout Miséricordieux",
+    "ur": "نہایت مہربان",
+    "id": "Yang Maha Pengasih"
+   }
+  },
+  {
+   "n": 56,
+   "ar": "الواقعة",
+   "tl": "Al-Waqia",
+   "tr": "Vakıa",
+   "ayahs": 96,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Inevitable Event",
+    "tr": "Kaçınılmaz Olay",
+    "fr": "L'Événement",
+    "ur": "واقع ہونے والی",
+    "id": "Peristiwa yang Pasti Terjadi"
+   }
+  },
+  {
+   "n": 57,
+   "ar": "الحديد",
+   "tl": "Al-Hadid",
+   "tr": "Hadid",
+   "ayahs": 29,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Iron",
+    "tr": "Demir",
+    "fr": "Le Fer",
+    "ur": "لوہا",
+    "id": "Besi"
+   }
+  },
+  {
+   "n": 58,
+   "ar": "المجادلة",
+   "tl": "Al-Mujadila",
+   "tr": "Mücadele",
+   "ayahs": 22,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Pleading Woman",
+    "tr": "Tartışan Kadın",
+    "fr": "La Discussion",
+    "ur": "جھگڑنے والی عورت",
+    "id": "Wanita yang Mengajukan Gugatan"
+   }
+  },
+  {
+   "n": 59,
+   "ar": "الحشر",
+   "tl": "Al-Hashr",
+   "tr": "Haşr",
+   "ayahs": 24,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Exile",
+    "tr": "Sürgün",
+    "fr": "L'Exode",
+    "ur": "جلاوطنی",
+    "id": "Pengusiran"
+   }
+  },
+  {
+   "n": 60,
+   "ar": "الممتحنة",
+   "tl": "Al-Mumtahana",
+   "tr": "Mümtehine",
+   "ayahs": 13,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Woman to Be Examined",
+    "tr": "İmtihan Edilen Kadın",
+    "fr": "L'Éprouvée",
+    "ur": "جانچی جانے والی عورت",
+    "id": "Wanita yang Diuji"
+   }
+  },
+  {
+   "n": 61,
+   "ar": "الصف",
+   "tl": "As-Saf",
+   "tr": "Saf",
+   "ayahs": 14,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Ranks",
+    "tr": "Saf",
+    "fr": "Le Rang",
+    "ur": "صف",
+    "id": "Barisan"
+   }
+  },
+  {
+   "n": 62,
+   "ar": "الجمعة",
+   "tl": "Al-Jumua",
+   "tr": "Cuma",
+   "ayahs": 11,
+   "place": "madinah",
+   "meaning": {
+    "en": "Friday",
+    "tr": "Cuma",
+    "fr": "Le Vendredi",
+    "ur": "جمعہ",
+    "id": "Hari Jumat"
+   }
+  },
+  {
+   "n": 63,
+   "ar": "المنافقون",
+   "tl": "Al-Munafiqun",
+   "tr": "Münafikun",
+   "ayahs": 11,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Hypocrites",
+    "tr": "Münafıklar",
+    "fr": "Les Hypocrites",
+    "ur": "منافق",
+    "id": "Orang-orang Munafik"
+   }
+  },
+  {
+   "n": 64,
+   "ar": "التغابن",
+   "tl": "At-Taghabun",
+   "tr": "Teğabün",
+   "ayahs": 18,
+   "place": "madinah",
+   "meaning": {
+    "en": "Mutual Loss and Gain",
+    "tr": "Aldanış",
+    "fr": "La Grande Perte",
+    "ur": "ہار جیت",
+    "id": "Hari Ditampakkan Kesalahan-kesalahan"
+   }
+  },
+  {
+   "n": 65,
+   "ar": "الطلاق",
+   "tl": "At-Talaq",
+   "tr": "Talak",
+   "ayahs": 12,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Divorce",
+    "tr": "Boşanma",
+    "fr": "Le Divorce",
+    "ur": "طلاق",
+    "id": "Talak"
+   }
+  },
+  {
+   "n": 66,
+   "ar": "التحريم",
+   "tl": "At-Tahrim",
+   "tr": "Tahrim",
+   "ayahs": 12,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Prohibition",
+    "tr": "Yasaklama",
+    "fr": "L'Interdiction",
+    "ur": "حرام ٹھہرانا",
+    "id": "Pengharaman"
+   }
+  },
+  {
+   "n": 67,
+   "ar": "الملك",
+   "tl": "Al-Mulk",
+   "tr": "Mülk",
+   "ayahs": 30,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Dominion",
+    "tr": "Mülk",
+    "fr": "La Royauté",
+    "ur": "بادشاہی",
+    "id": "Kerajaan"
+   }
+  },
+  {
+   "n": 68,
+   "ar": "القلم",
+   "tl": "Al-Qalam",
+   "tr": "Kalem",
+   "ayahs": 52,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Pen",
+    "tr": "Kalem",
+    "fr": "La Plume",
+    "ur": "قلم",
+    "id": "Pena"
+   }
+  },
+  {
+   "n": 69,
+   "ar": "الحاقة",
+   "tl": "Al-Haqqah",
+   "tr": "Hakka",
+   "ayahs": 52,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Inevitable Reality",
+    "tr": "Gerçekleşecek Olan",
+    "fr": "L'Inévitable",
+    "ur": "یقیناً ہونے والی",
+    "id": "Hari yang Pasti Terjadi"
+   }
+  },
+  {
+   "n": 70,
+   "ar": "المعارج",
+   "tl": "Al-Maarij",
+   "tr": "Mearic",
+   "ayahs": 44,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Ascending Stairways",
+    "tr": "Yükselme Yolları",
+    "fr": "Les Voies d'ascension",
+    "ur": "چڑھنے کے راستے",
+    "id": "Tempat-tempat Naik"
+   }
+  },
+  {
+   "n": 71,
+   "ar": "نوح",
+   "tl": "Nuh",
+   "tr": "Nuh",
+   "ayahs": 28,
+   "place": "makkah",
+   "meaning": {
+    "en": "Noah",
+    "tr": "Nuh Peygamber",
+    "fr": "Noé",
+    "ur": "حضرت نوح",
+    "id": "Nabi Nuh"
+   }
+  },
+  {
+   "n": 72,
+   "ar": "الجن",
+   "tl": "Al-Jinn",
+   "tr": "Cin",
+   "ayahs": 28,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Jinn",
+    "tr": "Cinler",
+    "fr": "Les Djinns",
+    "ur": "جن",
+    "id": "Jin"
+   }
+  },
+  {
+   "n": 73,
+   "ar": "المزمل",
+   "tl": "Al-Muzzammil",
+   "tr": "Müzzemmil",
+   "ayahs": 20,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Enwrapped One",
+    "tr": "Örtünen",
+    "fr": "L'Enveloppé",
+    "ur": "کپڑے میں لپٹنے والے",
+    "id": "Orang yang Berselimut"
+   }
+  },
+  {
+   "n": 74,
+   "ar": "المدثر",
+   "tl": "Al-Muddaththir",
+   "tr": "Müddessir",
+   "ayahs": 56,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Cloaked One",
+    "tr": "Bürünen",
+    "fr": "Le Revêtu d’un manteau",
+    "ur": "چادر اوڑھنے والے",
+    "id": "Orang yang Berkemul"
+   }
+  },
+  {
+   "n": 75,
+   "ar": "القيامة",
+   "tl": "Al-Qiyama",
+   "tr": "Kıyamet",
+   "ayahs": 40,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Resurrection",
+    "tr": "Kıyamet",
+    "fr": "La Résurrection",
+    "ur": "قیامت",
+    "id": "Hari Kiamat"
+   }
+  },
+  {
+   "n": 76,
+   "ar": "الإنسان",
+   "tl": "Al-Insan",
+   "tr": "İnsan",
+   "ayahs": 31,
+   "place": "madinah",
+   "meaning": {
+    "en": "Man",
+    "tr": "İnsan",
+    "fr": "L'Homme",
+    "ur": "انسان",
+    "id": "Manusia"
+   }
+  },
+  {
+   "n": 77,
+   "ar": "المرسلات",
+   "tl": "Al-Mursalat",
+   "tr": "Mürselat",
+   "ayahs": 50,
+   "place": "makkah",
+   "meaning": {
+    "en": "Those Sent Forth",
+    "tr": "Gönderilenler",
+    "fr": "Les Envoyés",
+    "ur": "بھیجی جانے والی",
+    "id": "Yang Diutus"
+   }
+  },
+  {
+   "n": 78,
+   "ar": "النبأ",
+   "tl": "An-Naba",
+   "tr": "Nebe",
+   "ayahs": 40,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Great News",
+    "tr": "Büyük Haber",
+    "fr": "La Nouvelle",
+    "ur": "بڑی خبر",
+    "id": "Berita Besar"
+   }
+  },
+  {
+   "n": 79,
+   "ar": "النازعات",
+   "tl": "An-Naziat",
+   "tr": "Naziat",
+   "ayahs": 46,
+   "place": "makkah",
+   "meaning": {
+    "en": "Those Who Pull Out",
+    "tr": "Söküp Çıkaranlar",
+    "fr": "Ceux qui arrachent",
+    "ur": "کھینچ نکالنے والے",
+    "id": "Yang Mencabut"
+   }
+  },
+  {
+   "n": 80,
+   "ar": "عبس",
+   "tl": "Abasa",
+   "tr": "Abese",
+   "ayahs": 42,
+   "place": "makkah",
+   "meaning": {
+    "en": "He Frowned",
+    "tr": "Yüzünü Ekşitti",
+    "fr": "Il s'est renfrogné",
+    "ur": "تیوری چڑھائی",
+    "id": "Ia Bermuka Masam"
+   }
+  },
+  {
+   "n": 81,
+   "ar": "التكوير",
+   "tl": "At-Takwir",
+   "tr": "Tekvir",
+   "ayahs": 29,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Folding Up",
+    "tr": "Dürülme",
+    "fr": "L'Obscurcissement",
+    "ur": "لپیٹ دیا جانا",
+    "id": "Menggulung"
+   }
+  },
+  {
+   "n": 82,
+   "ar": "الانفطار",
+   "tl": "Al-Infitar",
+   "tr": "İnfitar",
+   "ayahs": 19,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Cleaving",
+    "tr": "Yarılma",
+    "fr": "La Rupture",
+    "ur": "پھٹ جانا",
+    "id": "Terbelah"
+   }
+  },
+  {
+   "n": 83,
+   "ar": "المطففين",
+   "tl": "Al-Mutaffifin",
+   "tr": "Mutaffifin",
+   "ayahs": 36,
+   "place": "makkah",
+   "meaning": {
+    "en": "Those Who Give Short Measure",
+    "tr": "Eksik Ölçenler",
+    "fr": "Les Fraudeurs",
+    "ur": "ناپ تول میں کمی کرنے والے",
+    "id": "Orang-orang yang Curang"
+   }
+  },
+  {
+   "n": 84,
+   "ar": "الانشقاق",
+   "tl": "Al-Inshiqaq",
+   "tr": "İnşikak",
+   "ayahs": 25,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Splitting Open",
+    "tr": "Parçalanma",
+    "fr": "La Déchirure",
+    "ur": "شق ہو جانا",
+    "id": "Terbelah"
+   }
+  },
+  {
+   "n": 85,
+   "ar": "البروج",
+   "tl": "Al-Buruj",
+   "tr": "Büruc",
+   "ayahs": 22,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Constellations",
+    "tr": "Burçlar",
+    "fr": "Les Constellations",
+    "ur": "برج",
+    "id": "Gugusan Bintang"
+   }
+  },
+  {
+   "n": 86,
+   "ar": "الطارق",
+   "tl": "At-Tariq",
+   "tr": "Tarık",
+   "ayahs": 17,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Night Comer",
+    "tr": "Gece Gelen",
+    "fr": "L'Astre nocturne",
+    "ur": "رات کو آنے والا",
+    "id": "Yang Datang di Malam Hari"
+   }
+  },
+  {
+   "n": 87,
+   "ar": "الأعلى",
+   "tl": "Al-Ala",
+   "tr": "A'la",
+   "ayahs": 19,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Most High",
+    "tr": "En Yüce",
+    "fr": "Le Très-Haut",
+    "ur": "سب سے بلند",
+    "id": "Yang Mahatinggi"
+   }
+  },
+  {
+   "n": 88,
+   "ar": "الغاشية",
+   "tl": "Al-Ghashiya",
+   "tr": "Gaşiye",
+   "ayahs": 26,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Overwhelming Event",
+    "tr": "Kuşatan",
+    "fr": "L'Enveloppante",
+    "ur": "ڈھانپ لینے والی",
+    "id": "Hari Pembalasan"
+   }
+  },
+  {
+   "n": 89,
+   "ar": "الفجر",
+   "tl": "Al-Fajr",
+   "tr": "Fecr",
+   "ayahs": 30,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Dawn",
+    "tr": "Tan Vakti",
+    "fr": "L'Aube",
+    "ur": "فجر",
+    "id": "Fajar"
+   }
+  },
+  {
+   "n": 90,
+   "ar": "البلد",
+   "tl": "Al-Balad",
+   "tr": "Beled",
+   "ayahs": 20,
+   "place": "makkah",
+   "meaning": {
+    "en": "The City",
+    "tr": "Şehir",
+    "fr": "La Cité",
+    "ur": "شہر",
+    "id": "Negeri"
+   }
+  },
+  {
+   "n": 91,
+   "ar": "الشمس",
+   "tl": "Ash-Shams",
+   "tr": "Şems",
+   "ayahs": 15,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Sun",
+    "tr": "Güneş",
+    "fr": "Le Soleil",
+    "ur": "سورج",
+    "id": "Matahari"
+   }
+  },
+  {
+   "n": 92,
+   "ar": "الليل",
+   "tl": "Al-Layl",
+   "tr": "Leyl",
+   "ayahs": 21,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Night",
+    "tr": "Gece",
+    "fr": "La Nuit",
+    "ur": "رات",
+    "id": "Malam"
+   }
+  },
+  {
+   "n": 93,
+   "ar": "الضحى",
+   "tl": "Ad-Duha",
+   "tr": "Duha",
+   "ayahs": 11,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Morning Brightness",
+    "tr": "Kuşluk Vakti",
+    "fr": "Le Jour montant",
+    "ur": "چاشت کا وقت",
+    "id": "Waktu Duha"
+   }
+  },
+  {
+   "n": 94,
+   "ar": "الشرح",
+   "tl": "Ash-Sharh",
+   "tr": "İnşirah",
+   "ayahs": 8,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Expansion",
+    "tr": "Göğsün Açılması",
+    "fr": "La Dilatation",
+    "ur": "سینہ کھول دینا",
+    "id": "Kelapangan"
+   }
+  },
+  {
+   "n": 95,
+   "ar": "التين",
+   "tl": "At-Tin",
+   "tr": "Tin",
+   "ayahs": 8,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Fig",
+    "tr": "İncir",
+    "fr": "Le Figuier",
+    "ur": "انجیر",
+    "id": "Buah Tin"
+   }
+  },
+  {
+   "n": 96,
+   "ar": "العلق",
+   "tl": "Al-Alaq",
+   "tr": "Alak",
+   "ayahs": 19,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Clinging Clot",
+    "tr": "Asılıp Tutunan",
+    "fr": "L'Adhérence",
+    "ur": "جما ہوا خون",
+    "id": "Segumpal Darah"
+   }
+  },
+  {
+   "n": 97,
+   "ar": "القدر",
+   "tl": "Al-Qadr",
+   "tr": "Kadir",
+   "ayahs": 5,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Night of Decree",
+    "tr": "Kadir Gecesi",
+    "fr": "La Destinée",
+    "ur": "شبِ قدر",
+    "id": "Kemuliaan"
+   }
+  },
+  {
+   "n": 98,
+   "ar": "البينة",
+   "tl": "Al-Bayyina",
+   "tr": "Beyyine",
+   "ayahs": 8,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Clear Proof",
+    "tr": "Apaçık Delil",
+    "fr": "La Preuve",
+    "ur": "واضح دلیل",
+    "id": "Bukti yang Nyata"
+   }
+  },
+  {
+   "n": 99,
+   "ar": "الزلزلة",
+   "tl": "Az-Zalzala",
+   "tr": "Zilzal",
+   "ayahs": 8,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Earthquake",
+    "tr": "Deprem",
+    "fr": "La Secousse",
+    "ur": "زلزلہ",
+    "id": "Guncangan"
+   }
+  },
+  {
+   "n": 100,
+   "ar": "العاديات",
+   "tl": "Al-Adiyat",
+   "tr": "Adiyat",
+   "ayahs": 11,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Chargers",
+    "tr": "Koşan Atlar",
+    "fr": "Les Coursiers",
+    "ur": "دوڑنے والے گھوڑے",
+    "id": "Kuda yang Berlari Kencang"
+   }
+  },
+  {
+   "n": 101,
+   "ar": "القارعة",
+   "tl": "Al-Qaria",
+   "tr": "Karia",
+   "ayahs": 11,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Striking Calamity",
+    "tr": "Çarpan Felaket",
+    "fr": "Le Fracas",
+    "ur": "کھڑکھڑانے والی",
+    "id": "Peristiwa yang Menggemparkan"
+   }
+  },
+  {
+   "n": 102,
+   "ar": "التكاثر",
+   "tl": "At-Takathur",
+   "tr": "Tekasür",
+   "ayahs": 8,
+   "place": "makkah",
+   "meaning": {
+    "en": "Competition in Increase",
+    "tr": "Çokluk Yarışı",
+    "fr": "La Course aux richesses",
+    "ur": "کثرت کی حرص",
+    "id": "Bermegah-megahan"
+   }
+  },
+  {
+   "n": 103,
+   "ar": "العصر",
+   "tl": "Al-Asr",
+   "tr": "Asr",
+   "ayahs": 3,
+   "place": "makkah",
+   "meaning": {
+    "en": "Time",
+    "tr": "Zaman",
+    "fr": "Le Temps",
+    "ur": "زمانہ",
+    "id": "Masa"
+   }
+  },
+  {
+   "n": 104,
+   "ar": "الهمزة",
+   "tl": "Al-Humaza",
+   "tr": "Hümeze",
+   "ayahs": 9,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Slanderer",
+    "tr": "Arkadan Çekiştiren",
+    "fr": "Le Calomniateur",
+    "ur": "طعنہ دینے والا",
+    "id": "Pengumpat"
+   }
+  },
+  {
+   "n": 105,
+   "ar": "الفيل",
+   "tl": "Al-Fil",
+   "tr": "Fil",
+   "ayahs": 5,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Elephant",
+    "tr": "Fil",
+    "fr": "L'Éléphant",
+    "ur": "ہاتھی",
+    "id": "Gajah"
+   }
+  },
+  {
+   "n": 106,
+   "ar": "قريش",
+   "tl": "Quraysh",
+   "tr": "Kureyş",
+   "ayahs": 4,
+   "place": "makkah",
+   "meaning": {
+    "en": "Quraysh",
+    "tr": "Kureyş Kabilesi",
+    "fr": "Quraych",
+    "ur": "قبیلۂ قریش",
+    "id": "Suku Quraisy"
+   }
+  },
+  {
+   "n": 107,
+   "ar": "الماعون",
+   "tl": "Al-Maun",
+   "tr": "Maun",
+   "ayahs": 7,
+   "place": "makkah",
+   "meaning": {
+    "en": "Small Kindnesses",
+    "tr": "Küçük Yardımlar",
+    "fr": "L'Ustensile",
+    "ur": "برتنے کی معمولی چیزیں",
+    "id": "Barang yang Berguna"
+   }
+  },
+  {
+   "n": 108,
+   "ar": "الكوثر",
+   "tl": "Al-Kawthar",
+   "tr": "Kevser",
+   "ayahs": 3,
+   "place": "makkah",
+   "meaning": {
+    "en": "Abundance",
+    "tr": "Bolluk",
+    "fr": "L'Abondance",
+    "ur": "خیرِ کثیر",
+    "id": "Nikmat yang Berlimpah"
+   }
+  },
+  {
+   "n": 109,
+   "ar": "الكافرون",
+   "tl": "Al-Kafirun",
+   "tr": "Kafirun",
+   "ayahs": 6,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Disbelievers",
+    "tr": "Kâfirler",
+    "fr": "Les Mécréants",
+    "ur": "کافر",
+    "id": "Orang-orang Kafir"
+   }
+  },
+  {
+   "n": 110,
+   "ar": "النصر",
+   "tl": "An-Nasr",
+   "tr": "Nasr",
+   "ayahs": 3,
+   "place": "madinah",
+   "meaning": {
+    "en": "The Help",
+    "tr": "Yardım",
+    "fr": "Le Secours",
+    "ur": "مدد",
+    "id": "Pertolongan"
+   }
+  },
+  {
+   "n": 111,
+   "ar": "المسد",
+   "tl": "Al-Masad",
+   "tr": "Tebbet",
+   "ayahs": 5,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Palm Fibre",
+    "tr": "Hurma Lifi",
+    "fr": "Les Fibres",
+    "ur": "کھجور کی چھال کی رسی",
+    "id": "Sabut"
+   }
+  },
+  {
+   "n": 112,
+   "ar": "الإخلاص",
+   "tl": "Al-Ikhlas",
+   "tr": "İhlas",
+   "ayahs": 4,
+   "place": "makkah",
+   "meaning": {
+    "en": "Sincerity",
+    "tr": "Samimiyet",
+    "fr": "Le Monothéisme pur",
+    "ur": "اخلاص",
+    "id": "Kemurnian Tauhid"
+   }
+  },
+  {
+   "n": 113,
+   "ar": "الفلق",
+   "tl": "Al-Falaq",
+   "tr": "Felak",
+   "ayahs": 5,
+   "place": "makkah",
+   "meaning": {
+    "en": "The Daybreak",
+    "tr": "Tan Ağarması",
+    "fr": "L'Aube naissante",
+    "ur": "صبح کی روشنی",
+    "id": "Waktu Subuh"
+   }
+  },
+  {
+   "n": 114,
+   "ar": "الناس",
+   "tl": "An-Nas",
+   "tr": "Nas",
+   "ayahs": 6,
+   "place": "makkah",
+   "meaning": {
+    "en": "Mankind",
+    "tr": "İnsanlar",
+    "fr": "Les Hommes",
+    "ur": "انسان",
+    "id": "Manusia"
+   }
+  }
+ ]
+}
