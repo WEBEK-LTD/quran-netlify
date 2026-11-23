@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useHifz } from '../hifzStore';
+import { useHifz, localDateStr, parseLocalDate } from '../hifzStore';
 import styles from './KhatmaPage.module.css';
-import { useT, useLang, useDir } from '../i18n';
+import { useT, useLang, useDir, TRANSLATIONS } from '../i18n';
 import LangSwitcher from '../components/LangSwitcher';
 
 const KHATMA_KEY = 'nq_khatmat';
@@ -12,8 +12,26 @@ function loadKhatmat() {
 }
 function saveKhatmat(k) { localStorage.setItem(KHATMA_KEY, JSON.stringify(k)); }
 
+// Dates are stored as local 'YYYY-MM-DD' strings — parse them as local dates
 function daysBetween(d1, d2) {
-  return Math.round((new Date(d2) - new Date(d1)) / 86400000);
+  const a = parseLocalDate(d1), b = parseLocalDate(d2);
+  if (!a || !b) return 0;
+  return Math.round((b - a) / 86400000);
+}
+
+// Khatma type is stored as a stable key and translated on display.
+const TYPE_KEYS = ['reading', 'memorizing', 'daily', 'listening', 'needsReview'];
+
+// Older entries stored the translated label (in whatever UI language was active)
+function typeKeyOf(stored) {
+  if (!stored) return null;
+  if (TYPE_KEYS.includes(stored)) return stored;
+  for (const dict of Object.values(TRANSLATIONS || {})) {
+    for (const key of TYPE_KEYS) {
+      if (dict?.[key] === stored) return key;
+    }
+  }
+  return null;
 }
 
 export default function KhatmaPage() {
@@ -22,7 +40,7 @@ export default function KhatmaPage() {
   const { progressPct, completedSurahs } = useHifz();
   const [khatmat, setKhatmat] = useState(loadKhatmat);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm]         = useState({ start: new Date().toISOString().split('T')[0], end: '', type: t('reading'), notes: '' });
+  const [form, setForm]         = useState({ start: localDateStr(), end: '', type: 'reading', notes: '' });
   const [confirmDel, setConfirmDel] = useState(null);
 
   function addKhatma() {
@@ -33,7 +51,7 @@ export default function KhatmaPage() {
     ];
     setKhatmat(next); saveKhatmat(next);
     setShowForm(false);
-    setForm({ start: new Date().toISOString().split('T')[0], end: '', type: t('reading'), notes: '' });
+    setForm({ start: localDateStr(), end: '', type: 'reading', notes: '' });
   }
 
   function deleteKhatma(id) {
@@ -45,7 +63,9 @@ export default function KhatmaPage() {
   const avgDays   = khatmat.length ? Math.round(totalDays / khatmat.length) : 0;
   const fastest   = khatmat.length ? Math.min(...khatmat.map(k => Math.max(1, daysBetween(k.start, k.end)))) : 0;
 
-  const TYPES = [t('reading'), t('memorizing'), t('daily'), t('listening'), t('needsReview')];
+  const typeLabel = stored => { const key = typeKeyOf(stored); return key ? t(key) : stored; };
+  const thisYear  = String(new Date().getFullYear());
+  const thisYearCount = khatmat.filter(k => typeof k.end === 'string' && k.end.startsWith(thisYear + '-')).length;
 
   return (
     <div className={styles.page}>
@@ -101,7 +121,7 @@ export default function KhatmaPage() {
             <div className={styles.statLbl}>{t('fastest')}</div>
           </div>
           <div className={styles.statBox}>
-            <div className={styles.statNum}>{new Date().getFullYear() - 1 + khatmat.filter(k => k.end?.startsWith(String(new Date().getFullYear()))).length}</div>
+            <div className={styles.statNum}>{thisYearCount}</div>
             <div className={styles.statLbl}>هذه السنة</div>
           </div>
         </div>
@@ -128,11 +148,11 @@ export default function KhatmaPage() {
               <div className={styles.field}>
                 <label>نوع الختمة</label>
                 <div className={styles.typeGrid}>
-                  {TYPES.map(typ => (
+                  {TYPE_KEYS.map(typ => (
                     <button key={typ}
                       className={`${styles.typeBtn} ${form.type === typ ? styles.typeActive : ''}`}
                       onClick={() => setForm(v => ({ ...v, type: typ }))}>
-                      {typ}
+                      {t(typ)}
                     </button>
                   ))}
                 </div>
@@ -190,13 +210,13 @@ export default function KhatmaPage() {
         <div className={styles.list}>
           {khatmat.map((k, i) => {
             const days = Math.max(1, daysBetween(k.start, k.end));
-            const endDate = new Date(k.end).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+            const endDate = parseLocalDate(k.end)?.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }) || k.end;
             return (
               <div key={k.id} className={styles.card} style={{ animationDelay: `${i * 60}ms` }}>
                 <div className={styles.cardNum}>{khatmat.length - i}</div>
                 <div className={styles.cardBody}>
                   <div className={styles.cardTop}>
-                    <span className={styles.typeBadge}>{k.type}</span>
+                    <span className={styles.typeBadge}>{typeLabel(k.type)}</span>
                     <span className={styles.cardDate}>{endDate}</span>
                   </div>
                   <div className={styles.cardDuration}>

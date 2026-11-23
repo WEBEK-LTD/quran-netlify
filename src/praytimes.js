@@ -61,12 +61,13 @@ function sunPosition(jd) {
 function equationOfTime(jd) { return sunPosition(jd).equation; }
 function sunDeclination(jd) { return sunPosition(jd).declination; }
 
+// `t` is in hours; the Julian day is in days, so convert hours → day fraction.
 function computeMidDay(t, jd) {
-  return DMath.fixHour(12 - equationOfTime(jd + t));
+  return DMath.fixHour(12 - equationOfTime(jd + t / 24));
 }
 
 function sunAngleTime(jd, lat, angle, time, direction) {
-  const decl = sunDeclination(jd + time);
+  const decl = sunDeclination(jd + time / 24);
   const noon = computeMidDay(time, jd);
   const cosVal = (-DMath.sin(angle) - DMath.sin(decl) * DMath.sin(lat)) /
                  (DMath.cos(decl) * DMath.cos(lat));
@@ -76,14 +77,42 @@ function sunAngleTime(jd, lat, angle, time, direction) {
 }
 
 function asrTime(jd, lat, factor, time) {
-  const decl = sunDeclination(jd + time);
+  const decl = sunDeclination(jd + time / 24);
   const angle = -DMath.arccot(factor + DMath.tan(Math.abs(lat - decl)));
   return sunAngleTime(jd, lat, angle, time, 'cw');
 }
 
-export function calcPrayerTimes(date, lat, lon, methodKey = 'Egypt') {
+// UTC offset (hours) of an IANA time zone on a given date, e.g. ('Africa/Cairo', date) → 2
+export function tzOffsetHours(timeZone, date = new Date()) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone, hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(date).reduce((o, p) => { o[p.type] = p.value; return o; }, {});
+    const asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour % 24, +parts.minute, +parts.second);
+    return Math.round((asUTC - Math.floor(date.getTime() / 1000) * 1000) / 60000) / 60;
+  } catch {
+    return -date.getTimezoneOffset() / 60;
+  }
+}
+
+/**
+ * @param {Date}   date      calendar day (its local Y/M/D are used)
+ * @param {number} lat
+ * @param {number} lon
+ * @param {string} methodKey key of METHODS
+ * @param {number|string} [timezone] UTC offset in hours (e.g. 2) or an IANA zone
+ *                                    name (e.g. 'Africa/Cairo'). Defaults to the device zone.
+ */
+export function calcPrayerTimes(date, lat, lon, methodKey = 'Egypt', timezone) {
   const m = METHODS[methodKey] || METHODS.Egypt;
-  const timezone = -date.getTimezoneOffset() / 60; // auto from device
+  if (typeof timezone === 'string') {
+    // offset at local noon of that day (avoids DST edge at midnight)
+    timezone = tzOffsetHours(timezone, new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12));
+  } else if (typeof timezone !== 'number' || isNaN(timezone)) {
+    timezone = -date.getTimezoneOffset() / 60; // device zone
+  }
   const jd = julianDate(date.getFullYear(), date.getMonth() + 1, date.getDate()) - lon / (15 * 24);
 
   // Time iterators (initial guesses)
@@ -106,12 +135,12 @@ export function calcPrayerTimes(date, lat, lon, methodKey = 'Egypt') {
     }
   }
 
-  // Convert to local time
-  const toLocal = t => DMath.fixHour(t + timezone);
+  // Convert from local solar time to the requested zone's clock time
+  const toLocal = t => DMath.fixHour(t + timezone - lon / 15);
   const toHHMM = t => {
     if (isNaN(t)) return '--:--';
-    const total = Math.round(toLocal(t) * 60);
-    const h = Math.floor(total / 60) % 24;
+    const total = Math.round(toLocal(t) * 60) % 1440;
+    const h = Math.floor(total / 60);
     const min = total % 60;
     return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
   };

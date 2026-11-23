@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useStore, setGlobal } from '../store';
+import { useStore, setGlobal, savePref, DEFAULT_READER } from '../store';
 import { SURAHS_META, TRANSLATIONS, READERS } from '../data';
 import { useHifz } from '../hifzStore';
 import styles from './Toolbar.module.css';
@@ -12,13 +12,13 @@ export default function Toolbar() {
   function changeFont(delta) {
     const next = Math.max(16, Math.min(48, state.fontSize + delta));
     setGlobal({ fontSize: next });
-    localStorage.setItem('nq_fontSize', next);
+    savePref('nq_fontSize', next);
     document.documentElement.style.setProperty('--font-size', next + 'px');
   }
 
   function setFontStyle(style) {
     setGlobal({ fontStyle: style });
-    localStorage.setItem('nq_fontStyle', style);
+    savePref('nq_fontStyle', style);
   }
 
   const ward = hifz.dailyWard;
@@ -51,7 +51,7 @@ export default function Toolbar() {
         title="الترجمة"
         onChange={e => {
           setGlobal({ translation: e.target.value });
-          localStorage.setItem('nq_translation', e.target.value);
+          savePref('nq_translation', e.target.value);
         }}
       >
         {TRANSLATIONS.map(t => (
@@ -62,11 +62,11 @@ export default function Toolbar() {
       <span className={styles.toolLabel}>قارئ:</span>
       <select
         className={styles.transSelect}
-        value={state.reader || 'Alafasy_128kbps'}
+        value={state.reader || DEFAULT_READER}
         title="القارئ"
         onChange={e => {
           setGlobal({ reader: e.target.value });
-          localStorage.setItem('nq_reader', e.target.value);
+          savePref('nq_reader', e.target.value);
           if (state.isPlaying) setGlobal({ playTrigger: Date.now() });
         }}
       >

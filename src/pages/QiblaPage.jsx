@@ -42,9 +42,12 @@ export default function QiblaPage() {
   const [distance,  setDistance]  = useState(null);
   const [accuracy,  setAccuracy]  = useState(null);
   const [aligned,   setAligned]   = useState(false);
+  // idle | needs-permission | listening | active | unavailable | denied
+  const [compassStatus, setCompassStatus] = useState('idle');
   const compassRef  = useRef(null);
   const needleRef   = useRef(null);
-  const orientRef   = useRef(null);
+  const stopRef     = useRef(null);   // يزيل مستمعي الحساسات الحاليين
+  const gotHeading  = useRef(false);
 
   function requestLocation() {
     setLoading(true); setError('');
@@ -63,7 +66,12 @@ export default function QiblaPage() {
         setLoading(false);
       },
       err => {
-        setError('تعذّر تحديد موقعك — تأكد من تفعيل إذن الموقع');
+        setError(
+          err?.code === 1 ? 'رُفض إذن الموقع — اسمح بالوصول للموقع من إعدادات المتصفح' :
+          err?.code === 2 ? 'تعذّر تحديد موقعك حالياً — تأكد من تشغيل GPS' :
+          err?.code === 3 ? 'انتهت مهلة تحديد الموقع — حاول مرة أخرى' :
+                            'تعذّر تحديد موقعك — تأكد من تفعيل إذن الموقع'
+        );
         setLoading(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -71,34 +79,59 @@ export default function QiblaPage() {
   }
 
   // Device orientation for compass
-  useEffect(() => {
+  function screenAngle() {
+    const a = (window.screen && window.screen.orientation && window.screen.orientation.angle);
+    if (typeof a === 'number') return a;
+    return typeof window.orientation === 'number' ? window.orientation : 0;
+  }
+
+  function startCompass() {
+    if (stopRef.current) stopRef.current();
+    gotHeading.current = false;
+    setCompassStatus('listening');
+
+    const useAbsoluteEvent = 'ondeviceorientationabsolute' in window;
+
     function handleOrientation(e) {
       let h = null;
-      if (e.webkitCompassHeading !== undefined) {
-        h = e.webkitCompassHeading; // iOS
-      } else if (e.alpha !== null) {
-        h = (360 - e.alpha) % 360; // Android
+      if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) {
+        h = e.webkitCompassHeading + screenAngle();            // iOS: already true-ish north
+      } else if (e.alpha != null && (e.absolute === true || e.type === 'deviceorientationabsolute')) {
+        h = 360 - e.alpha + screenAngle();                     // Android / others: absolute alpha
       }
-      if (h !== null) setHeading(h);
+      // alpha نسبي (غير مرتبط بالشمال) لا يصلح كبوصلة — نتجاهله
+      if (h === null) return;
+      h = ((h % 360) + 360) % 360;
+      gotHeading.current = true;
+      setCompassStatus('active');
+      setHeading(h);
     }
 
-    if (window.DeviceOrientationEvent) {
-      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-        // iOS 13+
-        orientRef.current = () => {
-          DeviceOrientationEvent.requestPermission()
-            .then(perm => {
-              if (perm === 'granted') {
-                window.addEventListener('deviceorientation', handleOrientation, true);
-              }
-            }).catch(() => {});
-        };
-      } else {
-        window.addEventListener('deviceorientation', handleOrientation, true);
-      }
+    const evName = useAbsoluteEvent ? 'deviceorientationabsolute' : 'deviceorientation';
+    window.addEventListener(evName, handleOrientation, true);
+    const timer = setTimeout(() => {
+      if (!gotHeading.current) setCompassStatus('unavailable');
+    }, 3000);
+    stopRef.current = () => {
+      clearTimeout(timer);
+      window.removeEventListener(evName, handleOrientation, true);
+    };
+  }
+
+  const needsIOSPermission =
+    typeof window !== 'undefined' && window.DeviceOrientationEvent &&
+    typeof window.DeviceOrientationEvent.requestPermission === 'function';
+
+  useEffect(() => {
+    if (!window.DeviceOrientationEvent) {
+      setCompassStatus('unavailable');
+    } else if (needsIOSPermission) {
+      setCompassStatus('needs-permission'); // iOS 13+: يجب أن يضغط المستخدم الزر
+    } else {
+      startCompass();
     }
-    return () => window.removeEventListener('deviceorientation', handleOrientation, true);
-  }, []);
+    return () => { if (stopRef.current) stopRef.current(); };
+  }, []); // eslint-disable-line
 
   // Check alignment
   useEffect(() => {
@@ -107,16 +140,29 @@ export default function QiblaPage() {
     setAligned(diff < 5);
   }, [heading, qibla]);
 
-  // Compass visual: needle points to qibla relative to device heading
-  const needleRotation = heading !== null && qibla !== null
+  // The dial is rotated by -heading (north stays north on screen); the needle
+  // lives inside the dial, so it only needs the qibla bearing from north.
+  const needleRotation = qibla ?? 0;
+  // زاوية القبلة بالنسبة لاتجاه الجهاز (لعرض النص فقط)
+  const relativeQibla = heading !== null && qibla !== null
     ? (qibla - heading + 360) % 360
     : qibla ?? 0;
 
   const compassRotation = heading !== null ? -heading : 0;
 
   function handleRequestCompassPermission() {
-    if (orientRef.current) orientRef.current();
-    else setError('بوصلة الجهاز غير متاحة على هذا المتصفح');
+    setError('');
+    if (!window.DeviceOrientationEvent) { setCompassStatus('unavailable'); return; }
+    if (needsIOSPermission) {
+      window.DeviceOrientationEvent.requestPermission()
+        .then(perm => {
+          if (perm === 'granted') startCompass();
+          else setCompassStatus('denied');
+        })
+        .catch(() => setCompassStatus('denied'));
+      return;
+    }
+    startCompass();
   }
 
   return (
@@ -150,14 +196,14 @@ export default function QiblaPage() {
         >
           {/* Cardinal directions */}
           <div className={`${styles.cardinal} ${styles.cardinalN}`}>N</div>
+          <div className={`${styles.cardinal} ${styles.cardinalE}`}>E</div>
           <div className={`${styles.cardinal} ${styles.cardinalS}`}>S</div>
-          <div className={`${styles.cardinal} ${styles.cardinalE}`}>NE</div>
           <div className={`${styles.cardinal} ${styles.cardinalW}`}>W</div>
 
           {/* Degree marks */}
           {Array.from({ length: 36 }).map((_, i) => (
             <div key={i} className={`${styles.tick} ${i % 9 === 0 ? styles.tickMajor : ''}`}
-              style={{ transform: `rotate(${i * 10}deg) translateY(-calc(50% - 10px))` }} />
+              style={{ transform: `rotate(${i * 10}deg)` }} />
           ))}
 
           {/* Qibla needle */}
@@ -180,8 +226,21 @@ export default function QiblaPage() {
         {/* Alignment indicator */}
         {qibla !== null && (
           <div className={`${styles.alignBadge} ${aligned ? styles.alignBadgeOn : ''}`}>
-            {aligned ? t('qiblaFacing') : `اتجه ${Math.round(needleRotation)}° نحو القبلة`}
+            {aligned ? t('qiblaFacing') : `اتجه ${Math.round(relativeQibla)}° نحو القبلة`}
           </div>
+        )}
+
+        {/* Compass sensor status */}
+        {compassStatus === 'unavailable' && (
+          <div className={styles.sensorNote}>
+            🧭 لا يوجد مستشعر بوصلة في هذا الجهاز/المتصفح — القرص ثابت والشمال للأعلى. استخدم زاوية القبلة{qibla !== null ? ` (${Math.round(qibla)}° من الشمال)` : ''} مع بوصلة حقيقية.
+          </div>
+        )}
+        {compassStatus === 'denied' && (
+          <div className={styles.sensorNote}>🧭 تم رفض إذن البوصلة — يمكنك السماح به من إعدادات المتصفح ثم الضغط على "تفعيل البوصلة".</div>
+        )}
+        {compassStatus === 'listening' && (
+          <div className={styles.sensorNote}>🧭 جاري قراءة البوصلة… حرّك الهاتف على شكل رقم ٨ للمعايرة</div>
         )}
       </div>
 
@@ -220,9 +279,11 @@ export default function QiblaPage() {
             🔄 تحديث الموقع
           </button>
         )}
-        <button className={styles.compassBtn} onClick={handleRequestCompassPermission}>
-          🧭 تفعيل البوصلة
-        </button>
+        {compassStatus !== 'active' && (
+          <button className={styles.compassBtn} onClick={handleRequestCompassPermission}>
+            🧭 تفعيل البوصلة
+          </button>
+        )}
       </div>
 
       {error && <div className={styles.errorMsg}>⚠️ {error}</div>}

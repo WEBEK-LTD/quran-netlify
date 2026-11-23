@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './AdhkarPage.module.css';
 import { useT, useLang, useDir } from '../i18n';
 import LangSwitcher from '../components/LangSwitcher';
+import { normalizeArabic } from '../arabic';
 
 // CATEGORIES defined inside component
 
@@ -51,7 +52,7 @@ const ADHKAR = [
   { id:13, cat:'sleep', name:'المعوذتان', count:3,
     ar:'قل أعوذُ بربِّ الفلق... قل أعوذُ بربِّ الناس...',
     source:'البخاري — ينفثُ في راحتيه ثم يمسح بهما جسده' },
-  { id:14, cat:'sleep', name:'التسبيح قبل النوم', count:'33-33-34',
+  { id:14, cat:'sleep', name:'التسبيح قبل النوم', count:'33-33-34', target:100,
     ar:'سبحانَ الله (٣٣) • الحمدُ لله (٣٣) • الله أكبر (٣٤)',
     source:'البخاري ومسلم' },
   { id:15, cat:'sleep', name:'دعاء الكرب', count:1,
@@ -130,6 +131,28 @@ const ADHKAR = [
     source:'ابن حبان — صحيح' },
 ];
 
+// عدّادات الأذكار تُحفظ لليوم الحالي (بالتوقيت المحلي) وتُصفَّر بعد منتصف الليل
+const COUNTERS_KEY = 'nq_adhkar_counters';
+function localDay(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function loadCounters() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(COUNTERS_KEY) || 'null');
+    if (saved && saved.date === localDay() && saved.counts && typeof saved.counts === 'object') return saved.counts;
+  } catch {}
+  return {};
+}
+function saveCounters(counts) {
+  try { localStorage.setItem(COUNTERS_KEY, JSON.stringify({ date: localDay(), counts })); } catch {}
+}
+
+// النص المطبَّع مسبقاً للبحث
+const ADHKAR_INDEX = ADHKAR.map(d => ({
+  id: d.id,
+  text: normalizeArabic(`${d.name} ${d.ar} ${d.source || ''}`),
+}));
+
 function CounterBadge({ count }) {
   if (!count || count === 1) return null;
   const display = typeof count === 'number'
@@ -155,18 +178,29 @@ export default function AdhkarPage() {
   const [activeCategory, setActiveCategory] = useState('morning');
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState(null);
-  const [counters, setCounters] = useState({});
+  const [counters, setCounters] = useState(loadCounters);
+  const [counterDay, setCounterDay] = useState(localDay);
+
+  // تصفير العدّادات عند تغيّر اليوم (الصفحة مفتوحة بعد منتصف الليل)
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const today = localDay();
+      if (today !== counterDay) { setCounterDay(today); setCounters({}); }
+    }, 60000);
+    return () => clearInterval(iv);
+  }, [counterDay]);
+
+  useEffect(() => { saveCounters(counters); }, [counters]);
   const [copied, setCopied] = useState(null);
 
   const filtered = useMemo(() => {
-    let list = activeCategory === 'all' ? ADHKAR : ADHKAR.filter(d => d.cat === activeCategory);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(d =>
-        d.name.includes(q) || d.ar.includes(q) || (d.source||'').includes(q)
-      );
+    const q = normalizeArabic(search).replace(/\s+/g, ' ').trim();
+    if (q) {
+      // البحث يشمل كل الأقسام ولا يتأثر بالتشكيل
+      const ids = new Set(ADHKAR_INDEX.filter(x => x.text.replace(/\s+/g, ' ').includes(q)).map(x => x.id));
+      return ADHKAR.filter(d => ids.has(d.id));
     }
-    return list;
+    return activeCategory === 'all' ? ADHKAR : ADHKAR.filter(d => d.cat === activeCategory);
   }, [activeCategory, search]);
 
   function increment(id) {
@@ -178,10 +212,12 @@ export default function AdhkarPage() {
   }
 
   function copyDhikr(id, text) {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(id);
-      setTimeout(() => setCopied(null), 2000);
-    });
+    try {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(id);
+        setTimeout(() => setCopied(null), 2000);
+      }).catch(() => {});
+    } catch {}
   }
 
   const activeCat = CATEGORIES.find(c => c.id === activeCategory);
@@ -250,7 +286,7 @@ export default function AdhkarPage() {
         {filtered.map((dhikr, idx) => {
           const isOpen = expanded === dhikr.id;
           const cnt = counters[dhikr.id] || 0;
-          const maxCount = typeof dhikr.count === 'number' ? dhikr.count : null;
+          const maxCount = typeof dhikr.count === 'number' ? dhikr.count : (dhikr.target || null);
           const done = maxCount && cnt >= maxCount;
           const catInfo = CATEGORIES.find(c => c.id === dhikr.cat);
 

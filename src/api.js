@@ -12,12 +12,23 @@ export async function fetchSurahAyahs(surahNum) {
       key: `${surahNum}:${a.numberInSurah}`,
     }));
   } catch (e) {
-    // Fallback: quran.com v4
-    const res = await fetch(
-      `https://api.quran.com/api/v4/verses/by_chapter/${surahNum}?language=ar&words=false&per_page=300`
-    );
-    const data = await res.json();
-    return data.verses.map(v => ({
+    // Fallback: quran.com v4 — max 50 verses per page, so paginate.
+    // Note: its text has no basmala prefix (Reader only strips it when present).
+    const verses = [];
+    let page = 1;
+    let totalPages = 1;
+    do {
+      const res = await fetch(
+        `https://api.quran.com/api/v4/verses/by_chapter/${surahNum}?language=ar&words=false&fields=text_uthmani&per_page=50&page=${page}`
+      );
+      if (!res.ok) throw new Error('Quran.com API error');
+      const data = await res.json();
+      verses.push(...(data.verses || []));
+      totalPages = data.pagination?.total_pages || 1;
+      page++;
+    } while (page <= totalPages && page <= 10);
+    if (!verses.length) throw new Error('Quran.com API returned no verses');
+    return verses.map(v => ({
       number: v.verse_number,
       text: v.text_uthmani || v.text_imlaei,
       key: v.verse_key,

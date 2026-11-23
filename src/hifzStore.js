@@ -1,8 +1,38 @@
 import { useState, useEffect, useRef } from 'react';
-import { SURAH_AYAH_COUNT, TOTAL_AYAHS, ACHIEVEMENTS } from './hifzData';
+import { SURAH_AYAH_COUNT, TOTAL_AYAHS, ACHIEVEMENTS, isJuzAmmaDone } from './hifzData';
 import { syncHifzToCloud, loadHifzFromCloud } from './supabase';
 
 const KEY = 'nq_hifz';
+
+// ─── Local-date helpers (YYYY-MM-DD in the user's own timezone, not UTC) ─────
+export function localDateStr(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// Parses 'YYYY-MM-DD' as a LOCAL date (new Date('YYYY-MM-DD') would be UTC)
+export function parseLocalDate(str) {
+  if (!str) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(str));
+  if (!m) { const d = new Date(str); return isNaN(d) ? null : d; }
+  return new Date(+m[1], +m[2] - 1, +m[3]);
+}
+
+function yesterdayStr() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return localDateStr(d);
+}
+
+// The stored streak only counts while the last ward was today or yesterday
+export function effectiveStreak(data) {
+  if (!data?.lastWardDate) return 0;
+  const today = localDateStr();
+  return (data.lastWardDate === today || data.lastWardDate === yesterdayStr())
+    ? (data.streak || 0) : 0;
+}
 
 function getDefault() {
   return {
@@ -12,6 +42,7 @@ function getDefault() {
     dailyWard: null,
     wardHistory: [],   // array of { date, completed, wardAyahs }
     streak: 0,
+    bestStreak: 0,
     lastWardDate: null,
     unlockedAchievements: [],
     notes: {},  // { [surah:ayah]: string }
@@ -45,14 +76,16 @@ export function useHifz(userId = null) {
   useEffect(() => {
     if (!userId || cloudLoaded) return;
     loadHifzFromCloud(userId).then(cloudData => {
-      if (!cloudData) return;
+      if (!cloudData || !cloudData.data) return;
       setCloudLoaded(true);
       const local = loadHifz();
-      const localTime = local.updatedAt || 0;
-      const cloudTime = cloudData.updated_at || 0;
-      // Use cloud data if newer
-      if (cloudTime > localTime) {
-        const merged = { ...local, ...cloudData.data, updatedAt: cloudTime };
+      // Compare real timestamps (ISO strings → ms). A missing/invalid local
+      // timestamp means this device has never saved → cloud wins.
+      const localTime = Date.parse(local.updatedAt);
+      const cloudIso  = cloudData.data?.updatedAt || cloudData.updated_at;
+      const cloudTime = Date.parse(cloudIso);
+      if (Number.isNaN(localTime) || (!Number.isNaN(cloudTime) && cloudTime > localTime)) {
+        const merged = { ...local, ...cloudData.data, updatedAt: cloudIso || new Date().toISOString() };
         saveHifz(merged);
         setHifzState(merged);
       }
@@ -80,7 +113,7 @@ export function useHifz(userId = null) {
   }
 
   function markWardDone() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateStr();
     if (hifz.lastWardDate === today) return; // already done today
 
     const history = [
@@ -88,14 +121,11 @@ export function useHifz(userId = null) {
       { date: today, completed: true, wardAyahs: hifz.dailyWard?.ayahCount || 0 }
     ].slice(-90); // keep 90 days
 
-    // Calculate streak
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yStr = yesterday.toISOString().split('T')[0];
-    const newStreak = (hifz.lastWardDate === yStr || hifz.lastWardDate === today)
-      ? hifz.streak + 1 : 1;
+    // Calculate streak (local dates): continues only from yesterday
+    const newStreak = hifz.lastWardDate === yesterdayStr() ? (hifz.streak || 0) + 1 : 1;
+    const bestStreak = Math.max(hifz.bestStreak || 0, hifz.streak || 0, newStreak);
 
-    update({ wardHistory: history, lastWardDate: today, streak: newStreak });
+    update({ wardHistory: history, lastWardDate: today, streak: newStreak, bestStreak });
     checkAchievements({ ...hifz, streak: newStreak, wardHistory: history });
   }
 
@@ -108,7 +138,10 @@ export function useHifz(userId = null) {
       .reduce((acc, [num]) => acc + (SURAH_AYAH_COUNT[parseInt(num) - 1] || 0), 0);
     const wardDays = (data.wardHistory || []).filter(h => h.completed).length;
 
-    const stats = { completedSurahs, memorizedAyahs, streak: data.streak || 0, wardDays };
+    const stats = {
+      completedSurahs, memorizedAyahs, streak: data.streak || 0, wardDays,
+      juzAmmaDone: isJuzAmmaDone(data.surahStatus),
+    };
     const current = data.unlockedAchievements || [];
     const newUnlocked = ACHIEVEMENTS
       .filter(a => !current.includes(a.id) && a.condition(stats))
@@ -133,7 +166,9 @@ export function useHifz(userId = null) {
 
   const progressPct = Math.round((memorizedAyahs / TOTAL_AYAHS) * 100 * 10) / 10;
 
-  const todayDone = hifz.lastWardDate === new Date().toISOString().split('T')[0];
+  const todayDone = hifz.lastWardDate === localDateStr();
+  const streak = effectiveStreak(hifz);
+  const bestStreak = Math.max(hifz.bestStreak || 0, hifz.streak || 0);
 
   return {
     hifz,
@@ -147,6 +182,7 @@ export function useHifz(userId = null) {
     memorizedAyahs,
     progressPct,
     todayDone,
-    streak: hifz.streak,
+    streak,
+    bestStreak,
   };
 }

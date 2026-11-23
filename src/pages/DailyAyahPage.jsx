@@ -37,10 +37,13 @@ const FEATURED_AYAHS = [
 ];
 
 // Get consistent daily ayah (changes every day)
-function getDailyAyah() {
+function getDailyIndex() {
   const today = new Date();
   const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
-  return FEATURED_AYAHS[dayOfYear % FEATURED_AYAHS.length];
+  return dayOfYear % FEATURED_AYAHS.length;
+}
+function getDailyAyah() {
+  return FEATURED_AYAHS[getDailyIndex()];
 }
 
 function toAr(n) {
@@ -84,10 +87,12 @@ export default function DailyAyahPage() {
 
   function copyAyah() {
     const text = `${ayahText}\n\n— سورة ${surahName}، الآية ${daily.ayah}`;
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    try {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => {});
+    } catch {}
   }
 
   function toggleSave() {
@@ -110,7 +115,9 @@ export default function DailyAyahPage() {
     if (tafsir) { setShowTafsir(s => !s); return; }
     setLoadingTafsir(true); setShowTafsir(true);
     try {
-      const res = await fetch(`https://api.alquran.cloud/v1/ayah/${daily.surah}:${daily.ayah}/quran-simple`);
+      // التفسير الميسر (وليس نص المصحف)
+      const res = await fetch(`https://api.alquran.cloud/v1/ayah/${daily.surah}:${daily.ayah}/ar.muyassar`);
+      if (!res.ok) throw new Error();
       const data = await res.json();
       setTafsir(data.data?.text || '');
     } catch { setTafsir('تعذّر تحميل التفسير'); }
@@ -200,15 +207,20 @@ export default function DailyAyahPage() {
       <div className={styles.navRow}>
         <div className={styles.navLabel}>الآيات المميزة</div>
         <div className={styles.navDots}>
-          {FEATURED_AYAHS.slice(0, 10).map((a, i) => {
-            const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-            const isActive = i === dayOfYear % FEATURED_AYAHS.length;
+          {(() => {
+            // نعرض نافذة من ١٠ نقاط تحتوي دائماً على آية اليوم + عدّاد
+            const activeIdx = getDailyIndex();
+            const winStart = Math.floor(activeIdx / 10) * 10;
             return (
-              <div key={i}
-                className={`${styles.dot} ${isActive ? styles.dotActive : ''}`} />
+              <>
+                {FEATURED_AYAHS.slice(winStart, winStart + 10).map((a, i) => (
+                  <div key={winStart + i}
+                    className={`${styles.dot} ${winStart + i === activeIdx ? styles.dotActive : ''}`} />
+                ))}
+                <span className={styles.dotMore}>{toAr(activeIdx + 1)} / {toAr(FEATURED_AYAHS.length)}</span>
+              </>
             );
-          })}
-          <span className={styles.dotMore}>...</span>
+          })()}
         </div>
       </div>
 

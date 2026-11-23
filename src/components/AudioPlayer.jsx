@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { useStore, setGlobal } from '../store';
+import { useStore, setGlobal, savePref } from '../store';
 import { SURAHS_META, READERS } from '../data';
 import { getAudioUrl } from '../api';
 import styles from './AudioPlayer.module.css';
@@ -10,6 +10,15 @@ const MODES = [
   { id: 'surah',  icon: '▶▶', label: 'سورة كاملة' },
   { id: 'repeat', icon: '🔁', label: 'تكرار الآية' },
 ];
+// In repeat mode each ayah is played this many times, then playback moves on.
+const REPEAT_TIMES = 3;
+const LOAD_ERROR_TOAST = 'تعذّر تحميل تلاوة هذا القارئ، جرّب قارئاً آخر';
+
+// play() rejects with AbortError when src changes quickly (next/prev, reciter change)
+// and NotSupportedError when the file fails to load (handled by onError) — not real failures.
+function isBenignPlayError(err) {
+  return err && (err.name === 'AbortError' || err.name === 'NotSupportedError');
+}
 
 export default function AudioPlayer() {
   const [state]  = useStore();
@@ -17,6 +26,8 @@ export default function AudioPlayer() {
   const modeRef     = useRef('surah');  // ref avoids stale closure in onEnded
   const ayahRef     = useRef(state.audioAyah);
   const surahRef    = useRef(state.currentSurah);
+  const repeatRef   = useRef(0);                 // plays done of the current ayah in repeat mode
+  const lastTriggerRef = useRef(state.playTrigger); // ignore a stale playTrigger left from before mount
 
   const [progress,    setProgress]    = useState(0);
   const [duration,    setDuration]    = useState(0);
@@ -25,35 +36,48 @@ export default function AudioPlayer() {
   const [showVolume,  setShowVolume]  = useState(false);
   const [showReaders, setShowReaders] = useState(false);
   const [mode,        setMode]        = useState('surah');
-  const [repeatCount, setRepeatCount] = useState(0);
 
   // ── keep refs in sync ───────────────────────────────────────────────────────
   useEffect(() => { ayahRef.current  = state.audioAyah;     }, [state.audioAyah]);
   useEffect(() => { surahRef.current = state.currentSurah;  }, [state.currentSurah]);
-  function setModeAndRef(m) { setMode(m); modeRef.current = m; }
+  function setModeAndRef(m) { setMode(m); modeRef.current = m; repeatRef.current = 0; }
+
+  // Audio element is not playing after a (re)mount — clear any stale flag
+  useEffect(() => {
+    if (state.isPlaying) setGlobal({ isPlaying: false });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handlePlayError(err, toast = '⚠️ تعذّر تشغيل الصوت') {
+    if (isBenignPlayError(err)) return;
+    setGlobal({ toast, isPlaying: false });
+  }
 
   // ── load + play whenever playTrigger fires ────────────────────────────────
   useEffect(() => {
-    if (!state.playTrigger || !audioRef.current) return;
+    if (!state.playTrigger || state.playTrigger === lastTriggerRef.current || !audioRef.current) return;
+    lastTriggerRef.current = state.playTrigger;
+    ayahRef.current  = state.audioAyah;
+    surahRef.current = state.currentSurah;
     const url = getAudioUrl(state.reader, state.currentSurah, state.audioAyah);
     audioRef.current.src = url;
     audioRef.current.volume = volume;
-    setRepeatCount(0);
+    repeatRef.current = 0;
     audioRef.current.play()
       .then(() => {
         setGlobal({ isPlaying: true });
-        updateMediaSession();
+        updateMediaSession(state.currentSurah, state.audioAyah);
       })
-      .catch(() => setGlobal({ toast: '⚠️ تعذّر تشغيل الصوت', isPlaying: false }));
+      .catch(err => handlePlayError(err));
   }, [state.playTrigger]);
 
   // ── Media Session API (lock screen / notification controls) ──────────────
-  function updateMediaSession() {
+  function updateMediaSession(surah = surahRef.current, ayah = ayahRef.current) {
     if (!('mediaSession' in navigator)) return;
-    const meta = SURAHS_META[state.currentSurah - 1];
+    const meta = SURAHS_META[surah - 1];
     const reader = READERS.find(r => r.id === state.reader);
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: `${meta[0]} — الآية ${state.audioAyah}`,
+      title: `${meta[0]} — الآية ${ayah}`,
       artist: reader?.name || 'القرآن الكريم',
       album: 'نور القرآن',
     });
@@ -77,21 +101,24 @@ export default function AudioPlayer() {
       }
       audioRef.current.play()
         .then(() => { setGlobal({ isPlaying: true }); updateMediaSession(); })
-        .catch(() => setGlobal({ toast: '⚠️ تعذّر التشغيل' }));
+        .catch(err => handlePlayError(err, '⚠️ تعذّر التشغيل'));
     }
   }
 
+  // prev/next read refs (not render state) because they are also registered as
+  // Media Session handlers, which would otherwise keep a stale closure.
   function prev() {
-    if (state.audioAyah > 1)
-      setGlobal({ audioAyah: state.audioAyah - 1, playTrigger: Date.now() });
+    if (ayahRef.current > 1)
+      setGlobal({ audioAyah: ayahRef.current - 1, playTrigger: Date.now() });
   }
 
   function next() {
-    const max = SURAHS_META[state.currentSurah - 1][2];
-    if (state.audioAyah < max)
-      setGlobal({ audioAyah: state.audioAyah + 1, playTrigger: Date.now() });
+    const surah = surahRef.current;
+    const max = SURAHS_META[surah - 1][2];
+    if (ayahRef.current < max)
+      setGlobal({ audioAyah: ayahRef.current + 1, playTrigger: Date.now() });
     else
-      setGlobal({ isPlaying: false, toast: `✅ انتهت سورة ${SURAHS_META[state.currentSurah - 1][0]}` });
+      setGlobal({ isPlaying: false, toast: `✅ انتهت سورة ${SURAHS_META[surah - 1][0]}` });
   }
 
   // Play whole surah from ayah 1
@@ -107,20 +134,34 @@ export default function AudioPlayer() {
     const curAyah  = ayahRef.current;
     const max      = SURAHS_META[curSurah - 1][2];
     const curMode  = modeRef.current;
+    const audio    = audioRef.current;
+    if (!audio) return;
 
     if (curMode === 'repeat') {
-      setTimeout(() => audioRef.current?.play(), 400);
-      return;
+      repeatRef.current += 1;
+      if (repeatRef.current < REPEAT_TIMES) {
+        audio.currentTime = 0;
+        audio.play().catch(err => handlePlayError(err));
+        return;
+      }
+      // repeated enough → move on to the next ayah
+      repeatRef.current = 0;
     }
     if (curMode === 'single') {
       setGlobal({ isPlaying: false });
       return;
     }
-    // surah mode → auto-next
+    // surah / repeat mode → auto-next. Start the next ayah right here inside the
+    // 'ended' handler (no timers / store round-trip) so playback continues with
+    // the screen locked on mobile.
     if (curAyah < max) {
       const nextAyah = curAyah + 1;
       ayahRef.current = nextAyah;
-      setTimeout(() => setGlobal({ audioAyah: nextAyah, playTrigger: Date.now() }), 500);
+      audio.src = getAudioUrl(state.reader, curSurah, nextAyah);
+      audio.play()
+        .then(() => updateMediaSession(curSurah, nextAyah))
+        .catch(err => handlePlayError(err));
+      setGlobal({ audioAyah: nextAyah, isPlaying: true });
     } else {
       setGlobal({ isPlaying: false, toast: `✅ انتهت سورة ${SURAHS_META[curSurah - 1][0]}` });
     }
@@ -140,15 +181,26 @@ export default function AudioPlayer() {
 
   function onLoadedMetadata() { setDuration(audioRef.current?.duration || 0); }
 
+  function onAudioError() {
+    const audio = audioRef.current;
+    if (!audio || !audio.getAttribute('src')) return;
+    audio.pause();
+    setGlobal({ isPlaying: false, toast: LOAD_ERROR_TOAST });
+  }
+
   function seekTo(e) {
     if (!audioRef.current || !duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    audioRef.current.currentTime = ((e.clientX - rect.left) / rect.width) * duration;
+    // The fill grows from the inline-start edge (right in RTL) — measure from the same edge
+    const rtl  = getComputedStyle(e.currentTarget).direction === 'rtl';
+    const x    = rtl ? rect.right - e.clientX : e.clientX - rect.left;
+    const ratio = Math.min(1, Math.max(0, x / rect.width));
+    audioRef.current.currentTime = ratio * duration;
   }
 
   function changeReader(id) {
     setGlobal({ reader: id });
-    localStorage.setItem('nq_reader', id);
+    savePref('nq_reader', id);
     setShowReaders(false);
     if (state.isPlaying) setTimeout(() => setGlobal({ playTrigger: Date.now() }), 50);
   }
@@ -163,6 +215,7 @@ export default function AudioPlayer() {
   const meta       = SURAHS_META[state.currentSurah - 1];
   const readerObj  = READERS.find(r => r.id === state.reader) || READERS[0];
   const currentMode = MODES.find(m => m.id === mode);
+  const isRtl       = document.documentElement.getAttribute('dir') !== 'ltr';
 
   return (
     <div className={styles.player}>
@@ -171,6 +224,7 @@ export default function AudioPlayer() {
         onEnded={onEnded}
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={onLoadedMetadata}
+        onError={onAudioError}
         /* Allow background playback */
         playsInline
         preload="auto"
@@ -180,7 +234,10 @@ export default function AudioPlayer() {
       <div className={styles.progressWrap} onClick={seekTo}>
         <div className={styles.progressTrack}>
           <div className={styles.progressFill} style={{ width: `${progress}%` }} />
-          <div className={styles.progressThumb} style={{ left: `${progress}%` }} />
+          <div className={styles.progressThumb}
+            style={isRtl
+              ? { right: `${progress}%`, transform: 'translate(50%, -50%)' }
+              : { left: `${progress}%` }} />
         </div>
       </div>
 

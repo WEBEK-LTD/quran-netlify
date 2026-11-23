@@ -1,20 +1,41 @@
 import { useState, useCallback, useEffect } from 'react';
 
+export const DEFAULT_READER = 'Abdul_Basit_Murattal_192kbps';
+
+// Tolerant read: values may be stored as JSON ("26", "true", '{"surah":1}')
+// or as raw strings ("uthmani", "en.sahih") — try JSON first, fall back to raw.
 const getLocal = (key, def) => {
-  try { return JSON.parse(localStorage.getItem(key)) ?? def; } catch { return def; }
+  let raw;
+  try { raw = localStorage.getItem(key); } catch { return def; }
+  if (raw === null || raw === undefined || raw === '') return def;
+  try { return JSON.parse(raw) ?? def; } catch { return raw; }
 };
+
+// Consistent write: strings stored raw, everything else as JSON.
+export function savePref(key, value) {
+  try {
+    localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+  } catch {}
+}
+
+const lastRead = (() => {
+  const v = getLocal('nq_lastRead', null);
+  return v && typeof v === 'object' && v.surah >= 1 && v.surah <= 114
+    ? { surah: v.surah, ayah: v.ayah >= 1 ? v.ayah : 1 }
+    : { surah: 1, ayah: 1 };
+})();
 
 let listeners = [];
 let globalState = {
-  currentSurah:  getLocal('nq_lastRead', { surah: 1, ayah: 1 }).surah,
-  currentAyah:   getLocal('nq_lastRead', { surah: 1, ayah: 1 }).ayah,
-  fontSize:      getLocal('nq_fontSize', 26),
-  fontStyle:     getLocal('nq_fontStyle', 'uthmani'),
+  currentSurah:  lastRead.surah,
+  currentAyah:   lastRead.ayah,
+  fontSize:      Number(getLocal('nq_fontSize', 26)) || 26,
+  fontStyle:     String(getLocal('nq_fontStyle', 'uthmani')),
   darkMode:      getLocal('nq_theme', 'dark') !== 'light',
-  highlightMode: false,
+  highlightMode: getLocal('nq_highlight', false) === true,
   bookmarks:     getLocal('nq_bookmarks', []),
-  reader:        getLocal('nq_reader', 'Abdul_Basit_Murattal_192kbps'),
-  translation:   getLocal('nq_translation', 'none'), // 'none' or edition id
+  reader:        String(getLocal('nq_reader', DEFAULT_READER)),
+  translation:   String(getLocal('nq_translation', 'none')), // 'none' or edition id
   isPlaying:     false,
   audioAyah:     1,
   showAudio:     false,

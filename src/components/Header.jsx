@@ -166,7 +166,7 @@ export default function Header() {
                 <Link to="/ijaza"        className={styles.menuItem} onClick={() => setShowUserMenu(false)}>📜 الإجازة والقراءات</Link>
                 <Link to="/reader"        className={styles.menuItem} onClick={() => setShowUserMenu(false)}>📖 القرآن الكريم</Link>
                 <Link to="/settings" className={styles.menuItem} onClick={() => setShowUserMenu(false)}>⚙️ الإعدادات</Link>
-                <Link to="/welcome"  className={styles.menuItem} onClick={() => { localStorage.removeItem("nq_welcomed"); sessionStorage.removeItem("nq_session_welcomed"); setShowUserMenu(false); }}>✦ الصفحة الرئيسية</Link>
+                <Link to="/"         className={styles.menuItem} onClick={() => setShowUserMenu(false)}>✦ الصفحة الرئيسية</Link>
                 <Link to="/help"     className={styles.menuItem} onClick={() => setShowUserMenu(false)}>📘 شرح الاستخدام</Link>
                 <Link to="/docs"     className={styles.menuItem} onClick={() => setShowUserMenu(false)}>📄 دليل المميزات</Link>
               </>

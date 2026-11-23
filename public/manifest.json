@@ -21,7 +21,7 @@
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "متابعة القراءة", "url": "/", "description": "اقرأ من حيث توقفت" },
+    { "name": "متابعة القراءة", "url": "/reader", "description": "اقرأ من حيث توقفت" },
     { "name": "نظام الحفظ", "url": "/hifz", "description": "تتبع حفظك" }
   ]
 }

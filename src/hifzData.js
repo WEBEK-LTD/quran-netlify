@@ -17,19 +17,30 @@ export const JUZ_DATA = [
 // 60 ahzab total (2 per juz)
 export const HIZB_COUNT = 60;
 
-// ─── SURAH ayah counts (indexed 0-113) ───────────────────────────────────────
+// ─── SURAH ayah counts (indexed 0-113) — Tanzil, 114 surahs, 6236 ayat ─────
 export const SURAH_AYAH_COUNT = [
   7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,110,98,135,
-  112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,
-  59,37,35,38,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,
-  52,44,28,28,20,56,40,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,15,21,11,
-  8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,5,4,5,6
+  112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,
+  54,53,89,59,37,35,38,29,18,45,60,49,62,55,78,96,29,22,24,13,
+  14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,
+  29,19,36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,
+  11,8,3,9,5,4,7,3,6,3,5,4,5,6
 ];
 
 // ─── ACHIEVEMENTS ─────────────────────────────────────────────────────────────
+// stats: { completedSurahs, memorizedAyahs, streak, wardDays, juzAmmaDone }
+
+// جزء عمّ = السور 78–114 — يتحقق فقط عند اكتمال جميعها
+export function isJuzAmmaDone(surahStatus = {}) {
+  for (let s = 78; s <= 114; s++) {
+    if (surahStatus[s] !== 'completed') return false;
+  }
+  return true;
+}
+
 export const ACHIEVEMENTS = [
   { id: 'first_surah',   icon: '🌱', title: 'البداية',        desc: 'احفظ سورة واحدة',          condition: s => s.completedSurahs >= 1 },
-  { id: 'short_surahs',  icon: '⭐', title: 'السور القصيرة',   desc: 'احفظ جزء عمّ (السور 78-114)', condition: s => s.completedSurahs >= 37 },
+  { id: 'short_surahs',  icon: '⭐', title: 'السور القصيرة',   desc: 'احفظ جزء عمّ (السور 78-114)', condition: s => !!s.juzAmmaDone },
   { id: 'five_surahs',   icon: '🌟', title: 'خمس سور',        desc: 'احفظ 5 سور',                condition: s => s.completedSurahs >= 5 },
   { id: 'ten_surahs',    icon: '💫', title: 'عشر سور',        desc: 'احفظ 10 سور',               condition: s => s.completedSurahs >= 10 },
   { id: 'half_quran',    icon: '🏅', title: 'نصف القرآن',     desc: 'احفظ 57 سورة',              condition: s => s.completedSurahs >= 57 },
@@ -43,3 +54,18 @@ export const ACHIEVEMENTS = [
 
 // Total ayahs in Quran
 export const TOTAL_AYAHS = 6236;
+
+// ─── Juz ayah ranges ──────────────────────────────────────────────────────────
+// Returns the per-surah ayah ranges covered by a juz: [{ surah, from, to }]
+export function juzSurahRanges(juzNum) {
+  const row = JUZ_DATA[juzNum - 1];
+  if (!row) return [];
+  const [, s1, a1, s2, a2] = row;
+  const out = [];
+  for (let s = s1; s <= s2; s++) {
+    const from = s === s1 ? a1 : 1;
+    const to   = s === s2 ? a2 : SURAH_AYAH_COUNT[s - 1];
+    out.push({ surah: s, from, to });
+  }
+  return out;
+}

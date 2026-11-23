@@ -612,8 +612,22 @@ export async function deleteAllUserData(userId) {
   // Delete from all user tables (cascade handles most, but explicit for safety)
   const tables = ['bookmarks','notes','reading_progress','reading_sessions',
                   'user_scores','hifz','khatmat','support_tickets'];
+  // Supabase query builders are thenables without .catch() — await each one
+  // and collect per-table failures instead of throwing before any delete runs.
+  const failed = [];
   for (const t of tables) {
-    await sb.from(t).delete().eq('user_id', userId).catch(() => {});
+    try {
+      const { error } = await sb.from(t).delete().eq('user_id', userId);
+      if (error) failed.push({ table: t, message: error.message || String(error) });
+    } catch (e) {
+      failed.push({ table: t, message: e?.message || String(e) });
+    }
+  }
+  if (failed.length) {
+    return {
+      error: 'تعذّر حذف بعض البيانات: ' + failed.map(f => f.table).join('، '),
+      failed,
+    };
   }
   return { error: null };
 }

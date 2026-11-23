@@ -899,7 +899,7 @@ function SupportTab({user, isAdmin, onRead}) {
 // ─── Shared ───────────────────────────────────────────────────────────────────
 function StatCard({icon,label,value,color,delta,sub,onClick}) {
   return (
-    <div className={styles.statCard} style={{'--c':color}}
+    <div className={styles.statCard}
       onClick={onClick} role={onClick?'button':undefined} style={{'--c':color,cursor:onClick?'pointer':'default'}}>
       <div className={styles.statIcon}>{icon}</div>
       <div className={styles.statVal}>{value??'—'}</div>

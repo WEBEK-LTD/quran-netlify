@@ -64,19 +64,33 @@
 }
 .cardinalN { top: 8px; left: 50%; transform: translateX(-50%); color: var(--gold) !important; }
 .cardinalS { bottom: 8px; left: 50%; transform: translateX(-50%); }
-.cardinalE { left: 10px; top: 50%; transform: translateY(-50%); }
-.cardinalW { right: 10px; top: 50%; transform: translateY(-50%); }
+.cardinalE { right: 10px; top: 50%; transform: translateY(-50%); }
+.cardinalW { left: 10px; top: 50%; transform: translateY(-50%); }
 
-/* Tick marks */
+/* Tick marks: each tick is a full-size layer rotated around the dial centre,
+   with the mark drawn at its top edge — works for any dial size. */
 .tick {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+}
+.tick::before {
+  content: '';
   position: absolute;
   left: 50%; top: 0;
   width: 1px; height: 8px;
-  background: var(--border);
-  transform-origin: 50% 150px;
   margin-left: -0.5px;
+  background: var(--border);
 }
-.tickMajor { height: 14px; width: 2px; background: var(--text3); margin-left: -1px; }
+.tickMajor::before { height: 14px; width: 2px; background: var(--text3); margin-left: -1px; }
+
+.sensorNote {
+  max-width: 340px; text-align: center;
+  font-size: 12px; line-height: 1.6; color: var(--text3);
+  padding: 8px 14px; border-radius: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+}
 
 /* Needle */
 .needle {

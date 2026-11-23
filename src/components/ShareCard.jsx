@@ -2,6 +2,15 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { SURAHS_META } from '../data';
 import styles from './ShareCard.module.css';
 
+const THEMES = [
+  { id: 'dark',   bg: '#0f1a12', text: '#e8e8e8', accent: '#c9a84c' },
+  { id: 'gold',   bg: '#1a1200', text: '#f5e6c0', accent: '#e8c97a' },
+  { id: 'green',  bg: '#0a1f14', text: '#d4edda', accent: '#52b788' },
+  { id: 'blue',   bg: '#0d1b2a', text: '#dce8f5', accent: '#60a5fa' },
+  { id: 'cream',  bg: '#faf7f0', text: '#2d2d2d', accent: '#8b6914' },
+];
+
+
 export default function ShareCard() {
   const [ayahData, setAyahData] = useState(null); // { surah, ayah, text }
   const [open, setOpen]         = useState(false);
@@ -20,14 +29,11 @@ export default function ShareCard() {
     return () => window.removeEventListener('shareAyah', handler);
   }, []);
 
-  if (!open || !ayahData) return null;
-
-  const meta = SURAHS_META[ayahData.surah - 1];
-  const ref  = `سورة ${meta?.[0]} — الآية ${ayahData.ayah}`;
-  const full  = `${ayahData.text}\n\n﴾ ${ref} ﴿\n\nنور القرآن`;
+  const t = THEMES.find(x => x.id === theme) || THEMES[0];
 
   // ── Generate image with Canvas ─────────────────────────────────────────────
   const generateImage = useCallback(async () => {
+    if (!ayahData) return null;
     const canvas = document.createElement('canvas');
     const W = 1080, H = 1080;
     canvas.width = W; canvas.height = H;
@@ -92,6 +98,13 @@ export default function ShareCard() {
     return canvas.toDataURL('image/png');
   }, [ayahData, t]);
 
+  // Early return only AFTER all hooks (rules of hooks)
+  if (!open || !ayahData) return null;
+
+  const meta = SURAHS_META[ayahData.surah - 1];
+  const ref  = `سورة ${meta?.[0]} — الآية ${ayahData.ayah}`;
+  const full  = `${ayahData.text}\n\n﴾ ${ref} ﴿\n\nنور القرآن`;
+
   async function downloadImage() {
     const dataUrl = await generateImage();
     const a = document.createElement('a');
@@ -132,15 +145,6 @@ export default function ShareCard() {
   function shareTelegram() {
     window.open(`https://t.me/share/url?text=${encodeURIComponent(full)}`, '_blank');
   }
-
-  const THEMES = [
-    { id: 'dark',   bg: '#0f1a12', text: '#e8e8e8', accent: '#c9a84c' },
-    { id: 'gold',   bg: '#1a1200', text: '#f5e6c0', accent: '#e8c97a' },
-    { id: 'green',  bg: '#0a1f14', text: '#d4edda', accent: '#52b788' },
-    { id: 'blue',   bg: '#0d1b2a', text: '#dce8f5', accent: '#60a5fa' },
-    { id: 'cream',  bg: '#faf7f0', text: '#2d2d2d', accent: '#8b6914' },
-  ];
-  const t = THEMES.find(x => x.id === theme) || THEMES[0];
 
   return (
     <div className={styles.backdrop} onClick={e => e.target === e.currentTarget && setOpen(false)}>

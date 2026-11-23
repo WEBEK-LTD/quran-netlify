@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useStore, setGlobal } from '../store';
 import { useAuth } from '../hooks/useAuth';
 import { SURAHS_META, toArabicNum } from '../data';
@@ -7,91 +8,129 @@ import { incrementUserScore, saveProgress } from '../supabase';
 import TafsirPanel from './TafsirPanel';
 import styles from './Reader.module.css';
 
+// ── Basmala detection ──────────────────────────────────────────────────────
+// Remove Arabic diacritics / Quranic marks / tatweel / BOM and unify alef forms
+// so different editions (uthmani, imlaei) can be compared reliably.
+function normalizeArabic(str) {
+  return String(str || '')
+    .replace(/[\uFEFF\u200B-\u200F]/g, '')
+    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u08D3-\u08FF\u0640]/g, '')
+    .replace(/[\u0622\u0623\u0625\u0671\u0672\u0673]/g, '\u0627');
+}
+const BASMALA_WORDS = ['بسم', 'الله', 'الرحمن', 'الرحيم'];
+
+// Strip the basmala from the start of ayah 1 ONLY if the text really starts with it
+// (alquran.cloud includes it, quran.com does not).
+function stripBasmala(text) {
+  const tokens = String(text || '').trim().split(/\s+/);
+  if (tokens.length <= BASMALA_WORDS.length) return text;
+  const startsWithBasmala = BASMALA_WORDS.every((w, i) => normalizeArabic(tokens[i]) === w);
+  if (!startsWithBasmala) return text;
+  const stripped = tokens.slice(BASMALA_WORDS.length).join(' ').trim();
+  return stripped || text;
+}
+
 export default function Reader() {
   const [state] = useStore();
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [ayahs, setAyahs]               = useState([]);
   const [loading, setLoading]           = useState(true);
+  const [loadedSurah, setLoadedSurah]   = useState(null); // surah whose ayahs are currently rendered
+  const [reloadKey, setReloadKey]       = useState(0);    // bump to force a re-fetch (retry)
   const [highlightedAyah, setHighlightedAyah] = useState(null);
   const [error, setError]               = useState(null);
   const [translations, setTranslations] = useState({});
   const readerRef  = useRef(null);
-  const loadingRef = useRef(false);
-  const loadedFor  = useRef(null);
+  const initDone   = useRef(false);
 
-
-  // Load translation when surah or translation setting changes
+  // Deep links (/reader?surah=X&ayah=Y) + restore last-read position on first mount
   useEffect(() => {
-    if (!state.translation || state.translation === 'none') {
-      setTranslations({});
+    const qs = parseInt(searchParams.get('surah'), 10);
+    if (qs >= 1 && qs <= 114) {
+      const count = SURAHS_META[qs - 1][2];
+      const qa = parseInt(searchParams.get('ayah'), 10);
+      const ayah = qa >= 1 && qa <= count ? qa : 1;
+      initDone.current = true;
+      setGlobal({ currentSurah: qs, currentAyah: ayah, scrollToAyah: ayah });
+      setSearchParams({}, { replace: true }); // clean the URL
       return;
     }
+    if (!initDone.current) {
+      initDone.current = true;
+      // Cold load: scroll to the restored ayah unless a scroll target was already requested
+      if (!state.scrollToAyah && state.currentAyah > 1) {
+        setGlobal({ scrollToAyah: state.currentAyah });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Load translation when surah or translation setting changes (ignore stale responses)
+  useEffect(() => {
+    setTranslations({});
+    if (!state.translation || state.translation === 'none') return;
+    let cancelled = false;
     fetchSurahTranslation(state.currentSurah, state.translation)
       .then(data => {
+        if (cancelled) return;
         const map = {};
         data.forEach(a => { map[a.number] = a.text; });
         setTranslations(map);
       })
       .catch(() => {});
-  }, [state.currentSurah, state.translation]);
+    return () => { cancelled = true; };
+  }, [state.currentSurah, state.translation, reloadKey]);
 
-  // Load surah whenever currentSurah changes
+  // Load surah whenever currentSurah changes (or retry). Stale responses are ignored,
+  // so the latest requested surah always wins.
   useEffect(() => {
     const surah = state.currentSurah;
-    if (loadedFor.current === surah) return;   // already loaded
-    if (loadingRef.current) return;            // already in flight
+    let cancelled = false;
 
-    loadingRef.current = true;
-    loadedFor.current  = surah;
     setLoading(true);
     setAyahs([]);
+    setLoadedSurah(null);
     setError(null);
     setHighlightedAyah(null);
 
     if (readerRef.current) readerRef.current.scrollTop = 0;
-    setTranslations({});
 
     fetchSurahAyahs(surah)
       .then(data => {
-        // Strip bismillah from ayah 1 text — it's shown separately above the ayahs
-        // Surah 1 (Fatiha) and 9 (Tawbah) don't have the separate basmala div,
-        // but Fatiha's first ayah IS the bismillah so we keep it as-is.
-        // For all other surahs, strip the bismillah prefix from ayah 1.
-        const cleaned = data.map(a => {
-          if (a.number === 1 && surah !== 1 && surah !== 9) {
-            // Strip bismillah using unicode-safe approach:
-            // Remove all Arabic letters+diacritics from the start until we pass 4 "words"
-            // (بسم + الله + الرحمن + الرحيم), then keep the rest.
-            // We do this by stripping the first 4 whitespace-separated tokens.
-            const tokens = a.text.split(/\s+/);
-            // Bismillah is always exactly 4 tokens: بِسْمِ  اللَّهِ  الرَّحْمَٰنِ  الرَّحِيمِ
-            const stripped = tokens.slice(4).join(' ').trim();
-            // Safety: if result is empty (edge case), keep original
-            return { ...a, text: stripped || a.text };
-          }
-          return a;
-        });
+        if (cancelled) return;
+        // Surah 1 (Fatiha): its first ayah IS the basmala → keep it.
+        // Surah 9 (Tawbah): no basmala.
+        // Others: basmala is shown separately above, so strip it from ayah 1 if present.
+        const cleaned = data.map(a =>
+          a.number === 1 && surah !== 1 && surah !== 9
+            ? { ...a, text: stripBasmala(a.text) }
+            : a
+        );
         setAyahs(cleaned);
+        setLoadedSurah(surah);
         setLoading(false);
-        loadingRef.current = false;
       })
       .catch(err => {
+        if (cancelled) return;
         console.error('Failed to load surah', err);
         setError('تعذّر تحميل السورة — تحقق من اتصالك بالإنترنت');
         setLoading(false);
-        loadingRef.current = false;
-        loadedFor.current  = null; // allow retry
       });
-  }, [state.currentSurah]);
 
-  // Scroll to a specific ayah when requested
+    return () => { cancelled = true; };
+  }, [state.currentSurah, reloadKey]);
+
+  // Scroll to a specific ayah when requested — only once the requested surah is rendered
   useEffect(() => {
-    if (!state.scrollToAyah || !ayahs.length) return;
-    const el = document.getElementById(`ayah-${state.scrollToAyah}`);
-    if (el) {
-      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200);
-    }
+    if (!state.scrollToAyah || loading || loadedSurah !== state.currentSurah) return;
+    const target = state.scrollToAyah;
+    setTimeout(() => {
+      const el = document.getElementById(`ayah-${target}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 200);
     setGlobal({ scrollToAyah: null });
-  }, [state.scrollToAyah, ayahs]);
+  }, [state.scrollToAyah, state.currentSurah, loadedSurah, loading]);
 
   // Reading progress bar
   const handleScroll = useCallback(() => {
@@ -158,6 +197,7 @@ export default function Reader() {
   const meta       = SURAHS_META[state.currentSurah - 1];
   const hasBasmala = state.currentSurah !== 1 && state.currentSurah !== 9;
   const quranFont  = state.fontStyle === 'uthmani' ? 'var(--font-quran)' : 'var(--font-ui)';
+  const transDir   = /^(ur|fa)\./.test(state.translation || '') ? 'rtl' : 'ltr';
 
   return (
     <main className={styles.reader} ref={readerRef} onScroll={handleScroll}>
@@ -172,7 +212,7 @@ export default function Reader() {
       {error && !loading && (
         <div className={styles.errorBox}>
           <p>⚠️ {error}</p>
-          <button onClick={() => { loadedFor.current = null; setGlobal({ currentSurah: state.currentSurah }); }}>
+          <button onClick={() => setReloadKey(k => k + 1)}>
             إعادة المحاولة
           </button>
         </div>
@@ -222,7 +262,7 @@ export default function Reader() {
                       <span className={styles.ayahMark}> ۝{toArabicNum(ayah.number)}</span>
                     </p>
                     {translations[ayah.number] && (
-                      <p className={styles.translationText}>
+                      <p className={styles.translationText} dir={transDir}>
                         {translations[ayah.number]}
                       </p>
                     )}

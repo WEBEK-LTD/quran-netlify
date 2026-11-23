@@ -1,4 +1,4 @@
-import { useEffect, useRef, lazy, Suspense } from 'react';
+import { useEffect, useRef, lazy, Suspense, Component } from 'react';
 import { useLang, LANGS } from './i18n';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useStore, setGlobal } from './store';
@@ -47,15 +47,25 @@ const AdhkarPage = lazy(() => import('./pages/AdhkarPage'));
 import styles from './App.module.css';
 import { joinPresence } from './supabase';
 
+// Silent boundary for floating extras: if one widget crashes it disappears
+// instead of taking down the whole app (or the other widgets).
+class ExtraBoundary extends Component {
+  constructor(props) { super(props); this.state = { failed: false }; }
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error, info) { console.error('[ExtraBoundary]', error, info); }
+  render() { return this.state.failed ? null : this.props.children; }
+}
+
 function ReaderLayout() {
   return (
     <div className={styles.appRoot}>
-      <div className={styles.progressTrack}>
-        <div id="progressBar" className={styles.progressBar} />
-      </div>
       <div className={styles.stickyTop}>
         <Header />
         <Toolbar />
+        {/* Reading progress — pinned to the bottom edge of the sticky header */}
+        <div className={styles.progressTrack}>
+          <div id="progressBar" className={styles.progressBar} />
+        </div>
       </div>
       <div className={styles.body}>
         <Sidebar />
@@ -163,11 +173,11 @@ export default function App() {
 
       {!hideExtras && (
         <>
-          <AIAssistant />
-          <QuickNoteWidget />
-          <ShareCard />
-          <BottomNav />
-          <Toast />
+          <ExtraBoundary><AIAssistant /></ExtraBoundary>
+          <ExtraBoundary><QuickNoteWidget /></ExtraBoundary>
+          <ExtraBoundary><ShareCard /></ExtraBoundary>
+          <ExtraBoundary><BottomNav /></ExtraBoundary>
+          <ExtraBoundary><Toast /></ExtraBoundary>
         </>
       )}
     </>

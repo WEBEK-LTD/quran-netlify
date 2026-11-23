@@ -11,11 +11,12 @@
 }
 
 .progressTrack {
-  position: fixed;
-  top: 62px; left: 0; right: 0;
+  /* Lives inside .stickyTop (position: sticky) so it is never painted over by it */
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
   height: 2px;
   background: var(--border);
-  z-index: 95;
+  pointer-events: none;
 }
 .progressBar {
   height: 100%;

@@ -2,7 +2,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signOut, updateUserName, updateUserPassword } from '../supabase';
-import { useStore, setGlobal } from '../store';
+import { useStore, setGlobal, savePref } from '../store';
 import { READERS, TRANSLATIONS } from '../data';
 import styles from './SettingsPage.module.css';
 import { useT, useLang, useDir } from '../i18n';
@@ -69,11 +69,12 @@ export default function SettingsPage() {
 
   function saveSetting(key, val) {
     setGlobal({ [key]: val });
-    if (key === 'darkMode')    { document.body.classList.toggle('light', !val); localStorage.setItem('nq_theme', val ? 'dark' : 'light'); }
-    if (key === 'fontSize')    { document.documentElement.style.setProperty('--font-size', val + 'px'); localStorage.setItem('nq_fontSize', val); }
-    if (key === 'fontStyle')   localStorage.setItem('nq_fontStyle', val);
-    if (key === 'reader')      localStorage.setItem('nq_reader', val);
-    if (key === 'translation') localStorage.setItem('nq_translation', val);
+    if (key === 'darkMode')    { document.body.classList.toggle('light', !val); savePref('nq_theme', val ? 'dark' : 'light'); }
+    if (key === 'fontSize')    { document.documentElement.style.setProperty('--font-size', val + 'px'); savePref('nq_fontSize', Number(val)); }
+    if (key === 'fontStyle')   savePref('nq_fontStyle', val);
+    if (key === 'reader')      savePref('nq_reader', val);
+    if (key === 'translation') savePref('nq_translation', val);
+    if (key === 'highlightMode') savePref('nq_highlight', !!val);
     setSaved(true);
     setTimeout(() => setSaved(false), 1800);
   }

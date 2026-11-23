@@ -1,86 +1,95 @@
 // نور القرآن — Service Worker
-// Caches shell + fonts, falls back gracefully for API calls
+// Safe, minimal caching:
+//  - Only same-origin GET requests are ever intercepted.
+//  - Cross-origin (APIs, fonts, audio CDNs), Range requests and audio/video are
+//    left to the browser (intercepting them breaks audio on iOS/Safari).
+//  - Navigations: network-first, offline fallback to the cached /index.html.
+//  - Hashed build assets (/assets/*): cache-first, cached only when the response
+//    is OK and its content-type matches the file type.
 
-const CACHE_NAME = 'noor-quran-v1';
-const FONT_CACHE = 'noor-fonts-v1';
+const CACHE_NAME = 'noor-quran-v2';
+const SHELL_URL  = '/index.html';
 
-// App shell files to cache immediately
-const SHELL = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-];
-
-// Install: cache shell
+// Install: pre-cache the app shell (best effort — never fail the install)
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME)
-      .then(c => c.addAll(SHELL))
+      .then(c => c.addAll([SHELL_URL, '/manifest.json']))
+      .catch(() => {})
       .then(() => self.skipWaiting())
   );
 });
 
-// Activate: remove old caches
+// Activate: remove every cache from older versions (incl. noor-fonts-v1)
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(k => k !== CACHE_NAME && k !== FONT_CACHE)
-          .map(k => caches.delete(k))
-      )
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-// Fetch strategy:
-// - Fonts/icons → Cache first
-// - API calls (alquran.cloud, anthropic, supabase, netlify/functions) → Network only
-// - App shell → Stale while revalidate
+function contentTypeMatches(pathname, res) {
+  const type = (res.headers.get('content-type') || '').toLowerCase();
+  if (pathname.endsWith('.js') || pathname.endsWith('.mjs')) return type.includes('javascript');
+  if (pathname.endsWith('.css')) return type.includes('text/css');
+  if (type.includes('text/html')) return false; // never cache an HTML fallback for an asset
+  return true; // images / fonts / other static files under /assets/
+}
+
 self.addEventListener('fetch', e => {
-  const url = new URL(e.request.url);
+  const req = e.request;
+  if (req.method !== 'GET') return;
 
-  // Skip non-GET
-  if (e.request.method !== 'GET') return;
+  let url;
+  try { url = new URL(req.url); } catch { return; }
 
-  // Fonts → cache first, long-lived
-  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+  // Same-origin only — everything else goes straight to the network
+  if (url.origin !== self.location.origin) return;
+  // Media / partial-content requests must never be intercepted
+  if (req.headers.has('range')) return;
+  if (req.destination === 'audio' || req.destination === 'video') return;
+  // Netlify functions / APIs → browser default
+  if (url.pathname.startsWith('/.netlify/') || url.pathname.startsWith('/api/')) return;
+
+  // Navigations → network-first, offline fallback to cached shell
+  if (req.mode === 'navigate') {
     e.respondWith(
-      caches.open(FONT_CACHE).then(cache =>
-        cache.match(e.request).then(cached =>
-          cached || fetch(e.request).then(res => {
-            cache.put(e.request, res.clone());
-            return res;
-          })
+      fetch(req)
+        .then(res => {
+          const type = (res.headers.get('content-type') || '').toLowerCase();
+          if (res.ok && type.includes('text/html')) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then(c => c.put(SHELL_URL, copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() =>
+          caches.match(SHELL_URL).then(cached => cached || Response.error())
         )
+    );
+    return;
+  }
+
+  // Hashed build assets → cache-first
+  if (url.pathname.startsWith('/assets/')) {
+    e.respondWith(
+      caches.open(CACHE_NAME).then(cache =>
+        cache.match(req).then(cached => {
+          if (cached) return cached;
+          return fetch(req).then(res => {
+            if (res.ok && contentTypeMatches(url.pathname, res)) {
+              cache.put(req, res.clone()).catch(() => {});
+            }
+            return res;
+          });
+        })
       )
     );
     return;
   }
 
-  // External APIs → network only, never cache
-  if (
-    url.hostname.includes('alquran.cloud') ||
-    url.hostname.includes('anthropic.com') ||
-    url.hostname.includes('supabase.co') ||
-    url.hostname.includes('jsdelivr.net') ||
-    url.pathname.startsWith('/.netlify/')
-  ) {
-    return; // browser default
-  }
-
-  // App shell → stale while revalidate
-  e.respondWith(
-    caches.open(CACHE_NAME).then(cache =>
-      cache.match(e.request).then(cached => {
-        const fetchPromise = fetch(e.request).then(res => {
-          if (res.ok) cache.put(e.request, res.clone());
-          return res;
-        }).catch(() => cached); // offline fallback
-        return cached || fetchPromise;
-      })
-    )
-  );
+  // Anything else (icons, manifest, …) → browser default
 });
 
 // Push notification handler (for ward reminders)

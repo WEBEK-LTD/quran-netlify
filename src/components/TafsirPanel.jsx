@@ -17,6 +17,16 @@ const WORD_HINTS = {
   'يَوْمِ': 'اليوم: المراد به يوم القيامة',
 };
 
+// Matches any hinted word (longest first). Used to split the ayah text into
+// plain strings + highlighted spans rendered by React (no raw HTML injection).
+const HINT_RE = new RegExp(
+  '(' + Object.keys(WORD_HINTS)
+    .sort((a, b) => b.length - a.length)
+    .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|') + ')',
+  'g'
+);
+
 const ASBAB_NUZUL = {
   '2:255': 'نزلت هذه الآية (آية الكرسي) في المدينة المنورة، وهي من أعظم آيات القرآن الكريم. روي أنها نزلت ردًا على اليهود الذين سألوا النبي ﷺ عن الله.',
   '1:1':  'فاتحة الكتاب نزلت مكية، وهي أم القرآن وأساس الصلاة. قيل إنها أول ما نزل من القرآن كاملًا.',
@@ -62,21 +72,28 @@ export default function TafsirPanel() {
     setGlobal({ tafsirAyah: next });
   }
 
-  // Detect Quranic words in text
+  // Detect Quranic words in text. API text is rendered as React text nodes
+  // (auto-escaped), so third-party HTML can never run. The CSS class is
+  // :global(.wordHint), so the plain class name is used here.
   function highlightWords(text) {
     if (!text) return text;
-    let result = text;
-    Object.keys(WORD_HINTS).forEach(word => {
-      result = result.split(word).join(
-        `<span class="${styles.wordHint}" title="${WORD_HINTS[word]}">${word}</span>`
-      );
-    });
-    return result;
+    return String(text).split(HINT_RE).map((part, i) =>
+      Object.prototype.hasOwnProperty.call(WORD_HINTS, part)
+        ? <span key={i} className="wordHint" title={WORD_HINTS[part]}>{part}</span>
+        : part
+    );
   }
 
   function close() {
     setGlobal({ showTafsir: false });
   }
+
+  // Close on Escape
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   return (
     <>
@@ -111,10 +128,9 @@ export default function TafsirPanel() {
           {loading ? (
             <div className={styles.textShimmer} />
           ) : (
-            <p
-              className={styles.ayahText}
-              dangerouslySetInnerHTML={{ __html: highlightWords(data?.text || '') }}
-            />
+            <p className={styles.ayahText}>
+              {highlightWords(data?.text || '')}
+            </p>
           )}
           <div className={styles.ayahRef}>{ayahKey}</div>
         </div>

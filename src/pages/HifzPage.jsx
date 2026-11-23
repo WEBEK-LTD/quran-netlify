@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useHifz } from '../hifzStore';
+import { useHifz, localDateStr } from '../hifzStore';
 import { useAuth } from '../hooks/useAuth';
 import { SURAHS_META, toArabicNum } from '../data';
-import { SURAH_AYAH_COUNT, JUZ_DATA, ACHIEVEMENTS, TOTAL_AYAHS } from '../hifzData';
+import { SURAH_AYAH_COUNT, JUZ_DATA, ACHIEVEMENTS, TOTAL_AYAHS, juzSurahRanges } from '../hifzData';
 import { setGlobal } from '../store';
 import styles from './HifzPage.module.css';
 import { useT, useLang, useDir } from '../i18n';
@@ -17,6 +17,37 @@ const STATUS_LABELS = {
 };
 
 const NEXT_STATUS = { none: 'inProgress', inProgress: 'completed', completed: 'review', review: 'none' };
+
+// Advance `n` ayahs from (surah, ayah) across surah boundaries → last ayah of the range
+function advanceAyahs(surah, ayah, n) {
+  let s = surah, a = ayah, left = n - 1;
+  while (left > 0) {
+    const max = SURAH_AYAH_COUNT[s - 1];
+    const room = max - a;
+    if (left <= room) { a += left; left = 0; }
+    else if (s >= 114) { a = max; left = 0; }
+    else { left -= room + 1; s += 1; a = 1; }
+  }
+  return { endSurah: s, endAyah: a };
+}
+
+// Number of ayahs from (s1,a1) to (s2,a2) inclusive
+function countAyahs(s1, a1, s2, a2) {
+  if (s1 === s2) return a2 - a1 + 1;
+  let n = SURAH_AYAH_COUNT[s1 - 1] - a1 + 1;
+  for (let s = s1 + 1; s < s2; s++) n += SURAH_AYAH_COUNT[s - 1];
+  return n + a2;
+}
+
+// Human-readable ward range (handles single-surah and multi-surah wards)
+function wardRangeText(w) {
+  const name = n => SURAHS_META[n - 1]?.[0] || '';
+  const endSurah = w.endSurah || w.surah;
+  if (endSurah === w.surah) {
+    return `سورة ${name(w.surah)}: الآية ${w.startAyah} → ${w.endAyah}`;
+  }
+  return `من ${name(w.surah)} ${w.startAyah} إلى ${name(endSurah)} ${w.endAyah}`;
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -71,12 +102,13 @@ export default function HifzPage() {
   const { user } = useAuth();
   const {
     hifz, setSurahStatus, setDailyWard, markWardDone,
-    completedSurahs, inProgressSurahs, memorizedAyahs, progressPct, todayDone, streak
+    completedSurahs, inProgressSurahs, memorizedAyahs, progressPct, todayDone, streak, bestStreak
   } = useHifz(user?.id);
 
   const [activeTab,  setActiveTab]  = useState('tracker');  // tracker | ward | stats | achievements
   const [viewMode,   setViewMode]   = useState('surahs');   // surahs | juz
-  const [wardForm,   setWardForm]   = useState({ surah: 1, startAyah: 1, endAyah: 7, mode: 'surah' });
+  const [wardForm,   setWardForm]   = useState({ surah: 1, startAyah: 1, endAyah: 7, mode: 'surah', juz: 1, count: 5 });
+  const [wardError,  setWardError]  = useState('');
   const [notification, setNotification] = useState(null);
 
   // Request notification permission
@@ -87,22 +119,36 @@ export default function HifzPage() {
   }, []);
 
   async function requestNotifications() {
-    const perm = await Notification.requestPermission();
+    if (!('Notification' in window)) { setNotification('unsupported'); return; }
+    let perm;
+    try { perm = await Notification.requestPermission(); } catch { perm = Notification.permission; }
     setNotification(perm);
     if (perm === 'granted') {
-      scheduleReminder();
+      await showTestNotification();
     }
   }
 
-  function scheduleReminder() {
-    // Demo: show a notification after 5 seconds as confirmation
-    setTimeout(() => {
-      new Notification('نور القرآن 🌙', {
-        body: 'حان وقت وردك اليومي من القرآن الكريم',
-        icon: '/icon.svg',
-      });
-    }, 3000);
-    setGlobal({ toast: '✅ سيتم تذكيرك بوردك اليومي' });
+  // Shows a single confirmation notification. Android Chrome forbids
+  // `new Notification()` — use the service worker registration when available.
+  // NOTE: no daily schedule exists yet; we only confirm notifications work.
+  async function showTestNotification() {
+    const title = 'نور القرآن 🌙';
+    const opts  = { body: 'تم تفعيل الإشعارات — تذكّر وردك اليومي من القرآن الكريم', icon: '/icon.svg' };
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise(r => setTimeout(() => r(null), 3000)),
+        ]);
+        if (reg?.showNotification) { await reg.showNotification(title, opts); }
+        else { new Notification(title, opts); }
+      } else {
+        new Notification(title, opts);
+      }
+      setGlobal({ toast: '✅ تم تفعيل الإشعارات على هذا الجهاز' });
+    } catch {
+      setGlobal({ toast: '⚠️ تعذّر عرض الإشعار على هذا المتصفح' });
+    }
   }
 
   function handleSurahStatusClick(surahNum) {
@@ -111,34 +157,79 @@ export default function HifzPage() {
   }
 
   function saveWard() {
-    const s = wardForm.surah;
-    const ayahCount = wardForm.endAyah - wardForm.startAyah + 1;
-    setDailyWard({
-      surah: s, startAyah: wardForm.startAyah,
-      endAyah: wardForm.endAyah, ayahCount,
-    });
+    setWardError('');
+    const mode = wardForm.mode;
+    let ward;
+
+    if (mode === 'juz') {
+      const juz = parseInt(wardForm.juz, 10);
+      const row = JUZ_DATA[juz - 1];
+      if (!row) { setWardError('اختر جزءاً صحيحاً (1–30)'); return; }
+      const [, s1, a1, s2, a2] = row;
+      ward = { mode: 'juz', juz, surah: s1, startAyah: a1, endSurah: s2, endAyah: a2,
+               ayahCount: countAyahs(s1, a1, s2, a2) };
+    } else {
+      const s1  = parseInt(wardForm.surah, 10);
+      const max = SURAH_AYAH_COUNT[s1 - 1];
+      const a1  = parseInt(wardForm.startAyah, 10);
+      if (!max) { setWardError('اختر سورة صحيحة'); return; }
+      if (!Number.isFinite(a1) || a1 < 1 || a1 > max) {
+        setWardError(`آية البداية يجب أن تكون بين 1 و ${max}`); return;
+      }
+      if (mode === 'ayahs') {
+        const n = parseInt(wardForm.count, 10);
+        if (!Number.isFinite(n) || n < 1 || n > 50) { setWardError('عدد الآيات يجب أن يكون بين 1 و 50'); return; }
+        const { endSurah, endAyah } = advanceAyahs(s1, a1, n);
+        ward = { mode: 'ayahs', surah: s1, startAyah: a1, endSurah, endAyah,
+                 ayahCount: countAyahs(s1, a1, endSurah, endAyah) };
+      } else {
+        const a2 = parseInt(wardForm.endAyah, 10);
+        if (!Number.isFinite(a2) || a2 < a1 || a2 > max) {
+          setWardError(`آية النهاية يجب أن تكون بين ${a1} و ${max}`); return;
+        }
+        ward = { mode: 'surah', surah: s1, startAyah: a1, endSurah: s1, endAyah: a2, ayahCount: a2 - a1 + 1 };
+      }
+    }
+
+    setDailyWard(ward);
     setGlobal({ toast: '✅ تم تحديد وردك اليومي' });
   }
 
+  function setWardField(field, raw) {
+    const v = parseInt(raw, 10);
+    setWardError('');
+    setWardForm(w => ({ ...w, [field]: Number.isFinite(v) ? v : '' }));
+  }
+
   const surahMax = SURAH_AYAH_COUNT[wardForm.surah - 1] || 7;
+  const wardSurahCount = wardForm.endAyah - wardForm.startAyah + 1;
+  const juzPreview = (() => {
+    const row = JUZ_DATA[(wardForm.juz || 1) - 1];
+    if (!row) return null;
+    const [, s1, a1, s2, a2] = row;
+    return { surah: s1, startAyah: a1, endSurah: s2, endAyah: a2, ayahCount: countAyahs(s1, a1, s2, a2) };
+  })();
 
   // Ward history chart (last 14 days)
   const last14 = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (13 - i));
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = localDateStr(d);
     const rec = hifz.wardHistory?.find(h => h.date === dateStr);
     return { dateStr, completed: !!rec?.completed, ayahs: rec?.wardAyahs || 0 };
   });
 
   // Stats
-  const juzProgress = JUZ_DATA.map(([juz, s1, a1, s2, a2]) => {
-    // Rough: count completed surahs that fall in this juz range
+  // Per-juz progress by ayah ranges: ayahs of completed surahs that fall
+  // inside the juz ÷ total ayahs of the juz
+  const juzProgress = JUZ_DATA.map(([juz]) => {
     let done = 0, total = 0;
-    for (let s = s1; s <= s2; s++) {
-      total++;
-      if (hifz.surahStatus[s] === 'completed') done++;
+    for (const { surah, from, to } of juzSurahRanges(juz)) {
+      const n = to - from + 1;
+      total += n;
+      if (hifz.surahStatus[surah] === 'completed') done += n;
     }
-    return { juz, done, total, pct: total ? Math.round((done / total) * 100) : 0 };
+    const pct = total ? Math.floor((done / total) * 100) : 0;
+    return { juz, done, total, pct: done === total && total ? 100 : pct };
   });
 
   return (
@@ -177,8 +268,8 @@ export default function HifzPage() {
         {hifz.dailyWard && (
           <div className={styles.wardStatus}>
             <div className={styles.wardInfo}>
-              <span>الورد اليومي: سورة {SURAHS_META[hifz.dailyWard.surah - 1][0]}</span>
-              <small>الآية {hifz.dailyWard.startAyah} → {hifz.dailyWard.endAyah} ({hifz.dailyWard.ayahCount} آية)</small>
+              <span>الورد اليومي: {hifz.dailyWard.mode === 'juz' ? `الجزء ${toArabicNum(hifz.dailyWard.juz)}` : `سورة ${SURAHS_META[hifz.dailyWard.surah - 1]?.[0] || ''}`}</span>
+              <small>{wardRangeText(hifz.dailyWard)} ({hifz.dailyWard.ayahCount} آية)</small>
             </div>
             <button
               className={`${styles.wardDoneBtn} ${todayDone ? styles.wardDoneDone : ''}`}
@@ -194,7 +285,7 @@ export default function HifzPage() {
       {/* Notification banner */}
       {notification === 'default' && (
         <div className={styles.notifBanner}>
-          <span>🔔 فعّل الإشعارات لتذكيرات الورد اليومي</span>
+          <span>🔔 فعّل الإشعارات على هذا الجهاز (التذكير اليومي التلقائي غير متاح بعد)</span>
           <button onClick={requestNotifications}>تفعيل</button>
         </div>
       )}
@@ -225,7 +316,7 @@ export default function HifzPage() {
               <button className={`${styles.vtBtn} ${viewMode === 'juz' ? styles.vtActive : ''}`}
                 onClick={() => setViewMode('juz')}>{t('juz_view')}</button>
               <button
-                className={`${styles.viewBtn} ${viewMode === 'map' ? styles.viewBtnActive : ''}`}
+                className={`${styles.vtBtn} ${viewMode === 'map' ? styles.vtActive : ''}`}
                 onClick={() => setViewMode('map')}>🗺 خريطة</button>
             </div>
             <div className={styles.legend}>
@@ -262,6 +353,45 @@ export default function HifzPage() {
                 );
               })}
             </div>
+          ) : viewMode === 'map' ? (
+            /* خريطة الحفظ البصرية */
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(52px,1fr))', gap:4, direction:'rtl' }}>
+            {Array.from({ length: 114 }, (_, i) => {
+              const num = i + 1;
+              const status = hifz.surahStatus[num] || 'none';
+              const clr = { none:'transparent', inProgress:'#c9a84c', completed:'#52b788', review:'#60a5fa' }[status];
+              return (
+                <button key={num}
+                  title={SURAHS_META[i][0]}
+                  onClick={() => setSurahStatus(num,
+                    status==='none'?'inProgress':status==='inProgress'?'completed':status==='completed'?'review':'none')}
+                  style={{
+                    padding:'6px 2px', borderRadius:8, cursor:'pointer',
+                    border:'1px solid ' + (status==='none'?'var(--border)':clr),
+                    background: status==='none'?'var(--surface)': clr+'22',
+                    display:'flex', flexDirection:'column', alignItems:'center', gap:2, transition:'all .2s',
+                  }}>
+                  <span style={{fontSize:9,color:'var(--text3)'}}>{num}</span>
+                  <span style={{fontSize:8,fontWeight:700,color:status==='none'?'var(--text3)':clr,lineHeight:1.2,textAlign:'center'}}>
+                    {SURAHS_META[i][0].slice(0,5)}
+                  </span>
+                  <span style={{fontSize:10}}>
+                    {status==='completed'?'✓':status==='inProgress'?'◑':status==='review'?'↺':''}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{display:'flex',gap:12,marginTop:14,flexWrap:'wrap',fontSize:12,color:'var(--text3)'}}>
+            {[['var(--border)','لم يبدأ'],['#c9a84c','قيد الحفظ'],['#52b788','محفوظ'],['#60a5fa','للمراجعة']].map(([clr,lbl])=>(
+              <span key={lbl} style={{display:'flex',alignItems:'center',gap:5}}>
+                <span style={{width:12,height:12,borderRadius:3,background:clr+'44',border:`1px solid ${clr}`,display:'inline-block'}}/>
+                {lbl}
+              </span>
+            ))}
+          </div>
+        </div>
           ) : (
             <div className={styles.juzList}>
               {juzProgress.map(({ juz, done, total, pct }) => (
@@ -273,7 +403,7 @@ export default function HifzPage() {
                   <div className={styles.juzInfo}>
                     <div className={styles.juzHeader}>
                       <span>الجزء {toArabicNum(juz)}</span>
-                      <span className={styles.juzPct}>{done}/{total} سورة</span>
+                      <span className={styles.juzPct}>{done}/{total} آية</span>
                     </div>
                     <MiniBar pct={pct}
                       color={pct === 100 ? 'var(--green3)' : pct > 0 ? 'var(--gold)' : 'var(--border)'} />
@@ -307,13 +437,14 @@ export default function HifzPage() {
               ))}
             </div>
 
-            {wardForm.mode === 'surah' && (
+            {(wardForm.mode === 'surah' || wardForm.mode === 'ayahs') && (
               <div className={styles.wardFields}>
                 <div className={styles.wardField}>
-                  <label>السورة</label>
+                  <label>{wardForm.mode === 'ayahs' ? 'البداية من سورة' : 'السورة'}</label>
                   <select value={wardForm.surah}
                     onChange={e => {
-                      const s = parseInt(e.target.value);
+                      const s = parseInt(e.target.value, 10);
+                      setWardError('');
                       setWardForm(w => ({ ...w, surah: s, startAyah: 1, endAyah: SURAH_AYAH_COUNT[s-1] }));
                     }}>
                     {SURAHS_META.map((m, i) => (
@@ -326,19 +457,23 @@ export default function HifzPage() {
                     <label>من الآية</label>
                     <input type="number" min="1" max={surahMax}
                       value={wardForm.startAyah}
-                      onChange={e => setWardForm(w => ({ ...w, startAyah: parseInt(e.target.value) }))} />
+                      onChange={e => setWardField('startAyah', e.target.value)} />
                   </div>
-                  <div className={styles.wardField}>
-                    <label>إلى الآية</label>
-                    <input type="number" min={wardForm.startAyah} max={surahMax}
-                      value={wardForm.endAyah}
-                      onChange={e => setWardForm(w => ({ ...w, endAyah: parseInt(e.target.value) }))} />
+                  {wardForm.mode === 'surah' && (
+                    <div className={styles.wardField}>
+                      <label>إلى الآية</label>
+                      <input type="number" min={wardForm.startAyah || 1} max={surahMax}
+                        value={wardForm.endAyah}
+                        onChange={e => setWardField('endAyah', e.target.value)} />
+                    </div>
+                  )}
+                </div>
+                {wardForm.mode === 'surah' && (
+                  <div className={styles.wardSummary}>
+                    عدد الآيات: <strong>{Number.isFinite(wardSurahCount) ? Math.max(0, wardSurahCount) : 0} آية</strong>
+                    {' '}من سورة {SURAHS_META[wardForm.surah-1][0]}
                   </div>
-                </div>
-                <div className={styles.wardSummary}>
-                  عدد الآيات: <strong>{Math.max(0, wardForm.endAyah - wardForm.startAyah + 1)} آية</strong>
-                  {' '}من سورة {SURAHS_META[wardForm.surah-1][0]}
-                </div>
+                )}
               </div>
             )}
 
@@ -346,13 +481,18 @@ export default function HifzPage() {
               <div className={styles.wardFields}>
                 <div className={styles.wardField}>
                   <label>الجزء</label>
-                  <select value={wardForm.surah}
-                    onChange={e => setWardForm(w => ({ ...w, surah: parseInt(e.target.value) }))}>
+                  <select value={wardForm.juz}
+                    onChange={e => { setWardError(''); setWardForm(w => ({ ...w, juz: parseInt(e.target.value, 10) })); }}>
                     {Array.from({ length: 30 }, (_, i) => (
                       <option key={i+1} value={i+1}>الجزء {toArabicNum(i+1)}</option>
                     ))}
                   </select>
                 </div>
+                {juzPreview && (
+                  <div className={styles.wardSummary}>
+                    {wardRangeText(juzPreview)} — <strong>{juzPreview.ayahCount} آية</strong>
+                  </div>
+                )}
                 <div className={styles.wardSummary}>
                   حفظ ربع جزء يومياً يُكمل القرآن في 4 أشهر 🎯
                 </div>
@@ -360,27 +500,33 @@ export default function HifzPage() {
             )}
 
             {wardForm.mode === 'ayahs' && (
-              <div className={styles.wardFields}>
+              <div className={styles.wardFields} style={{ marginTop: 14 }}>
                 <div className={styles.wardField}>
                   <label>عدد الآيات يومياً</label>
                   <input type="number" min="1" max="50"
-                    value={wardForm.endAyah}
-                    onChange={e => setWardForm(w => ({ ...w, endAyah: parseInt(e.target.value) }))} />
+                    value={wardForm.count}
+                    onChange={e => setWardField('count', e.target.value)} />
                 </div>
                 <div className={styles.wardSuggestions}>
                   {[3, 5, 10, 20].map(n => (
                     <button key={n}
-                      className={`${styles.suggBtn} ${wardForm.endAyah === n ? styles.suggActive : ''}`}
-                      onClick={() => setWardForm(w => ({ ...w, endAyah: n }))}>
+                      className={`${styles.suggBtn} ${wardForm.count === n ? styles.suggActive : ''}`}
+                      onClick={() => { setWardError(''); setWardForm(w => ({ ...w, count: n })); }}>
                       {n} آيات
                     </button>
                   ))}
                 </div>
-                <div className={styles.wardSummary}>
-                  بـ {wardForm.endAyah} آيات يومياً ستُنهي القرآن في{' '}
-                  <strong>{Math.ceil(6236 / wardForm.endAyah)} يوم</strong>
-                </div>
+                {wardForm.count >= 1 && (
+                  <div className={styles.wardSummary}>
+                    بـ {wardForm.count} آيات يومياً ستُنهي القرآن في{' '}
+                    <strong>{Math.ceil(TOTAL_AYAHS / wardForm.count)} يوم</strong>
+                  </div>
+                )}
               </div>
+            )}
+
+            {wardError && (
+              <div className={styles.wardError} role="alert">⚠️ {wardError}</div>
             )}
 
             <button className={styles.saveWardBtn} onClick={saveWard}>
@@ -446,7 +592,7 @@ export default function HifzPage() {
             </div>
             <div className={styles.statsSummaryCard}>
               <div className={styles.ssIcon}>🔥</div>
-              <div className={styles.ssVal}>{streak}</div>
+              <div className={styles.ssVal}>{bestStreak}</div>
               <div className={styles.ssLbl}>أيام متواصلة</div>
               <div className={styles.ssSub}>أفضل انجاز لك</div>
             </div>
@@ -457,48 +603,6 @@ export default function HifzPage() {
               <div className={styles.ssSub}>من القرآن الكريم</div>
             </div>
           </div>
-
-      {/* خريطة الحفظ البصرية */}
-      {viewMode === 'map' && (
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(52px,1fr))', gap:4, direction:'rtl' }}>
-            {Array.from({ length: 114 }, (_, i) => {
-              const num = i + 1;
-              const status = hifz.surahStatus[num] || 'none';
-              const clr = { none:'transparent', inProgress:'#c9a84c', completed:'#52b788', review:'#60a5fa' }[status];
-              return (
-                <button key={num}
-                  title={SURAHS_META[i][0]}
-                  onClick={() => setSurahStatus(num,
-                    status==='none'?'inProgress':status==='inProgress'?'completed':status==='completed'?'review':'none')}
-                  style={{
-                    padding:'6px 2px', borderRadius:8, cursor:'pointer',
-                    border:'1px solid ' + (status==='none'?'var(--border)':clr),
-                    background: status==='none'?'var(--surface)': clr+'22',
-                    display:'flex', flexDirection:'column', alignItems:'center', gap:2, transition:'all .2s',
-                  }}>
-                  <span style={{fontSize:9,color:'var(--text3)'}}>{num}</span>
-                  <span style={{fontSize:8,fontWeight:700,color:status==='none'?'var(--text3)':clr,lineHeight:1.2,textAlign:'center'}}>
-                    {SURAHS_META[i][0].slice(0,5)}
-                  </span>
-                  <span style={{fontSize:10}}>
-                    {status==='completed'?'✓':status==='inProgress'?'◑':status==='review'?'↺':''}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <div style={{display:'flex',gap:12,marginTop:14,flexWrap:'wrap',fontSize:12,color:'var(--text3)'}}>
-            {[['var(--border)','لم يبدأ'],['#c9a84c','قيد الحفظ'],['#52b788','محفوظ'],['#60a5fa','للمراجعة']].map(([clr,lbl])=>(
-              <span key={lbl} style={{display:'flex',alignItems:'center',gap:5}}>
-                <span style={{width:12,height:12,borderRadius:3,background:clr+'44',border:`1px solid ${clr}`,display:'inline-block'}}/>
-                {lbl}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
 
           {/* Juz breakdown */}
           <div className={styles.statsCard}>

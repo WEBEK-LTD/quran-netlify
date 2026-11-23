@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './TasbihPage.module.css';
 
@@ -20,7 +20,29 @@ function toAr(n) {
 function loadState() {
   try { return JSON.parse(localStorage.getItem('nq_tasbih') || '{}'); } catch { return {}; }
 }
-function saveState(s) { localStorage.setItem('nq_tasbih', JSON.stringify(s)); }
+function saveState(s) { try { localStorage.setItem('nq_tasbih', JSON.stringify(s)); } catch {} }
+
+// تاريخ اليوم بالتوقيت المحلي (وليس UTC)
+function localDay(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function loadTargets() {
+  const defaults = Object.fromEntries(PRESETS.map(p => [p.id, p.target]));
+  try {
+    const saved = JSON.parse(localStorage.getItem('nq_tasbih_targets') || '{}');
+    for (const k of Object.keys(saved)) if (Number(saved[k]) > 0) defaults[k] = Number(saved[k]);
+  } catch {}
+  return defaults;
+}
+
+function loadTodayTaps() {
+  try {
+    const t = JSON.parse(localStorage.getItem('nq_tasbih_today') || 'null');
+    if (t && t.date === localDay()) return Number(t.taps) || 0;
+  } catch {}
+  return 0;
+}
 
 export default function TasbihPage() {
   const [activeId,  setActiveId]  = useState('subhan');
@@ -29,66 +51,95 @@ export default function TasbihPage() {
     try { return JSON.parse(localStorage.getItem('nq_tasbih_sessions') || '[]'); } catch { return []; }
   });
   const [vibrate,   setVibrate]   = useState(() => localStorage.getItem('nq_tasbih_vib') !== 'off');
-  const [customText,setCustomText]= useState('');
+  const [customText,setCustomText]= useState(() => { try { return localStorage.getItem('nq_tasbih_custom') || ''; } catch { return ''; } });
+  const [targets,   setTargets]   = useState(loadTargets);
+  const [todayTaps, setTodayTaps] = useState(loadTodayTaps);
+  const countsRef = useRef(counts);
+  const tapsRef   = useRef({ date: localDay(), taps: todayTaps });
   const [editCustom,setEditCustom]= useState(false);
   const [flash,     setFlash]     = useState(false);
   const [rings,     setRings]     = useState(0); // times target reached
 
   const preset = PRESETS.find(p => p.id === activeId) || PRESETS[0];
   const count   = counts[activeId] || 0;
-  const target  = preset.target;
+  const target  = targets[activeId] || preset.target;
   const pct     = Math.min(100, Math.round((count % (target || 1)) / (target || 1) * 100));
   const completed = Math.floor(count / target);
 
   // ── Count ──────────────────────────────────────────────────────────────────
+  // التحديث خارج دالة setState حتى لا تتكرر الآثار الجانبية (StrictMode)
   const increment = useCallback(() => {
-    setCounts(prev => {
-      const next = { ...prev, [activeId]: (prev[activeId] || 0) + 1 };
-      saveState(next);
-      const newCount = next[activeId];
-      // Reached target?
-      if (newCount % target === 0) {
-        setFlash(true);
-        setTimeout(() => setFlash(false), 600);
-        setRings(r => r + 1);
-        // Save session
-        const session = {
-          id: Date.now(),
-          preset: preset.label,
-          count: target,
-          date: new Date().toISOString().split('T')[0],
-          time: new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }),
-        };
-        setSessions(prev2 => {
-          const next2 = [session, ...prev2].slice(0, 50);
-          localStorage.setItem('nq_tasbih_sessions', JSON.stringify(next2));
-          return next2;
-        });
-      }
-      return next;
-    });
+    const prev = countsRef.current;
+    const newCount = (prev[activeId] || 0) + 1;
+    const next = { ...prev, [activeId]: newCount };
+    countsRef.current = next;
+    setCounts(next);
+    saveState(next);
+
+    // كل ضغطة تُحسب في "تسبيحات اليوم"
+    const today = localDay();
+    const tp = tapsRef.current.date === today ? tapsRef.current.taps + 1 : 1;
+    tapsRef.current = { date: today, taps: tp };
+    setTodayTaps(tp);
+    try { localStorage.setItem('nq_tasbih_today', JSON.stringify(tapsRef.current)); } catch {}
+
+    // Reached target?
+    if (newCount % target === 0) {
+      setFlash(true);
+      setTimeout(() => setFlash(false), 600);
+      setRings(r => r + 1);
+      const label = activeId === 'custom' ? (customText.trim() || preset.label) : preset.label;
+      const session = {
+        id: Date.now(),
+        preset: label,
+        count: target,
+        date: today,
+        time: new Date().toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }),
+      };
+      setSessions(prev2 => {
+        const next2 = [session, ...prev2].slice(0, 50);
+        try { localStorage.setItem('nq_tasbih_sessions', JSON.stringify(next2)); } catch {}
+        return next2;
+      });
+    }
     // Vibrate
-    if (vibrate && navigator.vibrate) navigator.vibrate(30);
-  }, [activeId, target, preset.label, vibrate]);
+    if (vibrate && navigator.vibrate) { try { navigator.vibrate(30); } catch {} }
+  }, [activeId, target, preset.label, vibrate, customText]);
 
   // Keyboard & swipe support
   useEffect(() => {
     const handler = (e) => {
-      if (e.code === 'Space' || e.code === 'Enter') {
-        e.preventDefault(); increment();
-      }
+      if (e.code !== 'Space' && e.code !== 'Enter' && e.code !== 'NumpadEnter') return;
+      // لا نعترض الكتابة في الحقول ولا تفعيل الأزرار بلوحة المفاتيح
+      const el = e.target;
+      const tag = el && el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || tag === 'A' || (el && el.isContentEditable)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      e.preventDefault(); increment();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [increment]);
 
   function reset() {
-    setCounts(prev => {
-      const next = { ...prev, [activeId]: 0 };
-      saveState(next);
+    const next = { ...countsRef.current, [activeId]: 0 };
+    countsRef.current = next;
+    setCounts(next);
+    saveState(next);
+    setRings(0);
+  }
+
+  function setTarget(t) {
+    setTargets(prev => {
+      const next = { ...prev, [activeId]: t };
+      try { localStorage.setItem('nq_tasbih_targets', JSON.stringify(next)); } catch {}
       return next;
     });
-    setRings(0);
+  }
+
+  function updateCustomText(v) {
+    setCustomText(v);
+    try { localStorage.setItem('nq_tasbih_custom', v); } catch {}
   }
 
   function switchPreset(id) {
@@ -96,9 +147,9 @@ export default function TasbihPage() {
     setRings(0);
   }
 
-  const totalToday = sessions
-    .filter(s => s.date === new Date().toISOString().split('T')[0])
-    .reduce((sum, s) => sum + s.count, 0);
+  const todayStr = localDay();
+  const totalToday = tapsRef.current.date === todayStr ? todayTaps : 0;
+  const sessionsToday = sessions.filter(s => s.date === todayStr).length;
 
   return (
     <div className={styles.page}>
@@ -119,7 +170,7 @@ export default function TasbihPage() {
           <div className={styles.statLabel}>تسبيحات اليوم</div>
         </div>
         <div className={styles.statBox}>
-          <div className={styles.statVal}>{toAr(sessions.filter(s => s.date === new Date().toISOString().split('T')[0]).length)}</div>
+          <div className={styles.statVal}>{toAr(sessionsToday)}</div>
           <div className={styles.statLabel}>جلسات اليوم</div>
         </div>
         <div className={styles.statBox}>
@@ -145,7 +196,7 @@ export default function TasbihPage() {
         <div className={styles.customWrap}>
           <input className={styles.customInput}
             value={customText}
-            onChange={e => setCustomText(e.target.value)}
+            onChange={e => updateCustomText(e.target.value)}
             placeholder="اكتب ذكرك المخصص..."
             dir="rtl" />
         </div>
@@ -204,11 +255,7 @@ export default function TasbihPage() {
             <button key={t}
               className={`${styles.targetBtn} ${target === t ? styles.targetActive : ''}`}
               style={{ '--pc': preset.color }}
-              onClick={() => {
-                const idx = PRESETS.findIndex(p => p.id === activeId);
-                if (idx !== -1) PRESETS[idx].target = t;
-                setCounts(c => ({ ...c })); // force re-render
-              }}>
+              onClick={() => setTarget(t)}>
               {toAr(t)}
             </button>
           ))}
