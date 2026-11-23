@@ -45,7 +45,7 @@ LiveKit ──https──▶ https://api.nuralquran.net/v1/livekit/webhook  (م�
    ```bash
    cd /root/livekit-deploy && bash install.sh
    ```
-   يقوم السكربت بـ: تنزيل LiveKit ‏(v1.8.4) و Caddy ‏(v2.10.0) بإصدارات مثبّتة والتحقق من **checksums** المنشورة لكل
+   يقوم السكربت بـ: تنزيل LiveKit ‏(v1.13.11) و Caddy ‏(v2.10.0) بإصدارات مثبّتة والتحقق من **checksums** المنشورة لكل
    ملف (ويطبع SHA-256 لتحفظه وتثبّته لاحقاً: `LIVEKIT_SHA256=… bash install.sh`)، إنشاء مستخدم نظام `livekit`،
    **توليد مفتاح وسر LiveKit** في `/etc/livekit/keys.yaml` ‏(0600، لا يوضع في git أبداً)، نسخ شهادة AutoSSL،
    فتح المنافذ في CSF أو firewalld، وتشغيل الخدمات `livekit` و `caddy-rtc` ومؤقّت تجديد الشهادة.
@@ -150,7 +150,7 @@ The UDP range is 10 001 ports (not 1 001) because each participant uses two peer
 2. **Subdomain + certificate:** cPanel *Domains* → create `rtc.nuralquran.net` (empty docroot) → *SSL/TLS Status* →
    *Run AutoSSL* until it is green. Keep the subdomain: it is what lets AutoSSL renew the certificate.
 3. **Upload** this folder (e.g. `/root/livekit-deploy`).
-4. **Install** as root (WHM → *Terminal*): `bash install.sh`. It downloads the pinned LiveKit **v1.8.4** and Caddy
+4. **Install** as root (WHM → *Terminal*): `bash install.sh`. It downloads the pinned LiveKit **v1.13.11** and Caddy
    **v2.10.0** release archives over https, verifies each against the release's published checksums (and against
    `LIVEKIT_SHA256` if you pin it — the script prints the hash to record), creates the `livekit` system user,
    **generates the API key/secret** into `/etc/livekit/keys.yaml` (0600 — never in git), copies the AutoSSL certificate,

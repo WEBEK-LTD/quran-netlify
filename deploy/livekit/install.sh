@@ -5,7 +5,7 @@
 # See README.md for the steps before (DNS, rtc subdomain, AutoSSL) and after (admin Integrations, cron).
 set -euo pipefail
 
-LIVEKIT_VERSION="${LIVEKIT_VERSION:-1.8.4}"   # pinned: github.com/livekit/livekit/releases
+LIVEKIT_VERSION="${LIVEKIT_VERSION:-1.13.11}"   # pinned: github.com/livekit/livekit/releases
 CADDY_VERSION="${CADDY_VERSION:-2.10.0}"      # pinned: github.com/caddyserver/caddy/releases
 DOMAIN="${DOMAIN:-rtc.nuralquran.net}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
