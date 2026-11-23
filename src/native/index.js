@@ -40,10 +40,11 @@ export async function initNative() {
   // drop the splash onto the painted first screen (src/native/NativeShell.jsx), never onto a blank page
   await firstScreen(2500);
   SplashScreen.hide({ fadeOutDuration: 200 }).catch(() => {});
-  // background work after the first screen is up, so it never competes with it
+  // after the first screen: the adhan listeners (a tapped notification is retained
+  // until they attach) and re-planning, then the rest when the main thread is idle
+  step('adhan', initAdhan);
   afterIdle(() => {
     step('sw', unregisterServiceWorkers);
-    step('adhan', initAdhan);
     step('push', initPush);
   });
 }

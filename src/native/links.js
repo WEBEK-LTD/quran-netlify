@@ -82,11 +82,33 @@ export async function initLinks() {
     if (launch && launch.url) handleUrl(launch.url);
   } catch {}
 
-  // Android hardware/gesture back: close the adhan screen first, then history, then leave.
+  // Android hardware/gesture back, in this order:
+  //   1. a screen that handles it itself (adhan screen, permission dialogs, room sheets) — `nq-native-back`
+  //   2. any other open sheet / drawer / dialog closes (as with Esc)
+  //   3. back in history; a screen opened directly (deep link, notification) goes to the home screen
+  //   4. on the home screen: leave the app (moved to the background, like Android's own back on a
+  //      launcher screen — a recitation or the radio keeps playing; App.exitApp would cut it off)
   App.addListener('backButton', ({ canGoBack }) => {
     const ev = new CustomEvent('nq-native-back', { cancelable: true });
     if (!window.dispatchEvent(ev)) return;           // someone (an overlay) handled it
-    if (canGoBack && window.location.pathname !== '/') window.history.back();
-    else App.minimizeApp().catch(() => {});
+    if (closeTopLayer()) return;
+    if (window.location.pathname === '/') { App.minimizeApp().catch(() => {}); return; }
+    if (canGoBack) window.history.back();
+    else navigate('/', { replace: true });
   });
+}
+
+// An open modal layer that didn't listen for `nq-native-back`: ask it to close the way
+// every one of them already supports — the Escape key. If the same layer is still
+// there at the next press (it ignores Escape), back goes on to navigate instead.
+let triedLayer = null;
+function closeTopLayer() {
+  const layers = [...document.querySelectorAll('[aria-modal="true"], .nq-overlay, [role="dialog"]')]
+    .filter(el => el.isConnected && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
+  const top = layers[layers.length - 1];
+  if (!top || top === triedLayer) { triedLayer = null; return false; }
+  triedLayer = top;
+  const target = document.activeElement && document.activeElement !== document.body ? document.activeElement : document;
+  target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, bubbles: true, cancelable: true }));
+  return true;
 }

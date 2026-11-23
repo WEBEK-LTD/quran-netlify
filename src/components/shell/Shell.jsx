@@ -250,7 +250,10 @@ export function CommandPalette() {
       if (e.key === 'Escape' && ui.overlay) closeOverlays();
     }
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    // app: the Android back button closes the open menu / drawer / search first
+    function onBack(e) { if (ui.overlay) { e.preventDefault(); closeOverlays(); } }
+    window.addEventListener('nq-native-back', onBack);
+    return () => { document.removeEventListener('keydown', onKey); window.removeEventListener('nq-native-back', onBack); };
   }, []);
   useEffect(() => { if (open) { setQ(''); setIdx(0); setTimeout(() => inputRef.current?.focus(), 30); } }, [open]);
 

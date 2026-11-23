@@ -3,10 +3,10 @@
 // The surah text and the chosen tafsir are fetched once per surah (and kept), so
 // moving to the next / previous ayah is instant. Sources: the two editions the
 // reader's tafsir panel uses (alquran.cloud).
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SURAHS_META } from '../data';
-import { getGlobal, setGlobal, savePref } from '../store';
+import { getGlobal, setGlobal } from '../store';
 import { fetchSurahAyahs, cachedSurahAyahs, fetchSurahTafsir, cachedSurahTafsir } from '../api';
 import { Icon, AyahMark, Badge8, Divider, toAr } from '../components/ornaments/Ornaments';
 import { displayNumber, stripBasmala, BASMALA_TEXT, juzRange } from '../components/reader/ayahItems';
@@ -108,9 +108,9 @@ export default function TafsirPage() {
   });
 
   // scroll back to the ayah card when the ayah changes (not on first load)
-  const [moved, setMoved] = useState(false);
+  const moved = useRef(false);
   useEffect(() => {
-    if (!moved) { setMoved(true); return; }
+    if (!moved.current) { moved.current = true; return; }
     const el = document.getElementById('nq-tafsir-ayah');
     if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start' });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -260,9 +260,4 @@ export default function TafsirPage() {
       </div>
     </div>
   );
-}
-
-// keep the store's last read in step when the visitor reads tafsir (used by «اقرأها في المصحف» links elsewhere)
-export function rememberTafsirPosition(surah, ayah) {
-  savePref('nq_tafsir_last', { surah, ayah });
 }
