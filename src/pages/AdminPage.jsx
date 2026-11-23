@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getUnreadCount } from '../adminApi';
 import { toggleScheme, useAppearance } from '../appearance';
 import { Icon, Badge8, Pattern } from '../components/ornaments/Ornaments';
-import { styles, useInterval, Avatar } from './admin/shared';
+import { styles, useInterval, Avatar, Ico } from './admin/shared';
 import { OverviewTab, AnalyticsTab } from './admin/StatsTabs';
 import UsersTab from './admin/UsersTab';
 import BroadcastsTab from './admin/BroadcastsTab';
@@ -120,7 +120,7 @@ export default function AdminPage({ defaultTab }) {
                 aria-current={tab === t.id ? 'page' : undefined}
                 aria-label={badge > 0 ? `${t.label} (${badge} غير مقروءة)` : t.label}
                 onClick={() => go(t.id)}>
-                <span className={styles.navIco}><Icon name={t.icon}/></span>
+                <span className={styles.navIco}><Ico name={t.icon}/></span>
                 <span className={styles.navLabel}>{t.label}</span>
                 {badge > 0 && <span className={styles.navBadge} aria-hidden="true">{badge > 99 ? '99+' : badge}</span>}
               </button>

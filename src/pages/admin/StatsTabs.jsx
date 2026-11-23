@@ -54,14 +54,13 @@ export function OverviewTab({ onTabChange }) {
       {s && <>
         {stats.error && <InlineWarn text={`تعذّر التحديث: ${stats.error}`}/>}
         <LivePanel online={online}/>
-        <div className={styles.kpiGrid}>
+        <div className={`${styles.kpiGrid} ${styles.kpi3}`}>
           <Kpi icon="users"    label="إجمالي الأعضاء"          value={fmt(s.users_total)} delta={s.users_today > 0 ? `+${s.users_today} اليوم` : null}/>
           <Kpi icon="plus"     label="أعضاء جدد (٧ أيام)"      value={fmt(s.users_7d)}/>
           <Kpi icon="book"     label="إجمالي الآيات المقروءة"  value={fmt(s.ayahs_total)}/>
           <Kpi icon="chart"    label="متوسط القراءة"           value={s.users_total > 0 ? fmt(Math.round((s.ayahs_total || 0) / s.users_total)) : 0} sub="آية لكل عضو"/>
           <Kpi icon="star"     label="نشطون (٧ أيام)"          value={fmt(s.active_7d)}/>
           <Kpi icon="chat"     label="تذاكر الدعم المفتوحة"    value={fmt(s.tickets_open)} tone={s.tickets_open > 0 ? 'warn' : undefined} onClick={() => onTabChange('support')}/>
-          <Kpi icon="globe"    label="على الموقع الآن"         value={fmt(online.total)} sub={`${online.signedIn} مسجّل · ${online.guests} زائر`}/>
         </div>
       </>}
 
@@ -196,7 +195,6 @@ export function AnalyticsTab() {
         <Kpi icon="book"  label="إجمالي الآيات"   value={fmt(s.ayahs_total)}/>
         <Kpi icon="star"  label="نشطون (٧ أيام)"  value={fmt(s.active_7d)}/>
         <Kpi icon="chat"  label="تذاكر مفتوحة"    value={fmt(s.tickets_open)} tone={s.tickets_open > 0 ? 'warn' : undefined}/>
-        <Kpi icon="globe" label="على الموقع الآن" value={fmt(online.total)} sub={`${online.signedIn} مسجّل · ${online.guests} زائر`}/>
       </div>
 
       <LivePanel online={online}/>

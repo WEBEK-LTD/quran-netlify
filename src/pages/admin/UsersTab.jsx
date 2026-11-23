@@ -176,10 +176,12 @@ export default function UsersTab({ currentUser }) {
                       return (
                         <tr key={u.id} className={`${u.banned ? styles.rowBanned : ''} ${selected?.id === u.id ? styles.rowSel : ''}`}>
                           <td className={styles.cellUser}>
-                            <Avatar user={u}/>
-                            <div className={styles.userText}>
-                              <span className={styles.userName}>{u.name || '—'}</span>
-                              <bdi className={styles.userEmail}>{u.email}</bdi>
+                            <div className={styles.userCell}>
+                              <Avatar user={u}/>
+                              <div className={styles.userText}>
+                                <span className={styles.userName}>{u.name || '—'}</span>
+                                <bdi className={styles.userEmail}>{u.email}</bdi>
+                              </div>
                             </div>
                           </td>
                           <td className={styles.cellPills}>
@@ -188,12 +190,15 @@ export default function UsersTab({ currentUser }) {
                             {isSelf(u)  && <Pill tone="info" icon="user">أنت</Pill>}
                             {!u.is_admin && !u.banned && !isSelf(u) && <Pill tone="muted">عضو</Pill>}
                           </td>
-                          <td className={styles.cellNum} data-label="الآيات"><b className="nq-num">{fmt(u.ayahs_total || 0)}</b></td>
+                          <td className={styles.cellNum} data-label="آية"><b className="nq-num">{fmtFull(u.ayahs_total || 0)}</b></td>
                           <td className={styles.cellMeta}>
-                            <span>انضم {timeAgo(u.created_at)}</span>
-                            {u.last_seen && <span className={styles.faint}>آخر ظهور {timeAgo(u.last_seen)}</span>}
+                            <div className={styles.metaStack}>
+                              <span>انضم {timeAgo(u.created_at)}</span>
+                              {u.last_seen && <span className={styles.faint}>آخر ظهور {timeAgo(u.last_seen)}</span>}
+                            </div>
                           </td>
                           <td className={styles.cellActions}>
+                            <div className={styles.actRow}>
                             <button type="button" className="nq-ibtn"
                               aria-label={`تفاصيل ${name}`} title="التفاصيل"
                               aria-expanded={selected?.id === u.id}
@@ -202,6 +207,7 @@ export default function UsersTab({ currentUser }) {
                               aria-label={`إرسال رسالة إلى ${name}`} title="إرسال رسالة"
                               onClick={() => setMsgUser(u)}><Ico name="mail"/></button>
                             {renderActions(u, false)}
+                            </div>
                           </td>
                         </tr>
                       );

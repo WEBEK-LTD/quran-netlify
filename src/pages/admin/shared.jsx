@@ -98,6 +98,12 @@ export function Ico({ name, className }) {
   return XPATHS[name] !== undefined ? <XIcon name={name} className={className}/> : <Icon name={name} className={className}/>;
 }
 
+// Eight-point star badge that also takes the local extra icons.
+export function Star({ icon, size, className }) {
+  if (XPATHS[icon] !== undefined) return <Badge8 size={size} className={className}><XIcon name={icon}/></Badge8>;
+  return <Badge8 icon={icon} size={size} className={className}/>;
+}
+
 // ─── Building blocks ──────────────────────────────────────────────────────────
 // Refined header for each tab: title, one line, actions at the end; girih band behind.
 export function TabHeader({ icon, title, sub, children, live }) {
@@ -105,7 +111,7 @@ export function TabHeader({ icon, title, sub, children, live }) {
     <header className={styles.tabHead}>
       <div className={styles.tabHeadBand} aria-hidden="true"><Pattern/></div>
       <div className={styles.tabHeadMain}>
-        {icon && <Badge8 icon={icon} size={48} className={styles.tabHeadBadge}/>}
+        {icon && <Star icon={icon} size={48} className={styles.tabHeadBadge}/>}
         <div className={styles.tabHeadText}>
           <h1 className={styles.tabTitle}>{title}</h1>
           {sub && <p className={styles.tabSub}>{live && <span className={styles.liveDotSm} aria-hidden="true"/>}{sub}</p>}
@@ -133,7 +139,7 @@ export function SectionCard({ icon, title, action, children, className = '', id,
 
 export function Kpi({ icon, label, value, delta, sub, onClick, tone }) {
   const inner = <>
-    <Badge8 icon={icon} size={46} className={styles.kpiBadge}/>
+    <Star icon={icon} size={46} className={styles.kpiBadge}/>
     <div className={styles.kpiBody}>
       <span className={styles.kpiLabel}>{label}</span>
       <b className={`${styles.kpiVal} nq-num`}>{value ?? '—'}</b>
@@ -228,7 +234,7 @@ export function Modal({ title, icon, onClose, busy, children, tone }) {
     <div className={styles.modalOverlay} onMouseDown={e => { if (e.target === e.currentTarget && !busy) onClose(); }}>
       <div ref={boxRef} className={`nq-card ${styles.modalBox} ${tone === 'danger' ? styles.modalDanger : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className={styles.modalHead}>
-          {icon && <Badge8 icon={icon} size={44} className={styles.modalBadge}/>}
+          {icon && <Star icon={icon} size={44} className={styles.modalBadge}/>}
           <h2 id={titleId} className={styles.modalTitle}>{title}</h2>
           <button type="button" className={`nq-ibtn ${styles.modalX}`} onClick={onClose} disabled={busy} aria-label="إغلاق"><Icon name="x"/></button>
         </div>
@@ -280,7 +286,7 @@ export function Toast({ notice, onClose }) {
 export function ErrorBox({ message, onRetry }) {
   return (
     <div className={`nq-card ${styles.stateCard}`} role="alert">
-      <Badge8 icon="shield" size={60} className={styles.stateBadgeDanger}/>
+      <Star icon="alert" size={60} className={styles.stateBadgeDanger}/>
       <h2 className={styles.stateTitle}>تعذّر تحميل البيانات</h2>
       <p className={styles.stateText}>{message}</p>
       {onRetry && <button type="button" className="nq-btn ghost sm" onClick={onRetry}><XIcon name="refresh"/>إعادة المحاولة</button>}
@@ -305,7 +311,7 @@ export function InlineWarn({ text }) {
 export function Empty({ icon = 'star', text }) {
   return (
     <div className={styles.empty}>
-      <Badge8 icon={icon} size={44} className={styles.emptyBadge}/>
+      <Star icon={icon} size={44} className={styles.emptyBadge}/>
       <span>{text}</span>
     </div>
   );

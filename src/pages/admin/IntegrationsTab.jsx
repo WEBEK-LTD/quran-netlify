@@ -2,9 +2,9 @@
 // Secrets are write-only: the server returns only whether they are set and a short preview.
 import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { getIntegrations, updateIntegrations, testIntegration } from '../../adminApi';
-import { Icon, Badge8 } from '../../components/ornaments/Ornaments';
+import { Icon } from '../../components/ornaments/Ornaments';
 import {
-  styles, errMsg, useLoader, useTimers, TabHeader, Pill, Ico, FormError,
+  styles, errMsg, useLoader, useTimers, TabHeader, Pill, Ico, Star, FormError,
   ErrorBox, PageLoader,
 } from './shared';
 
@@ -151,9 +151,7 @@ export default function IntegrationsTab() {
           return (
             <section key={g.id} className={`nq-card ${styles.card} ${styles.intCard}`} aria-labelledby={`int-${g.id}`}>
               <div className={styles.intHead}>
-                <Badge8 icon={g.icon === 'mail' ? undefined : g.icon} size={52} className={styles.intBadge}>
-                  {g.icon === 'mail' ? <Ico name="mail"/> : null}
-                </Badge8>
+                <Star icon={g.icon} size={52} className={styles.intBadge}/>
                 <div className={styles.intHeadText}>
                   <h2 id={`int-${g.id}`} className={styles.cardTitle}>{g.title}</h2>
                   <p className={styles.intHint}>{g.hint}</p>
