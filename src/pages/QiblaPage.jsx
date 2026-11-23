@@ -2,11 +2,14 @@
 // A large compass rose (32-point star, Arabic cardinal letters, the Kaaba on
 // the bearing, emerald needle). With a compass sensor the dial turns with the
 // device; without one it stays north-up and the bearing is shown in degrees.
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import styles from './QiblaPage.module.css';
 import { PageHero, Icon, Badge8, Corners, toAr } from '../components/ornaments/Ornaments';
 import QiblaRose, { calcQibla, calcDistance, fmtKm } from './qibla/QiblaRose';
+import { useCompass } from './qibla/useCompass';
+import { angleDiff, isAligned } from './qibla/compass';
+import { declination } from './qibla/wmm';
 import { useTr, surahName } from '../l10n';
 
 // المدينة المحفوظة في صفحة المواقيت — لعرض القبلة فوراً قبل طلب الموقع
@@ -25,19 +28,22 @@ export default function QiblaPage() {
   const tr = useTr();
   const [saved] = useState(savedPlace);
   const [location,  setLocation]  = useState(null);   // من GPS
-  const [heading,   setHeading]   = useState(null);   // compass heading
   const [error,     setError]     = useState('');
   const [loading,   setLoading]   = useState(false);
   const [accuracy,  setAccuracy]  = useState(null);
-  const [aligned,   setAligned]   = useState(false);
-  // idle | needs-permission | listening | active | unavailable | denied
-  const [compassStatus, setCompassStatus] = useState('idle');
-  const stopRef     = useRef(null);   // يزيل مستمعي الحساسات الحاليين
-  const gotHeading  = useRef(false);
 
   const place = location || saved;
   const qibla = place ? calcQibla(place.lat, place.lon) : null;          // من الشمال الحقيقي
   const distance = place ? calcDistance(place.lat, place.lon) : null;
+  // the sensors give magnetic north; the bearing is from true north
+  const decl = useMemo(() => (place ? declination(place.lat, place.lon) : 0), [place?.lat, place?.lon]); // eslint-disable-line
+  const { status: compassStatus, heading, calibrate, enable } = useCompass(decl);
+
+  // facing the Qibla (with hysteresis, so the confirmation doesn't flicker)
+  const alignedRef = useRef(false);
+  const aligned = alignedRef.current = isAligned(heading, qibla, alignedRef.current);
+  const [pulse, setPulse] = useState(0);
+  useEffect(() => { if (aligned) setPulse(p => p + 1); }, [aligned]);
 
   function requestLocation() {
     setLoading(true); setError('');
@@ -60,95 +66,31 @@ export default function QiblaPage() {
         );
         setLoading(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5 * 60 * 1000 }
     );
   }
 
-  // Device orientation for compass
-  function screenAngle() {
-    const a = (window.screen && window.screen.orientation && window.screen.orientation.angle);
-    if (typeof a === 'number') return a;
-    return typeof window.orientation === 'number' ? window.orientation : 0;
-  }
-
-  function startCompass() {
-    if (stopRef.current) stopRef.current();
-    gotHeading.current = false;
-    setCompassStatus('listening');
-
-    const useAbsoluteEvent = 'ondeviceorientationabsolute' in window;
-
-    function handleOrientation(e) {
-      let h = null;
-      if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) {
-        h = e.webkitCompassHeading + screenAngle();            // iOS: already true-ish north
-      } else if (e.alpha != null && (e.absolute === true || e.type === 'deviceorientationabsolute')) {
-        h = 360 - e.alpha + screenAngle();                     // Android / others: absolute alpha
-      }
-      // alpha نسبي (غير مرتبط بالشمال) لا يصلح كبوصلة — نتجاهله
-      if (h === null) return;
-      h = ((h % 360) + 360) % 360;
-      gotHeading.current = true;
-      setCompassStatus('active');
-      setHeading(h);
-    }
-
-    const evName = useAbsoluteEvent ? 'deviceorientationabsolute' : 'deviceorientation';
-    window.addEventListener(evName, handleOrientation, true);
-    const timer = setTimeout(() => {
-      if (!gotHeading.current) setCompassStatus('unavailable');
-    }, 3000);
-    stopRef.current = () => {
-      clearTimeout(timer);
-      window.removeEventListener(evName, handleOrientation, true);
-    };
-  }
-
-  const needsIOSPermission =
-    typeof window !== 'undefined' && window.DeviceOrientationEvent &&
-    typeof window.DeviceOrientationEvent.requestPermission === 'function';
-
+  // No place yet but location access was already granted: locate without asking.
   useEffect(() => {
-    if (!window.DeviceOrientationEvent) {
-      setCompassStatus('unavailable');
-    } else if (needsIOSPermission) {
-      setCompassStatus('needs-permission'); // iOS 13+: يجب أن يضغط المستخدم الزر
-    } else {
-      startCompass();
-    }
-    return () => { if (stopRef.current) stopRef.current(); };
+    if (saved || !navigator.permissions || !navigator.geolocation) return;
+    let alive = true;
+    navigator.permissions.query({ name: 'geolocation' })
+      .then(p => { if (alive && p.state === 'granted') requestLocation(); })
+      .catch(() => {});
+    return () => { alive = false; };
   }, []); // eslint-disable-line
 
-  // Check alignment
-  useEffect(() => {
-    if (heading === null || qibla === null) return;
-    const diff = Math.abs(((heading - qibla + 540) % 360) - 180);
-    setAligned(diff < 5);
-  }, [heading, qibla]);
-
-  // زاوية القبلة بالنسبة لاتجاه الجهاز (موجبة = إلى اليمين)
-  const relativeQibla = heading !== null && qibla !== null
-    ? (qibla - heading + 360) % 360
-    : qibla ?? 0;
+  // turn needed to face the Qibla (positive = to the right)
+  const turn = heading !== null && qibla !== null ? angleDiff(qibla, heading) : null;
   const turnText = (() => {
-    if (heading === null || qibla === null) return null;
-    const r = Math.round(relativeQibla);
-    return r <= 180 ? tr('استدر {deg}° إلى اليمين', { deg: toAr(r) }) : tr('استدر {deg}° إلى اليسار', { deg: toAr(360 - r) });
+    if (turn === null) return null;
+    const r = Math.round(Math.abs(turn));
+    return turn >= 0 ? tr('استدر {deg}° إلى اليمين', { deg: toAr(r) }) : tr('استدر {deg}° إلى اليسار', { deg: toAr(r) });
   })();
 
   function handleRequestCompassPermission() {
     setError('');
-    if (!window.DeviceOrientationEvent) { setCompassStatus('unavailable'); return; }
-    if (needsIOSPermission) {
-      window.DeviceOrientationEvent.requestPermission()
-        .then(perm => {
-          if (perm === 'granted') startCompass();
-          else setCompassStatus('denied');
-        })
-        .catch(() => setCompassStatus('denied'));
-      return;
-    }
-    startCompass();
+    enable();
   }
 
   const savedName = saved?.name === 'موقعك' ? tr('موقعك') : saved?.name; // the GPS fallback is stored in Arabic
