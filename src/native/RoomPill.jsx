@@ -15,10 +15,13 @@ export default function RoomPill() {
     return () => window.removeEventListener('nq-room-session', on);
   }, []);
   if (!st || !st.active || !st.roomId || pathname === `/rooms/${st.roomId}`) return null;
+  // community screens have no site header; elsewhere sit just under it
+  const noHeader = /^\/(rooms|messages|people|groups|notifications)(\/|$)/.test(pathname);
   return (
     <Link to={`/rooms/${st.roomId}`} role="status" aria-label={tr('أنت في غرفة صوتية — عودة إلى الغرفة')}
       style={{
-        position: 'fixed', zIndex: 70, insetInline: 12, top: 'calc(env(safe-area-inset-top, 0px) + 8px)', margin: '0 auto', maxWidth: 460,
+        position: 'fixed', zIndex: 70, insetInline: 12, top: noHeader ? 'auto' : 'calc(env(safe-area-inset-top, 0px) + var(--header-h, 72px) + 6px)',
+        bottom: noHeader ? 'calc(env(safe-area-inset-bottom, 0px) + 84px)' : 'auto', margin: '0 auto', maxWidth: 460,
         display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 999, minHeight: 44,
         background: 'var(--raise)', color: 'var(--text)', border: 'var(--bw) solid var(--line2)', boxShadow: 'var(--shadow-sm)', fontSize: '.88rem',
       }}>

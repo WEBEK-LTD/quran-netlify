@@ -284,9 +284,11 @@ export default function RoomScreen({ params, profile }) {
         </div></div></div>;
   }
   if (!room) return <Spinner />;
-  if (room.status === 'scheduled') return <ScheduledView room={room} reload={loadRoom} />;
+  if (room.status === 'scheduled') return <ScheduledView room={room} reload={async () => { const r = await loadRoom(); if (r && r.status === 'open') joinNow(); }} />;
 
-  const ended = (inThis && sess.status === 'ended') ? sess.ended : (joinErr && ['kicked', 'room_not_open'].includes(joinErr.code) ? (joinErr.code === 'kicked' ? 'kicked' : 'closed') : null);
+  const ended = (inThis && sess.status === 'ended') ? sess.ended
+    : (joinErr && ['kicked', 'room_not_open'].includes(joinErr.code)) ? (joinErr.code === 'kicked' ? 'kicked' : 'closed')
+    : (room.status !== 'open' && !(inThis && sess.status !== 'idle')) ? 'closed' : null;
   if (ended && ended !== 'left') {
     const map = {
       closed: [t('انتهت الغرفة'), t('أغلق المضيف الغرفة، أو انتهت لعدم وجود متحدثين. جزاكم الله خيراً.'), 'door'],
@@ -325,7 +327,6 @@ export default function RoomScreen({ params, profile }) {
   const speakingSet = new Set(sess.speaking || []);
   const floatTarget = (f) => f.to || (stage.find(p => speakingSet.has(String(p.id))) || stage[0] || {}).id;
   const LMAX = 9;
-  const me = { id: meId };
 
   const openPerson = (p) => { setPerson(p); setSheet('person'); };
 
@@ -630,8 +631,8 @@ function HostSheet({ open, onClose, room, myRole, roomId, hands, onIgnore, api, 
         {hands.length === 0 ? <p className={s.faint}>{t('لا توجد طلبات الآن. اضغط على أي مستمع لدعوته للتحدث.')}</p> : (
           <ul className={s.list} style={{ gap: 8 }}>
             {hands.map(h => (
-              <li key={h.id} className={s.card} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10 }}>
-                <Avatar user={h} size={44} /><b className={s.grow} dir="auto" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.name}</b>
+              <li key={h.id} className={s.card} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, flexWrap: 'wrap' }}>
+                <Avatar user={h} size={44} /><b className={s.grow} dir="auto" style={{ minWidth: 110, overflowWrap: 'anywhere' }}>{h.name}</b>
                 <button type="button" className={`${s.btn} ${s.btnSm} ${s.btnGhost}`} onClick={() => onIgnore(h.id)}>{t('تجاهل')}</button>
                 <button type="button" className={`${s.btn} ${s.btnSm} ${s.btnGold}`} onClick={async () => { onIgnore(h.id); await api(() => capi.post(`/rooms/${roomId}/speakers/${h.id}`), t('دُعي {name} للتحدث.', { name: h.name })); loadParts(); }}>{t('رفع متحدثاً')}</button>
               </li>
@@ -659,10 +660,10 @@ function HostSheet({ open, onClose, room, myRole, roomId, hands, onIgnore, api, 
                 {surahs.map(x => <option key={x.v} value={x.v}>{x.l}</option>)}
               </select><RIcon name="chevD" size={16} />
             </span>
-            <span className={s.seg} style={{ gridAutoColumns: 'auto minmax(0,1fr) auto', padding: 3 }} role="group" aria-label={t('الآية')}>
-              <button type="button" aria-label={t('الآية التالية')} onClick={() => setAyah(a => Math.min(maxAyah, a + 1))}><RIcon name="plus" size={18} /></button>
-              <span style={{ display: 'grid', placeItems: 'center', fontWeight: 600 }} aria-live="polite">{t('آية {n}', { n: n(ayah, t.lang) })}</span>
-              <button type="button" aria-label={t('الآية السابقة')} onClick={() => setAyah(a => Math.max(1, a - 1))}><RIcon name="minus" size={18} /></button>
+            <span className={s.seg} style={{ gridAutoColumns: '34px minmax(0,1fr) 34px', padding: 3, gap: 2 }} role="group" aria-label={t('الآية')}>
+              <button type="button" style={{ padding: 0 }} aria-label={t('الآية التالية')} onClick={() => setAyah(a => Math.min(maxAyah, a + 1))}><RIcon name="plus" size={18} /></button>
+              <span style={{ display: 'grid', placeItems: 'center', fontWeight: 600, whiteSpace: 'nowrap', fontSize: '.9rem' }} aria-live="polite">{t('آية {n}', { n: n(ayah, t.lang) })}</span>
+              <button type="button" style={{ padding: 0 }} aria-label={t('الآية السابقة')} onClick={() => setAyah(a => Math.max(1, a - 1))}><RIcon name="minus" size={18} /></button>
             </span>
           </div>
           <button type="button" className={`${s.btn} ${s.btnOutline} ${s.btnBlock}`}

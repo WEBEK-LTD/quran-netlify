@@ -108,7 +108,7 @@ export default function Messages({ profile }) {
         <ul className={s.list} style={{ gap: 0 }}>
           {shown.map(c => {
             const lm = c.last_message;
-            const preview = lm ? (lm.from_me ? t('أنت: {text}', { text: lm.body }) : lm.body) : t('محادثة جديدة');
+            const preview = lm ? (lm.from_me ? t('أنت: {text}', { text: `\u2068${lm.body}\u2069` }) : lm.body) : t('محادثة جديدة');
             return (
               <li key={c.id}>
                 <Link to={`/messages/${c.id}`} className={`${s.convo}${c.unread ? ' ' + s.convoUnread : ''}`}

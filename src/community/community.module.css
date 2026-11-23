@@ -204,7 +204,8 @@
 
 /* ── the room ── */
 .roomPage { display:flex; flex-direction:column; gap:16px; padding:12px max(16px,env(safe-area-inset-right,0px)) calc(110px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px)); max-width:640px; margin:0 auto; }
-.roomHead { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.roomHead { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.roomHead > * { max-width:100%; }
 .roomMeta { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.85rem; flex-wrap:wrap; min-width:0; }
 .roomMeta .end { margin-inline-start:auto; }
 .speakers { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px 6px; padding-top:18px; }
@@ -341,3 +342,9 @@
 
 /* the tab bar (non-immersive community screens, e.g. the first-entry gate) covers the bottom 72px */
 @media (max-width:980px) { :global(body.nq-has-tabbar) .stickyCta { bottom:calc(64px + env(safe-area-inset-bottom,0px)); } }
+.navBtn { padding:6px 6px; gap:2px; min-width:0; flex-direction:column; min-height:58px; font-size:.8rem; line-height:1.3; }
+.navBtn > span:not(.navIco) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+.navBtn > svg, .navBtn > .count { flex:none; }
+.navIco { position:relative; display:inline-grid; flex:none; }
+.navCount { position:absolute; top:-9px; inset-inline-end:-11px; min-width:17px; height:17px; font-size:.65rem; padding:0 4px; border:2px solid var(--surface); }
+.navBtn > .navIco { overflow:visible; }

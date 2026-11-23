@@ -104,7 +104,7 @@ export default function Gate({ profile }) {
       <fieldset className={s.field} style={{ border: 0, padding: 0, margin: 0 }}>
         <legend className={s.label} style={{ marginBottom: 8 }}>{t('تاريخ الميلاد')}</legend>
         <div className={s.grid3}>
-          <label className={s.field}><span className={s.faint}>{t('اليوم')}</span>
+          <label className={s.field}><span className={s.faint}>{t('اليوم|day')}</span>
             <span className={s.selectWrap}>
               <select className={s.select} value={day} onChange={e => setDay(e.target.value)}>
                 <option value="">—</option>

@@ -50,7 +50,9 @@ npm run app:adhan      # (re)process the adhan recordings (scripts/fetch-adhan.s
 | `src/native/adhan/*` | schedule (pure, tested), times (aladhan cache + local calc), notifications, adhan screen, player, settings, recordings |
 | `src/native/NativeAdhanSettings.jsx` | the app-only section inside the prayer page's «تنبيه الأذان» row |
 | `src/native/mediaShim.js`, `mediaBridge.js` | Android lock-screen/notification media controls |
-| `src/native/push.js` | push registration → `POST /v1/me/devices` |
+| `src/native/push.js` | push registration → `POST /v1/me/devices`; tap → screen (`pushRoutes.js`) |
+| `src/community/**` | voice rooms & community screens (lazy chunk, app only; `livekit-client` loaded on first join); strings in `src/locales/rooms.js` |
+| `src/native/RoomPill.jsx` | «أنت في غرفة صوتية · عودة» while a room is connected and you browse elsewhere |
 | `src/locales/native.js` | translations of the app-only strings (en, tr, fr, ur, id) |
 | `android/app/src/main/java/net/nuralquran/app/` | `MainActivity`, `NQNativePlugin` (bars colour, channel settings, media), `NQMediaService` |
 | `android/app/src/main/res/raw/adhan_*.mp3` | adhan notification-channel sounds |
@@ -247,11 +249,20 @@ when `google-services.json` is provided).
   calls `DELETE /v1/me/devices {token}` first (`useAuth.signOutAuth`), so a shared phone
   stops receiving the previous account's pushes. Tapping a push opens `data.path` (or a
   nuralquran.net `data.url`) in the app. Android channel `community` («الغرف والمجتمع»).
-- **Microphone** (voice rooms): iOS purpose string is in `Info.plist` (+ translations). On
-  Android `RECORD_AUDIO` is **commented out** in the manifest until rooms ship: declaring an
-  unused microphone permission invites review questions and contradicts the current
-  privacy policy («لا نصل إلى … الميكروفون»). Uncomment it together with the privacy-policy
-  and Data-safety updates.
+- **Microphone** (voice rooms): iOS purpose string is in `Info.plist` (+ translations). Android
+  declares `RECORD_AUDIO` + `MODIFY_AUDIO_SETTINGS`; Capacitor's WebChromeClient asks for them
+  the first time a speaker turns the microphone on (after our own explanation sheet). There is
+  **no** `FOREGROUND_SERVICE_MICROPHONE`: speaking stops when the app is in the background. iOS
+  keeps the app's `.playback` session for the Mushaf; while the microphone is on, the small
+  `NQAudio` plugin (`ios/App/App/SceneDelegate.swift`, registered by `NQBridgeViewController`)
+  switches to `.playAndRecord` / `.voiceChat` (speaker + Bluetooth), and back to `.playback`
+  when the microphone goes off or the room ends. The privacy policy says the microphone is
+  used only while you speak in a room and audio is live, never recorded.
+- **Tapping a push** opens the screen for its `type` (`src/native/pushRoutes.js`, unit-tested):
+  `dm` → `/messages/{conversation_id}`, room types and `speak_invite` → `/rooms/{room_id}`,
+  `friend_request`/`friend_accept` → `/people/{user_id}`, `join_request` → `/groups/{group_id}`,
+  `suspension`/`reminder_cancelled`/unknown → `/notifications`. FCM data (flat strings) and the
+  APNs payload (top-level `type` + nested `data`) are both understood.
 
 ---
 
@@ -359,6 +370,7 @@ No secret is stored in the repository; the workflows delete the decoded key mate
 | `SCHEDULE_EXACT_ALARM` | adhan at the exact minute; the user grants it in *Alarms & reminders* |
 | `RECEIVE_BOOT_COMPLETED`, `WAKE_LOCK`, `VIBRATE` | restore scheduled adhans after reboot; deliver them |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | recitation/radio with the screen off (§4) |
+| `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS` | speaking on a voice room's stage (asked on the first «افتح الميكروفون»); never recorded |
 
 **Exact alarms — policy.** `USE_EXACT_ALARM` (auto-granted) is reserved by Google Play for
 apps whose *core* function is an alarm clock or calendar, and needs a Play Console
@@ -656,9 +668,17 @@ Apple 5.1.1(v); also the web page `https://nuralquran.net/delete-data`.
 - **Encrypted in transit**: Yes. **Deletion**: Yes — in-app and https://nuralquran.net/delete-data.
 - Ads: **No**. Target audience: 13+ (with social features; see §12).
 
-**Privacy policy update needed** (`/privacy`): mention the app's local notifications and
-that the device sends coordinates to aladhan.com also for the adhan schedule; push tokens
-(when rooms ship); the microphone (only when voice rooms ship).
+**Voice rooms add** (app only): community profile (gender, birth date, bio, optional
+Facebook/Instagram links), friends/follows/blocks, room chat (deleted when the room closes,
+except reported lines), private text messages (stored until either side deletes them),
+reports, push token. **Microphone audio** is streamed live through our own LiveKit server to
+the people in the room and is never recorded or stored — on Apple's definition that is not
+"collected" (real-time only); for Google Play declare *Audio → Voice or sound recordings* as
+*processed ephemerally*, not shared, for App functionality (owner to confirm the wording).
+
+**Privacy policy update still needed** (`/privacy`): local notifications, the coordinates
+sent to aladhan.com for the adhan schedule, push tokens, and the community data above. The
+microphone sentence is done (all six languages).
 
 ---
 
@@ -733,6 +753,21 @@ Needs real devices (checklist):
 - background recitation with the screen locked (gapless), lock-screen/Bluetooth controls, radio
 - push registration once FCM/APNs are configured; `/me/devices` on the backend
 - status-bar colours in every appearance mode; tablets in landscape
+
+### Voice rooms & community (`src/community/**`)
+
+Verified headlessly (Chromium at 390 px, built bundle, fake Capacitor bridge for Android and
+iOS, the API mocked with route interception, `livekit-client` replaced by a stub module):
+every screen in Arabic and English × dark and light (and sepia/contrast, French, Urdu,
+reduced motion) with no horizontal overflow and no console errors; 57 flow checks (first-entry
+gate PATCH, join → LiveKit connect with the API's url/token, raise hand, directed clap and its
+1-per-minute 429 text, chat `links_not_allowed` / `content_review`, role change → mic →
+`NQAudio` voice/media on iOS, microphone denied, quiet vs normal leave, kicked / closed /
+reconnecting / lost, join errors, host tools, minors, suspensions, create room, notifications,
+DMs, the «back to the room» pill, and that the website never requests the chunk); push taps
+with a `VITE_NQ_PUSH=1` build. **Not verified here**: real audio through rtc.nuralquran.net
+(not reachable from the sandbox), the microphone on real devices, iOS audio-session routing,
+background behaviour, and the Xcode/Gradle compile of the new Swift plugin.
 
 ## 15. What the owner must provide
 

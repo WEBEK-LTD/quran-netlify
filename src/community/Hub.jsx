@@ -1,5 +1,5 @@
 // «الغرف» — live and scheduled rooms, my groups, discover groups (design 07).
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { capi, qs } from './api';
 import { useT, n } from './format';
@@ -21,15 +21,17 @@ export default function Hub({ profile }) {
   const badges = useUnread(minor);
   const roomsBan = profile.suspension && profile.suspension.scope === 'rooms' ? profile.suspension : null;
 
+  const [qd, setQd] = useState('');
+  useEffect(() => { const tm = setTimeout(() => setQd(q.trim().length >= 2 ? q.trim() : ''), 350); return () => clearTimeout(tm); }, [q]);
   const tab = filter === 'groups' ? 'groups' : 'live';
   usePoll(async () => {
     try {
-      const d = await capi.get(`/rooms${qs({ tab, q: q.trim().length >= 2 ? q.trim() : '', per_page: 50 })}`);
+      const d = await capi.get(`/rooms${qs({ tab, q: qd, per_page: 50 })}`);
       setLive(d.items || []); setLiveErr(null);
     } catch (e) { setLiveErr(e); }
-  }, 20000, [tab, q]);
+  }, 20000, [tab, qd]);
 
-  const sched = useLoad(() => capi.get(`/rooms${qs({ tab: 'scheduled', per_page: 20, q: q.trim().length >= 2 ? q.trim() : '' })}`).then(d => d.items || []), [q]);
+  const sched = useLoad(() => capi.get(`/rooms${qs({ tab: 'scheduled', per_page: 20, q: qd })}`).then(d => d.items || []), [qd]);
   const groups = useLoad(() => capi.get('/community/groups/mine'), []);
   const discover = useLoad(() => capi.get('/community/groups?per_page=8').then(d => d.items || []), []);
   const friends = useLoad(() => capi.get('/me/friends/activity').then(d => d.items || []), []);
@@ -66,16 +68,14 @@ export default function Hub({ profile }) {
       </header>
 
       <nav className={s.grid3} aria-label={t('المجتمع')}>
-        <Link to="/messages" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`} style={{ position: 'relative' }}>
-          <RIcon name="chat" size={18} />{t('الرسائل')}
-          {badges.messages > 0 && <span className={s.count} aria-label={t('{n} غير مقروءة', { n: n(badges.messages, t.lang) })}>{n(badges.messages, t.lang)}</span>}
+        <Link to="/messages" className={`${s.btn} ${s.btnGhost} ${s.btnSm} ${s.navBtn}`}>
+          <span className={s.navIco}><RIcon name="chat" size={18} />{badges.messages > 0 && <span className={`${s.count} ${s.navCount}`} aria-label={t('{n} غير مقروءة', { n: n(badges.messages, t.lang) })}>{n(badges.messages, t.lang)}</span>}</span><span>{t('الرسائل')}</span>
         </Link>
-        <Link to="/notifications" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`}>
-          <RIcon name="bell" size={18} />{t('الإشعارات')}
-          {badges.notifications > 0 && <span className={s.count} aria-label={t('{n} غير مقروءة', { n: n(badges.notifications, t.lang) })}>{n(badges.notifications, t.lang)}</span>}
+        <Link to="/notifications" className={`${s.btn} ${s.btnGhost} ${s.btnSm} ${s.navBtn}`}>
+          <span className={s.navIco}><RIcon name="bell" size={18} />{badges.notifications > 0 && <span className={`${s.count} ${s.navCount}`} aria-label={t('{n} غير مقروءة', { n: n(badges.notifications, t.lang) })}>{n(badges.notifications, t.lang)}</span>}</span><span>{t('الإشعارات')}</span>
         </Link>
-        <Link to="/people/me" className={`${s.btn} ${s.btnGhost} ${s.btnSm}`}>
-          <RIcon name="user" size={18} />{t('ملفي')}
+        <Link to="/people/me" className={`${s.btn} ${s.btnGhost} ${s.btnSm} ${s.navBtn}`}>
+          <RIcon name="user" size={18} /><span>{t('ملفي')}</span>
         </Link>
       </nav>
 

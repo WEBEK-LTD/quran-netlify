@@ -6,6 +6,7 @@ import { getLang } from '../i18n';
 import { trNow } from '../l10n';
 
 const ROWS = [
+  ["اليوم|day", "Day", "Gün", "Jour", "دن", "Hari"],
   ["الغرف الصوتية والمجتمع", "Voice rooms and community", "Sesli odalar ve topluluk", "Salons vocaux et communauté", "آڈیو رومز اور کمیونٹی", "Ruang suara dan komunitas"],
   ["سجّل الدخول لتدخل الغرف وتتابع أصحابك وجروباتك.", "Sign in to join rooms and follow your friends and groups.", "Odalara katılmak, arkadaşlarınızı ve gruplarınızı takip etmek için giriş yapın.", "Connectez-vous pour rejoindre les salons et suivre vos amis et vos groupes.", "رومز میں شامل ہونے اور اپنے دوستوں اور گروپوں کو فالو کرنے کے لیے لاگ ان کریں۔", "Masuk untuk bergabung ke ruang dan mengikuti teman serta grupmu."],
   ["تسجيل الدخول", "Sign in", "Giriş yap", "Se connecter", "لاگ ان", "Masuk"],
@@ -389,7 +390,7 @@ const ROWS = [
   ["تعذّر الاتصال بخادم الصوت. تحقّق من الإنترنت وحاول مرة أخرى.", "Couldn't reach the audio server. Check your internet connection and try again.", "Ses sunucusuna bağlanılamadı. İnternetinizi kontrol edip tekrar deneyin.", "Impossible de joindre le serveur audio. Vérifiez votre connexion et réessayez.", "آڈیو سرور سے رابطہ نہیں ہو سکا۔ انٹرنیٹ چیک کر کے دوبارہ کوشش کریں۔", "Tidak dapat terhubung ke server suara. Periksa koneksi lalu coba lagi."],
   ["حاول مرة أخرى", "Try again", "Tekrar dene", "Réessayer", "دوبارہ کوشش کریں", "Coba lagi"],
   ["مغادرة بهدوء", "Leave quietly", "Sessizce ayrıl", "Partir discrètement", "خاموشی سے نکلیں", "Keluar diam-diam"],
-  ["مباشر · بلا تسجيل", "Live · not recorded", "Canlı · kayıt yok", "En direct · sans enregistrement", "براہِ راست · ریکارڈنگ نہیں", "Langsung · tanpa rekaman"],
+  ["مباشر · بلا تسجيل", "Live · not recorded", "Canlı · kayıt yok", "En direct · non enregistré", "براہِ راست · ریکارڈنگ نہیں", "Langsung · tanpa rekaman"],
   ["مقفلة", "Locked", "Kilitli", "Verrouillé", "مقفل", "Terkunci"],
   ["{n} مستمعاً", "{n} listening", "{n} dinleyici", "{n} auditeurs", "{n} سامعین", "{n} pendengar"],
   ["جارٍ إعادة الاتصال…", "Reconnecting…", "Yeniden bağlanılıyor…", "Reconnexion…", "دوبارہ جڑ رہے ہیں…", "Menyambungkan ulang…"],

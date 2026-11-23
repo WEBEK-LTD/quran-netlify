@@ -141,7 +141,7 @@ export default function Notifications({ profile }) {
                   <span className={s.notifIco}><RIcon name={ICON[nf.type] || 'bell'} /></span>
                   <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <button type="button" className={s.notifBody} onClick={() => open(nf)}>
-                      <b>{t(LABEL[nf.type] || 'إشعار')}{nf.title && nf.title !== LABEL[nf.type] && nf.title !== t(LABEL[nf.type] || '') ? <span dir="auto" style={{ fontWeight: 600 }}> · {nf.title}</span> : null}</b>
+                      <b>{t(LABEL[nf.type] || 'إشعار')}{nf.title && nf.title !== LABEL[nf.type] && nf.title !== t(LABEL[nf.type] || '') ? <> · <bdi style={{ fontWeight: 600 }}>{nf.title}</bdi></> : null}</b>
                       {nf.body && <span dir="auto">{nf.body}</span>}
                       <small>{fmtAgo(nf.created_at, t.lang)}</small>
                     </button>
