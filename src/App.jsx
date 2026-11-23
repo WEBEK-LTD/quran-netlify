@@ -4,7 +4,7 @@ import { Routes, Route, useLocation, Link } from 'react-router-dom';
 import { useStore, setGlobal } from './store';
 import { SURAHS_META } from './data';
 import { SiteHeader, SiteFooter, SiteChrome } from './components/shell/Shell';
-import { OrnamentDefs } from './components/ornaments/Ornaments';
+import { OrnamentDefs, Badge8, Icon } from './components/ornaments/Ornaments';
 import Sidebar         from './components/Sidebar';
 import Reader          from './components/Reader';
 import TafsirPanel     from './components/TafsirPanel';
@@ -92,7 +92,7 @@ function FullLayout({ children, footer = true }) {
 function FeatureOff() {
   return (
     <div className={styles.notice}>
-      <div className={styles.noticeIcon}>🔒</div>
+      <div className={styles.noticeIcon}><Badge8 icon="lock" size={72} /></div>
       <h2>هذه الميزة متوقفة حالياً</h2>
       <p>أوقفت الإدارة هذه الصفحة مؤقتاً. يمكنك متابعة القراءة وبقية الميزات كالمعتاد.</p>
       <Link to="/" className={styles.noticeBtn}>العودة للرئيسية</Link>
@@ -103,7 +103,7 @@ function FeatureOff() {
 function MaintenancePage({ settings }) {
   return (
     <div className={styles.notice} style={{ minHeight: '100vh' }}>
-      <div className={styles.noticeIcon}>🛠️</div>
+      <div className={styles.noticeIcon}><Badge8 icon="gear" size={72} /></div>
       <h2>{settings.app_name || 'نور القرآن'} في صيانة مؤقتة</h2>
       <p>نعمل على تحسين التطبيق، وسنعود قريباً بإذن الله. شكراً لصبرك.</p>
       {settings.announcement && <p className={styles.noticeSub}>{settings.announcement}</p>}
@@ -118,7 +118,7 @@ function AnnouncementBanner({ text }) {
   if (!text || dismissed === text) return null;
   return (
     <div className={styles.announcement} role="status">
-      <span className={styles.announcementIcon}>📢</span>
+      <span className={styles.announcementIcon}><Icon name="bell" /></span>
       <span className={styles.announcementText}>{text}</span>
       <button className={styles.announcementClose} title="إغلاق" onClick={() => {
         setDismissed(text);
@@ -164,7 +164,7 @@ export default function App() {
     if (location.pathname === '/reader') {
       const lastRead = JSON.parse(localStorage.getItem('nq_lastRead') || '{"surah":1,"ayah":1}');
       setTimeout(() => {
-        setGlobal({ toast: `مرحباً 🌿 آخر قراءة: سورة ${SURAHS_META[lastRead.surah - 1][0]}` });
+        setGlobal({ toast: `أهلاً بعودتك · آخر قراءة: سورة ${SURAHS_META[lastRead.surah - 1][0]}` });
       }, 900);
     }
   }, []);
