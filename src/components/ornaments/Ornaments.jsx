@@ -3,6 +3,7 @@
 // icons, eight-point stars, rosette ayah markers, and the girih + frieze
 // patterns. Everything else references it with <use href="#…">.
 // Icons are plain line drawings — no emoji, and nothing that signals "AI".
+import { num, trNow } from '../../l10n';
 
 // Girih tile: {8/3} and {8/2} stars at the centre and corners of a 96px cell.
 function girihPath() {
@@ -129,9 +130,9 @@ export function Badge8({ icon, children, size, className = '', style }) {
 // Rosette ayah marker with the ayah number in Arabic-Indic digits.
 export function AyahMark({ n }) {
   return (
-    <span className="nq-am" aria-label={`الآية ${n}`}>
+    <span className="nq-am" aria-label={`${trNow('الآية')} ${n}`}>
       <svg aria-hidden="true"><use href="#nq-rosette" /></svg>
-      <b aria-hidden="true">{toAr(n)}</b>
+      <b aria-hidden="true">{arDigits(n)}</b>
     </span>
   );
 }
@@ -242,12 +243,14 @@ export function Rosette({ states, label, onPetal, titles, hideCount = false, cla
         <text textAnchor="middle" y="-4" style={{ fill: 'var(--gold)', fontSize: 34, fontWeight: 700, fontFamily: 'var(--f-ui)' }}>
           {toAr(done)}<tspan style={{ fill: 'var(--muted)', fontSize: 18 }}> / {toAr(n)}</tspan>
         </text>
-        <text textAnchor="middle" y="24" style={{ fill: 'var(--muted)', fontSize: 13, fontFamily: 'var(--f-ui)' }}>تمّت قراءته</text>
+        <text textAnchor="middle" y="24" style={{ fill: 'var(--muted)', fontSize: 13, fontFamily: 'var(--f-ui)' }}>{trNow('تمّت قراءته')}</text>
       </>)}
     </svg>
   );
 }
 
-export function toAr(n) {
-  return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
-}
+// Digits in the visitor's language (Arabic-Indic for ar, Urdu digits for ur, Latin otherwise).
+export function toAr(n) { return num(n); }
+
+// Always Arabic-Indic: for ayah markers inside Quran text.
+function arDigits(n) { return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]); }
