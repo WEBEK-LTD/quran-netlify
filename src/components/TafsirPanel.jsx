@@ -289,7 +289,7 @@ export default function TafsirPanel() {
             <Icon name="copy" />{tr('نسخ')}
           </button>
           <button type="button" className="nq-btn ghost sm"
-            onClick={() => setGlobal({ audioAyah: tafsirAyah, showAudio: true, playTrigger: Date.now() })}>
+            onClick={() => setGlobal({ audioAyah: tafsirAyah, playSurah: tafsirSurah, showAudio: true, playTrigger: Date.now() })}>
             <Icon name="head" />{tr('استماع')}
           </button>
           <button type="button" className="nq-btn ghost sm"

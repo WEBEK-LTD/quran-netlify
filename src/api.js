@@ -42,6 +42,19 @@ export function getAudioUrl(readerId, surahNum, ayahNum) {
   return `https://everyayah.com/data/${readerId}/${s}${a}.mp3`;
 }
 
+// everyayah has no separate basmala file: it is Al-Fatiha 1 (Kufi), 001001.
+export function getBasmalaUrl(readerId) {
+  return getAudioUrl(readerId, 1, 1);
+}
+
+// Every file needed to listen to a whole surah: the basmala (surahs ≠ 1, 9) + each ayah.
+export function getSurahAudioUrls(readerId, surahNum, ayahCount) {
+  const urls = [];
+  if (surahNum !== 1 && surahNum !== 9) urls.push(getBasmalaUrl(readerId));
+  for (let a = 1; a <= ayahCount; a++) urls.push(getAudioUrl(readerId, surahNum, a));
+  return urls;
+}
+
 // ─── Tafsir API ───────────────────────────────────────────────────────────────
 // Available editions on alquran.cloud:
 //   ar.muyassar  → التفسير الميسر

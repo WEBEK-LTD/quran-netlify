@@ -66,6 +66,12 @@ let globalState = {
   tafsirSurah:   null,
   scrollToAyah:  null,
   playTrigger:   null,
+  // ── recitation engine (src/audio) ──
+  audioSurah:     null,   // surah being recited (null → none yet; reader falls back to currentSurah)
+  audioBasmala:   false,  // the basmala before ayah 1 is playing (audioAyah is then 1)
+  audioBuffering: false,
+  playSurah:      null,   // optional: surah for the next playTrigger (default currentSurah); consumed by the player
+  followAudio:    getLocal('nq_follow_audio', true) !== false, // scroll the recited ayah into view
 };
 
 function notify() {
@@ -77,6 +83,13 @@ export function setGlobal(updates) {
   Object.assign(globalState, updates);
   notify();
 }
+
+// Plain subscription outside React (the audio controller). Returns an unsubscribe.
+export function subscribe(fn) {
+  listeners.push(fn);
+  return () => { listeners = listeners.filter(l => l !== fn); };
+}
+export function getGlobal() { return { ...globalState }; }
 
 export function useStore() {
   const [state, setState] = useState(() => ({ ...globalState }));

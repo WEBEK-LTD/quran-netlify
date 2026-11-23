@@ -89,7 +89,7 @@ function DisplayPopover({ onClose }) {
             onChange={e => {
               setGlobal({ reader: e.target.value });
               savePref('nq_reader', e.target.value);
-              if (state.isPlaying) setGlobal({ playTrigger: Date.now() });
+              // a recitation in progress switches reciter at the same ayah (src/audio/controller.js)
             }}>
             {Object.entries(READER_GROUPS).map(([g, list]) => (
               <optgroup key={g} label={tr(g)}>

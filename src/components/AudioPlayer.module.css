@@ -60,7 +60,7 @@
 .menu {
   position: absolute; bottom: calc(100% + 14px); inset-inline-end: -60px; z-index: 5;
   width: min(340px, calc(100vw - 32px)); max-height: min(70vh, 560px); overflow: auto;
-  display: grid; gap: 14px; padding: 14px 16px 16px;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px 16px 16px;
   background: linear-gradient(var(--surface), var(--surface)) padding-box,
               linear-gradient(150deg, var(--gold), var(--line2) 30%, var(--line) 60%, var(--line2)) border-box;
   border: var(--bw) solid transparent; border-radius: 20px; box-shadow: var(--shadow);
@@ -108,3 +108,61 @@
   .moreWrap { position: static; }
   .menu { bottom: calc(100% + 10px); inset-inline: 0; width: auto; max-height: calc(100dvh - 260px); }
 }
+
+/* ── engine additions: buffering, sleep, sub-settings, offline ─────────── */
+.timeRow { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; min-width: 0; }
+.bufTxt { color: var(--gold); animation: bufPulse 1.2s ease-in-out infinite; white-space: nowrap; }
+.sleepTxt { display: inline-flex; align-items: center; gap: 4px; color: var(--gold); white-space: nowrap; }
+.sleepTxt :global(.nq-ico) { width: 12px; height: 12px; }
+@keyframes bufPulse { 50% { opacity: .45; } }
+
+/* buffering: a gilded arc turning around the play button */
+.play { position: relative; }
+.play.buf::after {
+  content: ""; position: absolute; inset: -4px; border-radius: 50%;
+  border: 2px solid transparent; border-top-color: var(--gold2); border-inline-end-color: var(--gold2);
+  animation: bufSpin .9s linear infinite; pointer-events: none;
+}
+@keyframes bufSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .play.buf::after { animation-duration: 2.4s; }
+  .bufTxt { animation: none; }
+}
+:global([data-reduce="on"]) .play.buf::after { animation-duration: 2.4s; }
+
+/* a small gold dot on the options button while the sleep timer runs */
+.smDot { position: relative; }
+.smDot::after { content: ""; position: absolute; top: 7px; inset-inline-end: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 2px var(--surface); }
+
+.seg2 { display: grid !important; grid-template-columns: 1fr 1fr; }
+.segWrap { display: flex !important; flex-wrap: wrap; }
+.segWrap button { flex: 1 1 auto; }
+.subRow { display: grid; gap: 6px; font-size: .78rem; color: var(--muted); }
+.subRow :global(.nq-seg) { display: flex; }
+.subRow :global(.nq-seg button) { flex: 1; }
+.rangeRow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rangeRow label { display: grid; gap: 4px; font-size: .78rem; color: var(--muted); }
+.select { width: 100%; min-height: 36px; padding: 4px 10px; border-radius: 10px; border: var(--bw) solid var(--line); background: var(--raise); color: var(--text); font: inherit; font-size: .86rem; }
+.select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.menuNote { font-style: normal; font-weight: 400; color: var(--muted); margin-inline-start: 8px; }
+.menuHint { margin: 0; font-size: .76rem; color: var(--muted); line-height: 1.55; }
+
+.toggleRow { display: flex; align-items: center; gap: 12px; justify-content: space-between; width: 100%; text-align: start; padding: 10px 12px; border-radius: 14px; border: var(--bw) solid var(--line); background: var(--raise); color: var(--text); }
+.toggleRow b { display: block; font-size: .86rem; font-weight: 600; }
+.toggleRow small { display: block; font-size: .74rem; color: var(--muted); line-height: 1.5; }
+.switch { width: 42px; height: 24px; border-radius: 99px; background: var(--line); position: relative; flex: none; transition: background .2s; }
+.switch::after { content: ""; position: absolute; top: 3px; inset-inline-start: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); transition: inset-inline-start .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.toggleRow[aria-checked="true"] .switch { background: var(--gold); }
+.toggleRow[aria-checked="true"] .switch::after { inset-inline-start: 21px; background: var(--on-gold); }
+.toggleRow:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+:root[data-mode="contrast"] .switch { outline: 1px solid #fff; }
+
+.dl { display: grid; gap: 6px; }
+.dlBar { height: 6px; border-radius: 6px; background: var(--raise); overflow: hidden; }
+.dlBar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold2), var(--gold)); transition: width .2s linear; }
+.dlRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .8rem; }
+.dlOk { display: inline-flex; align-items: center; gap: 6px; color: var(--gold); font-size: .82rem; }
+.dlOk :global(.nq-ico) { width: 16px; height: 16px; }
+.dlRow :global(.nq-btn .nq-ico) { width: 15px; height: 15px; }
+.dlBtn.dlBtn { justify-self: stretch; justify-content: flex-start; text-align: start; white-space: normal; padding-block: 8px; line-height: 1.45; }
+.dlBtn :global(.nq-ico) { width: 16px; height: 16px; color: var(--gold); }

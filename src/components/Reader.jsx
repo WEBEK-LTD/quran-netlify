@@ -27,6 +27,10 @@ const reducedMotion = () =>
 
 export function toggleAudio() { window.dispatchEvent(new CustomEvent('nq:audio-toggle')); }
 
+// Follow-along: after the visitor scrolls by hand, leave the page alone this long.
+const FOLLOW_PAUSE_MS = 8000;
+const SCROLL_KEYS = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'];
+
 function goToSurah(n) {
   if (n < 1 || n > 114) return;
   setGlobal({ currentSurah: n, currentAyah: 1, scrollToAyah: null });
@@ -77,6 +81,9 @@ export default function Reader() {
   const [view, setViewState]            = useState(readView);
   const initDone   = useRef(false);
   const progressTimer = useRef(null);
+  const userScrollAt = useRef(0);                      // last manual scroll (follow-along pauses)
+  const prevAudioSurah = useRef(state.audioSurah);
+  const [followTick, setFollowTick] = useState(0);
 
   function setView(v) {
     setViewState(v);
@@ -200,17 +207,53 @@ export default function Reader() {
     };
   }, [loading, view]);
 
-  // Follow the recitation: keep the playing ayah on screen
+  // Manual scrolling pauses follow-along for a few seconds
   useEffect(() => {
-    if (!state.isPlaying || loading) return;
-    const el = document.querySelector(`[data-kufi="${state.audioAyah}"]`);
+    const mark = () => { userScrollAt.current = Date.now(); };
+    const onKey = e => {
+      if (!SCROLL_KEYS.includes(e.key)) return;
+      const t = e.target;
+      if (t instanceof Element && t.closest('input, textarea, select, [contenteditable="true"], [role="slider"]')) return;
+      mark();
+    };
+    window.addEventListener('wheel', mark, { passive: true });
+    window.addEventListener('touchmove', mark, { passive: true });
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('wheel', mark);
+      window.removeEventListener('touchmove', mark);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  // Follow the recitation: keep the playing ayah (or basmala) on screen
+  useEffect(() => {
+    if (!state.followAudio || !state.isPlaying || loading || loadedSurah !== state.currentSurah) return;
+    if ((state.audioSurah || state.currentSurah) !== state.currentSurah) return;
+    const since = Date.now() - userScrollAt.current;
+    if (since < FOLLOW_PAUSE_MS) {
+      const t = setTimeout(() => setFollowTick(n => n + 1), FOLLOW_PAUSE_MS - since + 50);
+      return () => clearTimeout(t);
+    }
+    const el = state.audioBasmala
+      ? document.querySelector('[data-basmala]')
+      : document.querySelector(`[data-kufi="${state.audioAyah}"]`);
     if (!el) return;
     const r = el.getBoundingClientRect();
     const top = 150, bottom = window.innerHeight - 200;
     if (r.top < top || r.top > bottom) {
       el.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
     }
-  }, [state.audioAyah, state.isPlaying, loading]);
+  }, [state.audioAyah, state.audioBasmala, state.audioSurah, state.isPlaying, state.followAudio, state.currentSurah, loading, loadedSurah, view, followTick]);
+
+  // The recitation moved on to another surah (continuous play): follow it
+  useEffect(() => {
+    const prev = prevAudioSurah.current;
+    prevAudioSurah.current = state.audioSurah;
+    if (!state.followAudio || !state.isPlaying || !prev || !state.audioSurah || state.audioSurah === prev) return;
+    if (state.currentSurah === prev) goToSurah(state.audioSurah);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.audioSurah]);
 
   // Escape closes the ayah tools
   useEffect(() => {
@@ -287,12 +330,13 @@ export default function Reader() {
   }
 
   function playAyah(num) {
-    if (state.isPlaying && state.audioAyah === num) { toggleAudio(); return; }
+    if (state.isPlaying && isPlayingK(num)) { toggleAudio(); return; }
     setGlobal({ audioAyah: num, showAudio: true, playTrigger: Date.now() });
   }
 
   function listen() {
-    if (state.isPlaying || state.showAudio) { toggleAudio(); return; }
+    // pause, or resume a recitation of this surah; otherwise start here (selected ayah or the beginning)
+    if (state.isPlaying || (state.showAudio && state.audioSurah === state.currentSurah)) { toggleAudio(); return; }
     setGlobal({ audioAyah: sel?.kufi || 1, showAudio: true, playTrigger: Date.now() });
   }
 
@@ -328,17 +372,20 @@ export default function Reader() {
   const ready      = !loading && !error && loadedSurah === surah;
   const audioOn    = state.showAudio;
   const isBookmarked = (k) => state.bookmarks.some(b => b.surah === surah && b.ayah === k);
-  const isPlayingK = (k) => audioOn && state.audioAyah === k;
+  // the recited ayah (Kufi) — only in the surah being recited, and not while its basmala plays
+  const audioHere  = audioOn && (state.audioSurah || surah) === surah;
+  const isPlayingK = (k) => audioHere && !state.audioBasmala && state.audioAyah === k;
   const showSel    = (uid) => sel && sel.uid === uid && (barOpen || state.highlightMode);
   const selItem    = sel ? built.items.find(i => i.uid === sel.uid) : null;
   const juzLabel   = j1 === j2 ? tr('الجزء {n}', { n: num(j1) }) : tr('الجزء {a}–{b}', { a: num(j1), b: num(j2) });
   const sName      = surahName(surah);
-  const basmalaPlaying = built.basmalaKufi && isPlayingK(built.basmalaKufi);
+  const basmalaPlaying = built.basmalaKufi ? isPlayingK(built.basmalaKufi) : audioHere && state.audioBasmala;
 
   const basmalaLine = built.basmala && (
     <p className={`${styles.basm} ${basmalaPlaying ? styles.playing : ''}`}
       id={built.basmalaKufi ? `ayah-${built.basmalaKufi}` : undefined}
       data-kufi={built.basmalaKufi || undefined}
+      data-basmala=""
       lang="ar" dir="rtl"
       style={{ fontFamily: quranFont }}>
       {BASMALA_TEXT}
