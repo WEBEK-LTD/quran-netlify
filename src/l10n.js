@@ -14,7 +14,9 @@
 import { useLang, getLang, LANGS } from './i18n';
 import { SURAHS_META } from './data';
 
-const modules = import.meta.glob('./locales/*.js', { eager: true });
+// rooms.js belongs to the app-only community screens: it is imported by that lazy
+// chunk alone (roomsTr), so the website never downloads those strings.
+const modules = import.meta.glob(['./locales/*.js', '!./locales/rooms.js'], { eager: true });
 const DICT = { en: {}, tr: {}, fr: {}, ur: {}, id: {} };
 // Areas that read their own rows first (core, hifz, library) are merged first, so
 // the shared dictionary that plain useTr() reads prefers the other areas' wording.

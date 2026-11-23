@@ -47,7 +47,7 @@ command -v node >/dev/null || { echo "node is required" >&2; exit 1; }
 # id <TAB> status <TAB> download <TAB> sha1 <TAB> trimStart <TAB> trimEnd
 node -e '
   const m = require(process.argv[1]);
-  for (const r of m.recordings) console.log([r.id, r.status, r.download, r.sha1 || "", r.trim?.start ?? 0, r.trim?.end ?? ""].join("\t"));
+  for (const r of m.recordings) console.log([r.id, r.status, r.download, r.sha1 || "-", r.trim?.start ?? 0, r.trim?.end ?? ""].join("\t"));
 ' "$MANIFEST" > "$SRC_DIR/.list"
 
 download() {   # id url sha1 → path of the cached original (empty on failure)
@@ -65,12 +65,12 @@ download() {   # id url sha1 → path of the cached original (empty on failure)
   fi
   out="$SRC_DIR/$id.orig"
   if [ ! -s "$out" ]; then
-    if ! curl -fsSL --retry 2 --max-time 600 -o "$out.part" "$url"; then
+    if ! curl -fsSL -A "NoorQuranAdhanFetch/1.0 (https://nuralquran.net)" --retry 2 --max-time 600 -o "$out.part" "$url"; then
       rm -f "$out.part"; echo "   ✗ $id: download failed ($url)" >&2; return 0
     fi
     mv "$out.part" "$out"
   fi
-  if [ -n "$sha" ]; then
+  if [ -n "$sha" ] && [ "$sha" != "-" ]; then
     local got; got="$(sha1sum "$out" | cut -d' ' -f1)"
     if [ "$got" != "$sha" ]; then echo "   ✗ $id: SHA-1 mismatch ($got ≠ $sha) — not used" >&2; return 0; fi
   else

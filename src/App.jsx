@@ -50,6 +50,16 @@ import styles from './App.module.css';
 import { pingPresence } from './backend';
 import { useAuth } from './hooks/useAuth';
 import { usePublicSettings, featureOn } from './hooks/usePublicSettings';
+import { isNative } from './native/platform';
+
+// Voice rooms & community: app only. The website never matches these routes, so it
+// never requests the chunk (nor livekit-client, which only that chunk imports).
+const NATIVE = isNative();
+const CommunityApp = NATIVE ? lazy(() => import('./community/CommunityApp.jsx')) : null;
+const RoomPill = NATIVE ? lazy(() => import('./native/RoomPill.jsx')) : null;
+const COMMUNITY_ROUTES = ['/rooms/*', '/messages/*', '/people/*', '/groups/*', '/notifications'];
+const COMMUNITY_RE = /^\/(rooms|messages|people|groups|notifications)(\/|$)/;
+const IMMERSIVE_RE = /^\/(rooms|messages)\/[^/]+\/?$/;   // in a room, a conversation, the create form
 
 // Silent boundary for floating extras: if one widget crashes it disappears
 // instead of taking down the whole app (or the other widgets).
@@ -175,12 +185,14 @@ export default function App() {
   }, []);
 
   const isHome = location.pathname === '/';
-  const hideExtras = isHome || [
+  const hideExtras = isHome || (NATIVE && COMMUNITY_RE.test(location.pathname)) || [
     '/admin', '/privacy', '/terms', '/delete-data', '/support',
     '/login', '/signup', '/auth/callback', '/reset-password',
   ].some(p => location.pathname === p || location.pathname.startsWith('/admin'));
 
   const path = location.pathname;
+  const communityPath = NATIVE && COMMUNITY_RE.test(path);
+  const immersive = NATIVE && IMMERSIVE_RE.test(path);
   const isAdmin = !!user?.is_admin;
   const maintenanceExempt = path === '/login' || path === '/auth/callback' || path === '/admin' || path.startsWith('/admin/');
   if (settings.maintenance_mode && !isAdmin && !maintenanceExempt) {
@@ -238,12 +250,17 @@ export default function App() {
         <Route path="/daily-ayah"   element={<FullLayout><DailyAyahPage /></FullLayout>} />
         <Route path="/tadhkira"     element={<FullLayout><TadhkiraPage /></FullLayout>} />
         <Route path="/report"       element={<FullLayout><ReportPage /></FullLayout>} />
+        {NATIVE && COMMUNITY_ROUTES.map(p => (
+          <Route key={p} path={p} element={featureOn(settings, 'rooms') ? <CommunityApp /> : <FullLayout><FeatureOff /></FullLayout>} />
+        ))}
         <Route path="*"             element={<FullLayout><NotFoundPage /></FullLayout>} />
       </Routes>
       </Suspense>
       </ErrorBoundary>
 
-      {!path.startsWith('/admin') && path !== '/auth/callback' && <ExtraBoundary><SiteChrome /></ExtraBoundary>}
+      {!path.startsWith('/admin') && path !== '/auth/callback' && !immersive && <ExtraBoundary><SiteChrome /></ExtraBoundary>}
+      {NATIVE && <ExtraBoundary><Suspense fallback={null}><RoomPill /></Suspense></ExtraBoundary>}
+      {communityPath && <ExtraBoundary><Toast /></ExtraBoundary>}
       {!hideExtras && (
         <>
           {featureOn(settings, 'ai_assistant') && <ExtraBoundary><AIAssistant /></ExtraBoundary>}

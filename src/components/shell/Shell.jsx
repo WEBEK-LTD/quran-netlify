@@ -13,6 +13,7 @@ import { coreTr } from '../../locales/core';
 import { SURAHS_META } from '../../data';
 import { normalizeArabic } from '../../arabic';
 import LangSwitcher from '../LangSwitcher';
+import { isNative } from '../../native/platform';
 
 // ── tiny shared UI state (which overlay is open) ────────────────────────────
 let ui = { overlay: null }; // null | 'mega' | 'drawer' | 'palette' | 'account'
@@ -338,17 +339,22 @@ const TABS = [
   { path: '/prayer-times', icon: 'mosque', label: 'الصلاة' },
   { path: '/hifz', icon: 'grid', label: 'الحفظ' },
 ];
+// In the app, voice rooms take the fourth tab (Hifz stays in «المزيد»).
+const ROOMS_TAB = { path: '/rooms', icon: 'live', label: 'الغرف', also: ['/messages', '/people', '/groups', '/notifications'] };
+const APP = isNative();
 export function TabBar() {
   const { pathname } = useLocation();
   const tr = coreTr(useTr());
+  const settings = usePublicSettings();
+  const tabs = APP && (!settings.features || settings.features.rooms !== false) ? [...TABS.slice(0, 3), ROOMS_TAB] : TABS;
   useEffect(() => {
     document.body.classList.add('nq-has-tabbar');
     return () => document.body.classList.remove('nq-has-tabbar');
   }, []);
   return (
     <nav className="nq-tabbar" aria-label={tr('التنقل السفلي')}>
-      {TABS.map(t => {
-        const on = t.exact ? pathname === t.path : pathname.startsWith(t.path);
+      {tabs.map(t => {
+        const on = t.exact ? pathname === t.path : (pathname.startsWith(t.path) || (t.also || []).some(a => pathname.startsWith(a)));
         return <Link key={t.path} to={t.path} aria-current={on ? 'page' : undefined}><Icon name={t.icon} />{tr(t.label)}</Link>;
       })}
       <button type="button" onClick={openDrawer}><Icon name="menu" />{tr('المزيد')}</button>

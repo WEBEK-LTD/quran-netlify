@@ -18,7 +18,7 @@
     "cap:sync": "cap sync",
     "app:assets": "node scripts/app-icons.mjs && capacitor-assets generate --assetPath store-assets/app --android --ios --iconBackgroundColor '#06100C' --iconBackgroundColorDark '#06100C' --splashBackgroundColor '#060D0A' --splashBackgroundColorDark '#060D0A'",
     "app:adhan": "bash scripts/fetch-adhan.sh",
-    "test:native": "TZ=America/New_York node --test scripts/test-adhan-schedule.mjs",
+    "test:native": "TZ=America/New_York node --test scripts/test-adhan-schedule.mjs scripts/test-push-routes.mjs",
     "check:native": "node scripts/check-native.mjs"
   },
   "dependencies": {
@@ -36,6 +36,7 @@
     "@fontsource/amiri-quran": "^5.3.0",
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
     "@fontsource/reem-kufi": "^5.3.0",
+    "livekit-client": "2.23.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.0"

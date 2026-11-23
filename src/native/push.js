@@ -9,7 +9,8 @@
 // 'registration' token → POST /me/devices {platform, token, app_version, lang}
 // (rooms backend; a 404 is ignored and retried on the next launch); on sign-out
 // DELETE /me/devices {token} (useAuth.signOutAuth calls unregisterDevice() first).
-// A tap opens data.path / data.url inside the app.
+// A tap opens the screen for the payload's type (room / conversation / profile / group),
+// else data.path / data.url inside the app.
 import { PushNotifications } from '@capacitor/push-notifications';
 import { App } from '@capacitor/app';
 import { api, getToken } from '../apiClient';
@@ -19,6 +20,7 @@ import { setGlobal } from '../store';
 import { platform } from './platform';
 import { navigate, webPathToRoute } from './links';
 import { confirmDialog } from './ui';
+import { flattenPushData, routeForPush } from './pushRoutes';
 
 export const PUSH_ENABLED = import.meta.env.VITE_NQ_PUSH === '1';
 const SENT_KEY = 'nq_push_sent';   // `${token}|${sessionTokenTail}|${lang}` last sent to the API
@@ -47,11 +49,22 @@ async function sendToken() {
 
 function openFromData(data) {
   if (!data) return;
-  let path = typeof data.path === 'string' ? data.path : null;
-  if (!path && typeof data.url === 'string') {
-    try { const u = new URL(data.url); if (/(^|\.)nuralquran\.net$/.test(u.hostname)) path = webPathToRoute(u.pathname, u.search, u.hash); } catch {}
+  let path = routeForPush(data);
+  const d = flattenPushData(data);
+  if (!path && typeof d.path === 'string') path = d.path;
+  if (!path && typeof d.url === 'string') {
+    try { const u = new URL(d.url); if (/(^|\.)nuralquran\.net$/.test(u.hostname)) path = webPathToRoute(u.pathname, u.search, u.hash); } catch {}
   }
   if (path) navigate(path);
+}
+
+/** 'granted' | 'denied' | 'prompt' | 'off' (push not built into this app) */
+export async function pushPermission() {
+  if (!PUSH_ENABLED) return 'off';
+  try {
+    const p = await PushNotifications.checkPermissions();
+    return p.receive === 'granted' ? 'granted' : p.receive === 'denied' ? 'denied' : 'prompt';
+  } catch { return 'off'; }
 }
 
 export async function initPush() {
@@ -60,7 +73,14 @@ export async function initPush() {
   PushNotifications.addListener('registration', (t) => { deviceToken = t && t.value; sendToken(); });
   PushNotifications.addListener('registrationError', (e) => { if (import.meta.env.DEV) console.warn('[push] registration error', e); });
   PushNotifications.addListener('pushNotificationReceived', (n) => {
-    if (n && (n.title || n.body)) setGlobal({ toast: n.title || n.body });
+    // in the foreground: a short toast (not inside the room the push is about), and the
+    // community screens refresh their badges
+    const d = flattenPushData(n && n.data);
+    try { window.dispatchEvent(new CustomEvent('nq-community-push', { detail: d })); } catch {}
+    const here = window.location.pathname;
+    const route = routeForPush(n && n.data);
+    if (route && route === here) return;
+    if (n && (n.title || n.body)) setGlobal({ toast: [n.title, n.body].filter(Boolean).join(' — ') });
   });
   PushNotifications.addListener('pushNotificationActionPerformed', (a) => openFromData(a && a.notification && a.notification.data));
   window.addEventListener('nq-token-change', () => sendToken());

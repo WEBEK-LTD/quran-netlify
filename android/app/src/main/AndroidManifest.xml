@@ -119,11 +119,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
-    <!-- Voice rooms (not shipped yet). Uncomment together with the privacy policy and
-         Data safety updates when rooms launch — an unused microphone permission is a
-         review red flag and contradicts the current privacy policy («لا نصل إلى الميكروفون»).
+    <!-- Voice rooms: the microphone is used only while the user speaks on a room's stage
+         (asked at runtime by Capacitor's WebChromeClient on the first getUserMedia); audio is
+         live and never recorded (privacy policy, docs/APP.md §9). MODIFY_AUDIO_SETTINGS lets the
+         WebView switch to communication mode for echo cancellation.
+         FOREGROUND_SERVICE_MICROPHONE is NOT declared: speaking stops when the app goes to the
+         background (Android 14+ requires a microphone foreground service for that). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-    -->
 </manifest>

@@ -64,6 +64,9 @@ ok((info.UIBackgroundModes || []).includes('remote-notification'), 'UIBackground
 ok(JSON.stringify(info.CFBundleURLTypes || []).includes('"nuralquran"'), 'custom URL scheme nuralquran://');
 ok(!!info.NSLocationWhenInUseUsageDescription && !!info.NSMicrophoneUsageDescription, 'location + microphone purpose strings');
 ok(JSON.stringify(info.UISupportedInterfaceOrientations) === '["UIInterfaceOrientationPortrait"]' && (info['UISupportedInterfaceOrientations~ipad'] || []).length === 4, 'iPhone portrait, iPad all orientations');
+const scene = readFileSync(R('ios/App/App/SceneDelegate.swift'), 'utf8');
+ok(/rootViewController = NQBridgeViewController\(\)/.test(scene) && /registerPluginInstance\(NQAudioPlugin\(\)\)/.test(scene) && /jsName = "NQAudio"/.test(scene), 'NQAudio plugin (voice-room audio session) registered by NQBridgeViewController');
+ok(/\.playAndRecord/.test(scene) && /\.playback, mode: \.spokenAudio/.test(scene), 'NQAudio switches .playAndRecord (speaking) ↔ .playback (after)');
 const ent = parsePlist(readFileSync(R('ios/App/App/App.entitlements'), 'utf8'));
 ok((ent['com.apple.developer.associated-domains'] || []).includes('applinks:nuralquran.net'), 'entitlements: applinks:nuralquran.net');
 ok(!!ent['aps-environment'], 'entitlements: aps-environment (push)');
@@ -85,6 +88,10 @@ for (const perm of ['POST_NOTIFICATIONS', 'SCHEDULE_EXACT_ALARM', 'FOREGROUND_SE
   ok(new RegExp(`<uses-permission android:name="android.permission.${perm}"`).test(manifest), `permission ${perm}`);
 }
 ok(!/<uses-permission android:name="android.permission.USE_EXACT_ALARM"/.test(manifest), 'USE_EXACT_ALARM not declared (Play policy)');
+const liveManifest = manifest.replace(/<!--[\s\S]*?-->/g, '');
+ok(/android\.permission\.RECORD_AUDIO"/.test(liveManifest) && /android\.permission\.MODIFY_AUDIO_SETTINGS"/.test(liveManifest), 'RECORD_AUDIO + MODIFY_AUDIO_SETTINGS declared (voice rooms)');
+ok(!/FOREGROUND_SERVICE_MICROPHONE"/.test(liveManifest), 'FOREGROUND_SERVICE_MICROPHONE not declared (no background microphone)');
+ok(/createChannel\(\{\s*id: 'community'/.test(readFileSync(R('src/native/push.js'), 'utf8')), "push.js creates the Android notification channel 'community'");
 ok(/android:autoVerify="true"/.test(manifest) && /android:host="nuralquran.net"/.test(manifest), 'App Links intent filter (autoVerify)');
 ok(/android:scheme="nuralquran"/.test(manifest), 'custom scheme intent filter');
 ok(/foregroundServiceType="mediaPlayback"/.test(manifest), 'media playback service declared');

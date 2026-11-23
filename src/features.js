@@ -6,6 +6,7 @@
 import { translate } from './l10n';
 import CORE from './locales/core';
 import { getLang } from './i18n';
+import { isNative } from './native/platform';
 
 export const FEATURE_GROUPS = [
   { id: 'quran', title: 'القرآن الكريم', items: [
@@ -37,6 +38,12 @@ export const FEATURE_GROUPS = [
     { key: 'notes', path: '/notes', icon: 'pen', title: 'ملاحظاتي', desc: 'تأمّلاتك على الآيات', flag: 'notes' },
     { key: 'assistant', action: 'assistant', icon: 'chat', title: 'المساعد', desc: 'اسأل عن معنى آية أو كلمة', flag: 'ai_assistant' },
   ]},
+  // app only (voice rooms are not on the website)
+  { id: 'community', title: 'الغرف والمجتمع', appOnly: true, items: [
+    { key: 'rooms', path: '/rooms', icon: 'live', title: 'الغرف الصوتية', desc: 'مجالس مباشرة للتلاوة والتدبّر، بلا تسجيل', flag: 'rooms' },
+    { key: 'messages', path: '/messages', icon: 'chat', title: 'الرسائل', desc: 'رسائل نصية مع أصدقائك', flag: 'rooms' },
+    { key: 'notifications', path: '/notifications', icon: 'bell', title: 'الإشعارات', desc: 'بدء الغرف والدعوات وطلبات الصداقة', flag: 'rooms' },
+  ]},
   { id: 'account', title: 'الحساب والمساعدة', items: [
     { key: 'settings', path: '/settings', icon: 'gear', title: 'الإعدادات والمظهر', desc: 'الأوضاع، حجم الخط، القارئ، التنبيهات' },
     { key: 'login', path: '/login', icon: 'user', title: 'تسجيل الدخول', desc: 'لحفظ تقدّمك ومزامنته على أجهزتك', guestOnly: true },
@@ -64,13 +71,14 @@ export function groupTitle(group, lang = getLang()) {
 // Groups filtered for the current visitor (admin feature switches, guest/user).
 export function visibleGroups(settings, user) {
   const feats = (settings && settings.features) || {};
-  return FEATURE_GROUPS.map(g => ({
+  const app = isNative();
+  return FEATURE_GROUPS.filter(g => app || !g.appOnly).map(g => ({
     ...g,
     items: g.items.filter(it => (!it.flag || feats[it.flag] !== false) && !(it.guestOnly && user)),
   })).filter(g => g.items.length);
 }
 
-export const ALL_FEATURES = FEATURE_GROUPS.flatMap(g => g.items);
+export const ALL_FEATURES = FEATURE_GROUPS.filter(g => !g.appOnly).flatMap(g => g.items);
 
 // Opens the floating assistant from anywhere (menu, palette, reader).
 export function openAssistant(context) {
