@@ -300,7 +300,7 @@ function topBar(t, langHref) {
 }
 
 function footer(t, mdHref) {
-  const links = ['/', '/help', '/privacy', '/terms'].map(h => `<a href="${h}" data-app>${esc(t.sections[h])}</a>`).join('');
+  const links = ['/', '/help', '/privacy', '/terms', '/child-safety'].map(h => `<a href="${h}" data-app>${esc(t.sections[h])}</a>`).join('');
   return `<footer class="foot"><div class="wrap">
 <p>${esc(t.footer.text)}${mdHref ? ` · <a href="${esc(mdHref)}" type="text/markdown">${esc(t.md)}</a>` : ''}</p>
 <p>${esc(t.footer.free)}</p>
@@ -543,8 +543,8 @@ async function appRouteCopies() {
 }
 
 // ── sitemaps, llms.txt, _headers ───────────────────────────────────────────
-const SITEMAP_PAGES = ['/', '/reader', '/listen', '/tafsir', '/prayer-times', '/qibla', '/adhkar', '/tasbih', '/radio', '/daily-ayah', '/hifz', '/khatma-group', '/search', '/ijaza', '/docs', '/help', '/privacy', '/terms'];
-const PRIORITY = { '/': '1.0', '/reader': '0.9', '/listen': '0.8', '/tafsir': '0.8', '/prayer-times': '0.8', '/adhkar': '0.8', '/daily-ayah': '0.7', '/privacy': '0.3', '/terms': '0.3' };
+const SITEMAP_PAGES = ['/', '/reader', '/listen', '/tafsir', '/prayer-times', '/qibla', '/adhkar', '/tasbih', '/radio', '/daily-ayah', '/hifz', '/khatma-group', '/search', '/ijaza', '/docs', '/help', '/privacy', '/terms', '/child-safety'];
+const PRIORITY = { '/': '1.0', '/reader': '0.9', '/listen': '0.8', '/tafsir': '0.8', '/prayer-times': '0.8', '/adhkar': '0.8', '/daily-ayah': '0.7', '/privacy': '0.3', '/terms': '0.3', '/child-safety': '0.3' };
 
 function xmlAlternates(pairs) {
   return pairs.map(([hl, href]) => `<xhtml:link rel="alternate" hreflang="${hl}" href="${esc(href)}"/>`).join('');
@@ -620,6 +620,7 @@ ${app}
 - [Sitemap](${SITE}/sitemap.xml)
 - [Privacy policy](${SITE}/privacy)
 - [Terms of use](${SITE}/terms)
+- [Child safety standards](${SITE}/child-safety)
 `;
 
   const rows = NAMES.map(s => {

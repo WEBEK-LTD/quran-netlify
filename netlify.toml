@@ -80,6 +80,10 @@
   from = "/terms"
   to = "/seo/app/terms.html"
   status = 200
+[[redirects]]
+  from = "/child-safety"
+  to = "/seo/app/child-safety.html"
+  status = 200
 # Admin: the app shell with <meta name="robots" content="noindex, nofollow">
 [[redirects]]
   from = "/admin"

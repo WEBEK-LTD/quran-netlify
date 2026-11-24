@@ -17,6 +17,7 @@ const WILL_DELETE = [
   'المفضلة وملاحظاتك على الآيات',
   'ختماتك الشخصية، والختمات الجماعية التي أنشأتها',
   'ظهورك في لوحة المتصدرين',
+  'في تطبيق الهاتف: بروفايل المجتمع وصورتك، والصداقات والمتابعات وقائمة الحظر، وعضويتك في الجروبات، وتسجيل جهازك للإشعارات',
   'بيانات الموقع المحفوظة على هذا الجهاز (الحفظ، الختمات، الإحصائيات)',
 ];
 const WILL_KEEP = [
@@ -126,6 +127,7 @@ export default function DeleteDataPage() {
 
         {step === 1 && (<>
           <p className={styles.lead}>{tr('نأسف لمغادرتك. حذف الحساب يزيل كل ما يرتبط به من خادم الموقع نهائياً، ولا يمكن استرجاعه بعد ذلك.')}</p>
+          <p className={styles.lead}>{tr('هذه الصفحة لحسابك في موقع نور القرآن وتطبيقه على الهاتف معاً، وتجدها في التطبيق من «الإعدادات ← الحساب».')}</p>
 
           <div className={styles.twoCols}>
             <section className={`nq-card ${styles.listCard}`} data-tone="danger" aria-labelledby="dd-del">
@@ -140,6 +142,7 @@ export default function DeleteDataPage() {
                 {WILL_KEEP.map(x => <li key={x}><Icon name="check" /><span>{tr(x)}</span></li>)}
               </ul>
               <p className={styles.small}>{tr('تُحذف أيضاً الختمات الجماعية التي أنشأتها، فيفقد المشاركون فيها الوصول إليها.')}</p>
+              <p className={styles.small}>{tr('في التطبيق: تُغلق غرفك المفتوحة، وتنتقل إدارة الجروبات التي أسّستها إلى عضو آخر فيها، وتبقى رسائلك الخاصة عند من استلمها دون اسمك.')}</p>
             </section>
           </div>
 

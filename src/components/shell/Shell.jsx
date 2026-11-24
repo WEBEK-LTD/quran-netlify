@@ -394,6 +394,7 @@ export function SiteFooter() {
         <div><h4>{tr('عن الموقع')}</h4><ul>
           <li><Link to="/help">{tr('شرح الاستخدام')}</Link></li><li><Link to="/support">{tr('الدعم')}</Link></li>
           <li><Link to="/privacy">{tr('الخصوصية')}</Link></li><li><Link to="/terms">{tr('الشروط')}</Link></li>
+          <li><Link to="/child-safety">{tr('سلامة الأطفال')}</Link></li>
         </ul></div>
       </div>
       <div className="copy">{tr('© {year} هـ · نور القرآن', { year: hijriYear() })}</div>

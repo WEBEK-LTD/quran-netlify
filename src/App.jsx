@@ -37,6 +37,7 @@ const SupportPage = lazy(() => import('./pages/SupportPage'));
 import PrivacyPage     from './pages/PrivacyPage';
 import TermsPage       from './pages/TermsPage';
 import DeleteDataPage  from './pages/DeleteDataPage';
+const ChildSafetyPage = lazy(() => import('./pages/ChildSafetyPage'));
 import NotFoundPage    from './pages/NotFoundPage';
 const RadioPage = lazy(() => import('./pages/RadioPage'));
 const TasbihPage = lazy(() => import('./pages/TasbihPage'));
@@ -199,7 +200,7 @@ export default function App() {
 
   const isHome = location.pathname === '/';
   const hideExtras = isHome || (NATIVE && COMMUNITY_RE.test(location.pathname)) || [
-    '/admin', '/privacy', '/terms', '/delete-data', '/support',
+    '/admin', '/privacy', '/terms', '/delete-data', '/child-safety', '/support',
     '/login', '/signup', '/auth/callback', '/reset-password',
   ].some(p => location.pathname === p || location.pathname.startsWith('/admin'));
 
@@ -257,6 +258,7 @@ export default function App() {
         <Route path="/privacy"      element={<FullLayout><PrivacyPage /></FullLayout>} />
         <Route path="/terms"        element={<FullLayout><TermsPage /></FullLayout>} />
         <Route path="/delete-data"  element={<FullLayout><DeleteDataPage /></FullLayout>} />
+        <Route path="/child-safety" element={<FullLayout><ChildSafetyPage /></FullLayout>} />
         <Route path="/prayer-times" element={<FullLayout><PrayerTimesPage /></FullLayout>} />
         <Route path="/qibla"        element={<FullLayout><QiblaPage /></FullLayout>} />
         <Route path="/adhkar"       element={<FullLayout><AdhkarPage /></FullLayout>} />

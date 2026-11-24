@@ -59,7 +59,7 @@ const base = {
       '/': 'الرئيسية', '/reader': 'المصحف', '/listen': 'التلاوات', '/tafsir': 'التفسير', '/prayer-times': 'مواقيت الصلاة', '/qibla': 'اتجاه القبلة', '/adhkar': 'الأذكار',
       '/tasbih': 'المسبحة', '/radio': 'إذاعة القرآن', '/daily-ayah': 'آية اليوم', '/hifz': 'الحفظ', '/khatma-group': 'الختمة الجماعية',
       '/search': 'البحث في القرآن', '/ijaza': 'الإجازة والقراءات', '/docs': 'دليل المميزات', '/help': 'شرح الاستخدام',
-      '/privacy': 'سياسة الخصوصية', '/terms': 'شروط الاستخدام',
+      '/privacy': 'سياسة الخصوصية', '/terms': 'شروط الاستخدام', '/child-safety': 'معايير سلامة الأطفال',
     },
     footer: {
       text: 'نص القرآن الكريم: الرسم العثماني برواية حفص، مجمع الملك فهد لطباعة المصحف الشريف. التفسير الميسر: مجمع الملك فهد.',
@@ -112,7 +112,7 @@ const base = {
       '/': 'Home', '/reader': 'Mushaf', '/listen': 'Recitations', '/tafsir': 'Tafsir', '/prayer-times': 'Prayer times', '/qibla': 'Qibla direction', '/adhkar': 'Adhkar',
       '/tasbih': 'Tasbih counter', '/radio': 'Quran radio', '/daily-ayah': 'Ayah of the day', '/hifz': 'Memorisation (hifz)', '/khatma-group': 'Group khatm',
       '/search': 'Search the Quran', '/ijaza': 'Ijaza & qira’at', '/docs': 'Feature guide', '/help': 'How to use',
-      '/privacy': 'Privacy policy', '/terms': 'Terms of use',
+      '/privacy': 'Privacy policy', '/terms': 'Terms of use', '/child-safety': 'Child safety standards',
     },
     footer: {
       text: 'Quran text: Uthmani script (Hafs), King Fahd Glorious Quran Printing Complex. Translation of the meanings: Saheeh International.',
@@ -165,7 +165,7 @@ const base = {
       '/': 'Ana sayfa', '/reader': 'Mushaf', '/listen': 'Tilavetler', '/tafsir': 'Tefsir', '/prayer-times': 'Namaz vakitleri', '/qibla': 'Kıble yönü', '/adhkar': 'Zikirler',
       '/tasbih': 'Tesbih sayacı', '/radio': "Kur'an radyosu", '/daily-ayah': 'Günün ayeti', '/hifz': 'Hıfz', '/khatma-group': 'Toplu hatim',
       '/search': "Kur'an'da ara", '/ijaza': 'İcazet ve kıraatler', '/docs': 'Özellik rehberi', '/help': 'Kullanım kılavuzu',
-      '/privacy': 'Gizlilik politikası', '/terms': 'Kullanım koşulları',
+      '/privacy': 'Gizlilik politikası', '/terms': 'Kullanım koşulları', '/child-safety': 'Çocuk güvenliği standartları',
     },
     footer: {
       text: "Kur'an metni: Osmanî hat (Hafs), Kral Fahd Mushaf Basım Kompleksi. Türkçe meal: Diyanet İşleri.",
@@ -218,7 +218,7 @@ const base = {
       '/': 'Accueil', '/reader': 'Mushaf', '/listen': 'Récitations', '/tafsir': 'Tafsir', '/prayer-times': 'Heures de prière', '/qibla': 'Direction de la qibla', '/adhkar': 'Adhkar',
       '/tasbih': 'Compteur de tasbih', '/radio': 'Radio du Coran', '/daily-ayah': 'Verset du jour', '/hifz': 'Mémorisation', '/khatma-group': 'Khatm collectif',
       '/search': 'Rechercher dans le Coran', '/ijaza': 'Ijaza et lectures', '/docs': 'Guide des fonctions', '/help': 'Mode d’emploi',
-      '/privacy': 'Politique de confidentialité', '/terms': 'Conditions d’utilisation',
+      '/privacy': 'Politique de confidentialité', '/terms': 'Conditions d’utilisation', '/child-safety': 'Normes de sécurité des enfants',
     },
     footer: {
       text: 'Texte du Coran : écriture uthmanie (Hafs), Complexe du Roi Fahd. Traduction du sens : Muhammad Hamidullah.',
@@ -271,7 +271,7 @@ const base = {
       '/': 'ہوم', '/reader': 'مصحف', '/listen': 'تلاوتیں', '/tafsir': 'تفسیر', '/prayer-times': 'نماز کے اوقات', '/qibla': 'قبلہ کی سمت', '/adhkar': 'اذکار',
       '/tasbih': 'تسبیح کاؤنٹر', '/radio': 'قرآن ریڈیو', '/daily-ayah': 'آج کی آیت', '/hifz': 'حفظ', '/khatma-group': 'اجتماعی ختم',
       '/search': 'قرآن میں تلاش', '/ijaza': 'اجازہ اور قراءات', '/docs': 'خصوصیات کی رہنمائی', '/help': 'استعمال کا طریقہ',
-      '/privacy': 'رازداری کی پالیسی', '/terms': 'شرائطِ استعمال',
+      '/privacy': 'رازداری کی پالیسی', '/terms': 'شرائطِ استعمال', '/child-safety': 'بچوں کے تحفظ کے معیارات',
     },
     footer: {
       text: 'قرآن کا متن: عثمانی رسم الخط (حفص)، شاہ فہد قرآن پرنٹنگ کمپلیکس۔ اردو ترجمہ: فتح محمد جالندھری۔',
@@ -324,7 +324,7 @@ const base = {
       '/': 'Beranda', '/reader': 'Mushaf', '/listen': 'Murattal', '/tafsir': 'Tafsir', '/prayer-times': 'Jadwal salat', '/qibla': 'Arah kiblat', '/adhkar': 'Zikir',
       '/tasbih': 'Penghitung tasbih', '/radio': 'Radio Al-Quran', '/daily-ayah': 'Ayat hari ini', '/hifz': 'Hafalan', '/khatma-group': 'Khatam bersama',
       '/search': 'Cari di Al-Quran', '/ijaza': 'Ijazah dan qiraat', '/docs': 'Panduan fitur', '/help': 'Cara penggunaan',
-      '/privacy': 'Kebijakan privasi', '/terms': 'Ketentuan penggunaan',
+      '/privacy': 'Kebijakan privasi', '/terms': 'Ketentuan penggunaan', '/child-safety': 'Standar keselamatan anak',
     },
     footer: {
       text: 'Teks Al-Quran: rasm Utsmani (Hafs), Kompleks Percetakan Al-Quran Raja Fahd. Terjemahan makna: Kementerian Agama RI.',
@@ -425,4 +425,5 @@ export const APP_ROUTES = [
     'شرح خطوة بخطوة لكل ميزة في نور القرآن، وإجابات الأسئلة الشائعة.'],
   ['/privacy', 'سياسة الخصوصية | نور القرآن', 'كيف يتعامل نور القرآن مع بياناتك، وكيف تحذف حسابك.'],
   ['/terms', 'شروط الاستخدام | نور القرآن', 'شروط استخدام موقع وتطبيق نور القرآن.'],
+  ['/child-safety', 'معايير سلامة الأطفال | نور القرآن', 'كيف يحمي نور القرآن الأطفال في غرفه الصوتية ومجتمعه: لا تسامح مع استغلال الأطفال، وقيود للقُصّر، والإبلاغ والحظر، وجهة الاتصال.'],
 ];
