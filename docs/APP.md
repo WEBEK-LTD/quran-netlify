@@ -377,6 +377,16 @@ Domains** (`applinks:nuralquran.net`), **Time Sensitive Notifications** and **Ba
 Modes → Audio, Remote notifications** are shown (they come from `App.entitlements` /
 `Info.plist`). *Product → Archive* → *Distribute App → App Store Connect*.
 
+**Without a Mac (recommended): CI with an App Store Connect API key.** Create the app record in
+App Store Connect (bundle ID `net.nuralquran.app`), then *Users and Access → Integrations → App
+Store Connect API → Team Keys → +* with **Admin** access; download the `.p8` once. Add four
+GitHub secrets: `IOS_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64` (`base64 -w0`
+of the .p8). The iOS workflow then archives with automatic signing (`-allowProvisioningUpdates`
+with the API key: Xcode registers the App ID with the entitlements' capabilities and creates the
+distribution certificate and App Store profile in the cloud) and uploads the build to
+TestFlight. The manual-certificate path (`IOS_DIST_CERT_*`, `IOS_PROVISION_PROFILE_BASE64`)
+still works and takes precedence when those secrets exist.
+
 ---
 
 ## 8. CI (GitHub Actions)
