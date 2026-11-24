@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { signInWithEmail, signInWithGoogle, forgotPassword } from '../backend';
+import { signInWithEmail, signInWithGoogle, signInWithApple, forgotPassword } from '../backend';
 import { usePublicSettings } from '../hooks/usePublicSettings';
 import { afterLoginPath } from '../store';
-import { authErrorText, googleErrorText } from '../authErrors';
+import { authErrorText, googleErrorText, appleErrorText } from '../authErrors';
+import { appleSignInAvailable } from '../native/platform';
 import { Icon } from '../components/ornaments/Ornaments';
-import { AuthStage, AuthHead, TextField, PasswordField, Alert, GoogleButton, OrLine, Spinner, clean } from './auth/AuthShell';
+import { AuthStage, AuthHead, TextField, PasswordField, Alert, GoogleButton, AppleButton, OrLine, Spinner, clean } from './auth/AuthShell';
 import styles from './AuthPage.module.css';
 import { useT } from '../i18n';
 import { useTr } from '../l10n';
@@ -46,6 +47,18 @@ export default function LoginPage() {
     if (sheet) sheet.then(() => setLoading(false));
   }
 
+  // iOS app: Apple's own sheet, then the API (no browser round trip)
+  async function handleApple() {
+    setLoading(true); setError('');
+    try {
+      await signInWithApple();
+      navigate(afterLoginPath());
+    } catch (err) {
+      setError(appleErrorText(err));
+      setLoading(false);
+    }
+  }
+
   async function handleForgot(e) {
     e.preventDefault();
     setLoading(true); setError('');
@@ -59,6 +72,7 @@ export default function LoginPage() {
   }
 
   const backToLogin = () => { setView('login'); setError(''); };
+  const apple = appleSignInAvailable();
 
   // ─── Forgot sent confirmation ──────────────────────────────────────────────
   if (view === 'forgot_sent') return (
@@ -103,8 +117,11 @@ export default function LoginPage() {
         <Alert tone="warn">{tr('الموقع في صيانة مؤقتة، والدخول متاح للمشرفين فقط في الوقت الحالي.')}</Alert>
       )}
 
-      {settings.google_login && (<>
-        <GoogleButton onClick={handleGoogle} disabled={loading}>{tr('المتابعة بحساب Google')}</GoogleButton>
+      {(apple || settings.google_login) && (<>
+        <div className={styles.socials}>
+          {apple && <AppleButton onClick={handleApple} disabled={loading}>{tr('تسجيل الدخول باستخدام Apple')}</AppleButton>}
+          {settings.google_login && <GoogleButton onClick={handleGoogle} disabled={loading}>{tr('المتابعة بحساب Google')}</GoogleButton>}
+        </div>
         <OrLine>{tr('أو بالبريد الإلكتروني')}</OrLine>
       </>)}
 

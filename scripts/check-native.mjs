@@ -68,10 +68,15 @@ ok(!!info.NSLocationWhenInUseUsageDescription && !!info.NSMicrophoneUsageDescrip
 ok(JSON.stringify(info.UISupportedInterfaceOrientations) === '["UIInterfaceOrientationPortrait"]' && (info['UISupportedInterfaceOrientations~ipad'] || []).length === 4, 'iPhone portrait, iPad all orientations');
 const scene = readFileSync(R('ios/App/App/SceneDelegate.swift'), 'utf8');
 ok(/rootViewController = NQBridgeViewController\(\)/.test(scene) && /registerPluginInstance\(NQAudioPlugin\(\)\)/.test(scene) && /jsName = "NQAudio"/.test(scene), 'NQAudio plugin (voice-room audio session) registered by NQBridgeViewController');
+ok(/registerPluginInstance\(NQAppleSignInPlugin\(\)\)/.test(scene) && /jsName = "NQAppleSignIn"/.test(scene) && /import AuthenticationServices/.test(scene)
+  && /ASAuthorizationAppleIDProvider\(\)\.createRequest\(\)/.test(scene) && /requestedScopes = \[\.fullName, \.email\]/.test(scene)
+  && /CAPPluginMethod\(name: "signIn"/.test(scene) && /"cancelled"/.test(scene), 'NQAppleSignIn plugin (Sign in with Apple, fullName + email) registered by NQBridgeViewController');
+ok(/registerPlugin\('NQAppleSignIn'\)/.test(readFileSync(R('src/native/appleSignIn.js'), 'utf8')), 'src/native/appleSignIn.js talks to NQAppleSignIn');
 ok(/\.playAndRecord/.test(scene) && /\.playback, mode: \.spokenAudio/.test(scene), 'NQAudio switches .playAndRecord (speaking) ↔ .playback (after)');
 const ent = parsePlist(readFileSync(R('ios/App/App/App.entitlements'), 'utf8'));
 ok((ent['com.apple.developer.associated-domains'] || []).includes('applinks:nuralquran.net'), 'entitlements: applinks:nuralquran.net');
 ok(!!ent['aps-environment'], 'entitlements: aps-environment (push)');
+ok(JSON.stringify(ent['com.apple.developer.applesignin']) === '["Default"]', 'entitlements: com.apple.developer.applesignin = [Default] (Sign in with Apple)');
 const priv = parsePlist(readFileSync(R('ios/App/App/PrivacyInfo.xcprivacy'), 'utf8'));
 ok(priv.NSPrivacyTracking === false && Array.isArray(priv.NSPrivacyAccessedAPITypes), 'PrivacyInfo.xcprivacy parses (no tracking, API reasons)');
 for (const l of ['en', 'tr', 'fr', 'ur', 'id']) {

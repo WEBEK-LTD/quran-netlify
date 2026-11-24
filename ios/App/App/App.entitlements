@@ -10,6 +10,11 @@
 	<array>
 		<string>applinks:nuralquran.net</string>
 	</array>
+	<!-- Sign in with Apple (App Store guideline 4.8: offered next to Google sign-in). Enable it on the identifier net.nuralquran.app too (docs/APP.md). -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 	<!-- Lets the adhan arrive as a time-sensitive notification when the user opts in (respects Focus settings) -->
 	<key>com.apple.developer.usernotifications.time-sensitive</key>
 	<true/>

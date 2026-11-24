@@ -1,5 +1,6 @@
 import UIKit
 import AVFoundation
+import AuthenticationServices
 import Capacitor
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
@@ -30,6 +31,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 class NQBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(NQAudioPlugin())
+        bridge?.registerPluginInstance(NQAppleSignInPlugin())
     }
 }
 
@@ -64,5 +66,97 @@ public class NQAudioPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.reject("audio_session", nil, error)
             }
         }
+    }
+}
+
+/// Sign in with Apple (App Store guideline 4.8), with the system sheet — no third-party plugin.
+///   JS: registerPlugin('NQAppleSignIn').signIn({ nonce? })   (src/native/appleSignIn.js)
+///   → { identityToken, authorizationCode, user, email?, givenName?, familyName? }
+///   rejects with code "cancelled" (the visitor closed the sheet) or "failed".
+/// The API verifies the identity token (POST /v1/auth/apple). Needs the Sign in with Apple entitlement (App.entitlements).
+@objc(NQAppleSignInPlugin)
+public class NQAppleSignInPlugin: CAPPlugin, CAPBridgedPlugin, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    public let identifier = "NQAppleSignInPlugin"
+    public let jsName = "NQAppleSignIn"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "signIn", returnType: CAPPluginReturnPromise)
+    ]
+
+    private var pendingCall: CAPPluginCall?
+    private var controller: ASAuthorizationController?
+
+    @objc func signIn(_ call: CAPPluginCall) {
+        let nonce = call.getString("nonce")
+        DispatchQueue.main.async {
+            if let previous = self.pendingCall {
+                previous.reject("Another sign-in started", "cancelled")
+            }
+            self.pendingCall = call
+            let request = ASAuthorizationAppleIDProvider().createRequest()
+            request.requestedScopes = [.fullName, .email]
+            if let nonce = nonce, !nonce.isEmpty {
+                request.nonce = nonce   // SHA-256 of the raw nonce the API receives
+            }
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = self
+            controller.presentationContextProvider = self
+            self.controller = controller   // keep it alive until the sheet answers
+            controller.performRequests()
+        }
+    }
+
+    public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        if let window = bridge?.webView?.window {
+            return window
+        }
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        if let window = scenes.flatMap({ $0.windows }).first(where: { $0.isKeyWindow }) ?? scenes.first?.windows.first {
+            return window
+        }
+        return ASPresentationAnchor()
+    }
+
+    public func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard let call = finish() else { return }
+        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let tokenData = credential.identityToken,
+              let identityToken = String(data: tokenData, encoding: .utf8) else {
+            call.reject("Sign in with Apple returned no identity token", "failed")
+            return
+        }
+        var result: [String: Any] = [:]
+        result["identityToken"] = identityToken
+        result["user"] = credential.user
+        if let codeData = credential.authorizationCode, let code = String(data: codeData, encoding: .utf8) {
+            result["authorizationCode"] = code
+        }
+        // Apple shares the e-mail and name only on the first sign-in with this app
+        if let email = credential.email {
+            result["email"] = email
+        }
+        if let given = credential.fullName?.givenName {
+            result["givenName"] = given
+        }
+        if let family = credential.fullName?.familyName {
+            result["familyName"] = family
+        }
+        call.resolve(result)
+    }
+
+    public func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        guard let call = finish() else { return }
+        if let authError = error as? ASAuthorizationError, authError.code == .canceled {
+            call.reject("Sign in with Apple was cancelled", "cancelled")
+        } else {
+            NSLog("[NurAlQuran] Sign in with Apple: \(error)")
+            call.reject(error.localizedDescription, "failed", error)
+        }
+    }
+
+    private func finish() -> CAPPluginCall? {
+        let call = pendingCall
+        pendingCall = nil
+        controller = nil
+        return call
     }
 }

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signUpWithEmail, signInWithGoogle } from '../backend';
+import { signUpWithEmail, signInWithGoogle, signInWithApple } from '../backend';
 import { usePublicSettings } from '../hooks/usePublicSettings';
 import { afterLoginPath } from '../store';
-import { authErrorText } from '../authErrors';
+import { authErrorText, appleErrorText } from '../authErrors';
+import { appleSignInAvailable } from '../native/platform';
 import { Icon } from '../components/ornaments/Ornaments';
-import { AuthStage, AuthHead, TextField, PasswordField, Alert, GoogleButton, OrLine, Spinner } from './auth/AuthShell';
+import { AuthStage, AuthHead, TextField, PasswordField, Alert, GoogleButton, AppleButton, OrLine, Spinner } from './auth/AuthShell';
 import styles from './AuthPage.module.css';
 import { useT } from '../i18n';
 import { useTr, num } from '../l10n';
@@ -43,6 +44,19 @@ export default function SignupPage() {
     if (sheet) sheet.then(() => setLoading(false));
   }
 
+  // iOS app: Apple's own sheet, then the API (signs in, or creates the account)
+  async function handleApple() {
+    setLoading(true); setError('');
+    try {
+      await signInWithApple();
+      navigate(afterLoginPath());
+    } catch (err) {
+      setError(appleErrorText(err));
+      setLoading(false);
+    }
+  }
+  const apple = appleSignInAvailable();
+
   if (settings.loaded && settings.allow_signup === false) return (
     <AuthStage label={tr('إنشاء حساب')}>
       <AuthHead icon={{ name: 'lock' }} title={tr('التسجيل مغلق حالياً')}
@@ -71,8 +85,11 @@ export default function SignupPage() {
     <AuthStage label={tr('إنشاء حساب')}>
       <AuthHead title={t('signupTitle')} sub={tr('حساب مجاني يحفظ تقدّمك في القراءة والحفظ، ويزامنه على كل أجهزتك.')} />
 
-      {settings.google_login && (<>
-        <GoogleButton onClick={handleGoogle} disabled={loading}>{tr('التسجيل بحساب Google')}</GoogleButton>
+      {(apple || settings.google_login) && (<>
+        <div className={styles.socials}>
+          {apple && <AppleButton onClick={handleApple} disabled={loading}>{tr('التسجيل باستخدام Apple')}</AppleButton>}
+          {settings.google_login && <GoogleButton onClick={handleGoogle} disabled={loading}>{tr('التسجيل بحساب Google')}</GoogleButton>}
+        </div>
         <OrLine>{tr('أو بالبريد الإلكتروني')}</OrLine>
       </>)}
 

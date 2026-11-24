@@ -91,6 +91,8 @@ before sign-out, app only), `netlify.toml` (content type of the two `.well-known
   A failure lands on `https://nuralquran.net/auth/callback?status=error&client=app…` in the
   sheet; that page now redirects to `nuralquran://auth?status=error&reason=…` so the app
   shows the localized error.
+- **Sign in with Apple (iOS only)** — required by App Store guideline 4.8 because Google
+  sign-in is offered. See *Sign in with Apple* in §7.
 - **Service worker**: never registered inside the app (`index.html`), and any old
   registration is removed at launch. The bundle is local, so the app shell is offline;
   the SW's "keep this surah for offline listening" feature is therefore not available in
@@ -386,6 +388,46 @@ with the API key: Xcode registers the App ID with the entitlements' capabilities
 distribution certificate and App Store profile in the cloud) and uploads the build to
 TestFlight. The manual-certificate path (`IOS_DIST_CERT_*`, `IOS_PROVISION_PROFILE_BASE64`)
 still works and takes precedence when those secrets exist.
+
+### Sign in with Apple
+
+**How it works.** On iOS, the login and signup pages show a «تسجيل الدخول باستخدام Apple» /
+"Sign in with Apple" button above Google's (black on light, white on dark, Apple logo, same
+size — Apple's guidelines). It opens Apple's own sheet through the app's small `NQAppleSignIn`
+plugin (`ios/App/App/SceneDelegate.swift`, AuthenticationServices, scopes name + email — no
+third-party plugin, no project-file change); `src/native/appleSignIn.js` →
+`signInWithApple()` in `src/backend.js` posts the identity token to `POST /v1/auth/apple`
+(docs/API.md), which verifies it against Apple's public keys and answers `{user, token}` like
+an email login (token stored and mirrored as for Google). Not shown on Android or the website.
+Apple shares the name and email only the first time; "Hide My Email" gives a
+`…@privaterelay.appleid.com` address, which works like any email (a new account, unless that
+address already has one). The entitlement `com.apple.developer.applesignin = [Default]` is in
+`App.entitlements`; `npm run check:native` and the CI signing step check it.
+
+**What the owner does in Apple Developer (once):**
+
+1. *Certificates, Identifiers & Profiles → Identifiers → `net.nuralquran.app`* → tick
+   **Sign In with Apple** (*Enable as a primary App ID*) → *Save*. (CI's automatic signing would
+   add it too, but do it so the profile is right.) If you use the manual-certificate CI path,
+   regenerate and re-upload the App Store provisioning profile afterwards.
+2. *Keys → +* → name it (e.g. «Nur Sign in with Apple») → tick **Sign in with Apple** →
+   *Configure* → primary App ID `net.nuralquran.app` → *Save* → *Continue* → *Register* →
+   **download the `.p8` (only once)** and note the **Key ID**. The same key may also have
+   **Apple Push Notifications service** ticked and be used for APNs.
+3. Admin dashboard → **التكاملات → تسجيل الدخول بـ Apple**: paste the `.p8` content, the Key ID
+   and the Team ID (leave the client id empty = `net.nuralquran.app`) → *اختبار* (Apple must
+   answer `invalid_grant` to the made-up code, which proves the key). Sign-in already works
+   without this; the key is what lets **account deletion revoke the Apple token** (guideline
+   5.1.1(v)) — without it the revoke is skipped and logged.
+4. *Identifiers → `net.nuralquran.app` → Sign In with Apple → Edit (Configure)* → **Server-to-Server
+   Notification Endpoint**: `https://api.nuralquran.net/v1/auth/apple/notifications`. Apple then
+   tells the API when someone stops using Sign in with Apple for the app (the account is
+   unlinked, kept) or deletes their Apple ID (unlinked; deleted if it had no other sign-in).
+5. Optional, for emails to "Hide My Email" users: *Services → Sign in with Apple for Email
+   Communication* → register the sending domain / address (`mail_from_address`, e.g.
+   `no-reply@nuralquran.net`, with SPF/DKIM). Without it, Apple's relay drops our emails to
+   those addresses (sign-in is unaffected).
+6. App Review: nothing special; the reviewer can use the button with any Apple ID.
 
 ---
 
@@ -838,7 +880,8 @@ background behaviour, and the Xcode/Gradle compile of the new Swift plugin.
 ## 15. What the owner must provide
 
 1. **Apple**: Developer Program membership, **Team ID** (→ AASA), App ID `net.nuralquran.app`
-   with Push, Associated Domains, Time Sensitive Notifications; App Store Connect app record;
+   with Push, Associated Domains, Time Sensitive Notifications, **Sign In with Apple** (+ the
+   Sign in with Apple key and notification endpoint, §7 *Sign in with Apple*); App Store Connect app record;
    Apple Distribution certificate + App Store provisioning profile (for CI) or Xcode
    automatic signing; optional App Store Connect API key (TestFlight from CI).
 2. **APNs auth key (.p8)** + Key ID (for the backend's push sender).

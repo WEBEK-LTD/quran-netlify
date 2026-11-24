@@ -84,7 +84,7 @@ final class AppleController
         if ($user === null) {
             if ($email === '') {
                 // Apple shares the address on every token once the email scope was granted; without it there is nothing to create
-                throw new ApiError(422, 'apple_no_email', 'لم تُشارك Apple بريدك الإلكتروني. من إعدادات iPhone ← Apple ID ← تسجيل الدخول باستخدام Apple، أوقف استخدام «نور القرآن» ثم حاول مجدداً.');
+                throw new ApiError(422, 'apple_no_email', 'لم تُشارك Apple بريدك الإلكتروني. افتح الإعدادات ← اسمك ← تسجيل الدخول والأمان ← تسجيل الدخول باستخدام Apple، وأوقف استخدامه مع «نور القرآن»، ثم حاول مجدداً.');
             }
             $byEmail = Db::one('SELECT id, apple_sub FROM users WHERE email = ?', [$email]);
             if ($byEmail !== null) {

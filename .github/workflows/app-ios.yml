@@ -157,7 +157,7 @@ jobs:
           case "$ASC_KEY_ID" in *[!A-Z0-9]*|"") echo "::error::ASC_KEY_ID should be the 10-character Key ID (letters/digits only)"; exit 1;; esac
           AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
           # Archive signed "to run locally" (ad-hoc identity "-"): the entitlements (push, associated
-          # domains, time-sensitive) are embedded, and no development profile / registered device is
+          # domains, Sign in with Apple, time-sensitive) are embedded, and no development profile / registered device is
           # needed. The export below re-signs for the App Store with Apple's cloud-managed
           # distribution certificate and an App Store profile, both created through the API key.
           set -o pipefail
@@ -184,8 +184,8 @@ jobs:
           # the signed app must carry the capabilities (Apple silently drops push otherwise)
           rm -rf "$RUNNER_TEMP/ipa" && mkdir -p "$RUNNER_TEMP/ipa" && unzip -q "$IPA" -d "$RUNNER_TEMP/ipa"
           ENT=$(codesign -d --entitlements :- "$RUNNER_TEMP"/ipa/Payload/*.app 2>/dev/null)
-          echo "$ENT" | grep -E "aps-environment|associated-domains|time-sensitive|application-identifier" || true
-          for k in aps-environment com.apple.developer.associated-domains; do
+          echo "$ENT" | grep -E "aps-environment|associated-domains|applesignin|time-sensitive|application-identifier" || true
+          for k in aps-environment com.apple.developer.associated-domains com.apple.developer.applesignin; do
             echo "$ENT" | grep -q "$k" || { echo "::error::signed app is missing the $k entitlement"; exit 1; }
           done
           codesign -dv "$RUNNER_TEMP"/ipa/Payload/*.app 2>&1 | grep -E "Authority=|TeamIdentifier" || true

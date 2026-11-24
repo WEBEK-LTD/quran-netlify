@@ -90,6 +90,21 @@ export function signInWithGoogle(next = '/dashboard') {
   window.location.href = url;
 }
 
+// iOS app: Apple's native sheet → the API verifies the identity token and answers like a
+// login ({ user, token }), stored the same way (Bearer token + native mirror in tokenStore.js).
+// Throws { code: 'cancelled' | 'unavailable' | 'failed' } from the sheet, or an ApiError.
+export async function signInWithApple() {
+  const { appleSignIn } = await import('./native/appleSignIn');
+  const a = await appleSignIn();
+  const body = { identity_token: a.identityToken, lang: uiLang() };
+  if (a.authorizationCode) body.authorization_code = a.authorizationCode;
+  if (a.nonce) body.nonce = a.nonce;
+  if (a.givenName) body.given_name = a.givenName;      // Apple shares the name on the first sign-in only
+  if (a.familyName) body.family_name = a.familyName;
+  const data = await api.post('/auth/apple', body);
+  return takeSession(data);
+}
+
 export async function signOut() { return signOutAuth(); }
 
 export async function getMe() {

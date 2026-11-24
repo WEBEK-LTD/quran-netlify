@@ -115,10 +115,45 @@ Recitation { reciter, reciter_id, moshaf, moshaf_id, style: "murattal"|"mujawwad
 | POST | `/auth/reset-password` | `{token, password}` | `{}` — revokes all sessions |
 | POST | `/auth/change-password` | `{current_password, new_password}` | `{}` — revokes other sessions. Google-only accounts may set a password without `current_password` |
 | PATCH | `/auth/profile` | `{name?, show_on_leaderboard?, lang?}` | `{user}` — `lang` is the language of the account's emails |
-| DELETE | `/auth/account` | `{password}` (or `{confirm:"DELETE"}` for Google-only accounts) | `{}` — deletes the user and every row they own; group rooms they own are deleted; the profile photo file is deleted |
+| DELETE | `/auth/account` | `{password}` (or `{confirm:"DELETE"}` for Google/Apple-only accounts) | `{}` — deletes the user and every row they own; group rooms they own are deleted; the profile photo file is deleted. If the account signed in with Apple and the Apple key is configured, its Apple refresh token is revoked first (`https://appleid.apple.com/auth/revoke`, guideline 5.1.1(v)); an Apple failure is logged and never blocks the deletion |
 | GET | `/auth/export` | | all of the user's data as JSON (download), incl. `profile_photo_url` (uploaded photo or null) |
 | GET | `/auth/google/start` | `?next=/dashboard&client=web\|app&lang=en` | 302 to Google. `lang` is kept in the OAuth state: new accounts get it (and their welcome email in it), existing accounts have it updated |
 | GET | `/auth/google/callback` | (from Google) | web: sets cookie, 302 to `https://nuralquran.net/auth/callback?status=ok&next=…`; app: 302 to `nuralquran://auth?token=…`; error: `…/auth/callback?status=error&reason=…` |
+| POST | `/auth/apple` | `{identity_token, authorization_code?, nonce?, given_name?, family_name?, lang?}` | `{user, token}` + cookie (same as `/auth/login`). Sign in with Apple from the iOS app — see below |
+| POST | `/auth/apple/notifications` | `{payload}` (JSON or form) — Apple server-to-server | `{handled, deleted?}` 200; 400 `invalid_signature`. No session, no `X-NQ-Client` |
+
+### Sign in with Apple (iOS app)
+
+The app shows Apple's native sheet (plugin `NQAppleSignIn`, `ios/App/App/SceneDelegate.swift`) and posts what it returns:
+
+- `identity_token` (required): the JWT from Apple. Verified with RS256 against Apple's keys (`https://appleid.apple.com/auth/keys`,
+  cached 24 h in `storage/cache/apple/jwks.json`, refetched on an unknown `kid` at most every 5 min); `iss` must be
+  `https://appleid.apple.com`, `aud` the client id (integration `apple_signin_client_id`, default `net.nuralquran.app`),
+  `exp` in the future, `iat` not in the future. A token carrying a `nonce` needs `nonce` = the raw value whose SHA-256 (hex) it holds.
+- The account is found by `apple_sub` (the token's `sub`); else by the token's (Apple-verified) email — an existing account
+  with that email is linked; else a new account is created (`allow_signup` must be on; name from `given_name family_name`,
+  which Apple shares on the first sign-in only, else the email's local part, or «قارئ» / "Reader"… for a private-relay
+  address; email marked verified; welcome email). Private relay addresses (`…@privaterelay.appleid.com`) are normal emails here.
+- `authorization_code` (optional): when the Apple key is configured (`apple_signin_team_id`, `apple_signin_key_id`,
+  `apple_signin_key_p8`), it is exchanged at `https://appleid.apple.com/auth/token` (client secret = ES256 JWT signed with the
+  `.p8`: `iss` team id, `sub` client id, `aud` `https://appleid.apple.com`, `kid` key id) and the refresh token is stored
+  encrypted (AES-256-GCM, `users.apple_refresh_token`) so account deletion can revoke it. Without the key, sign-in works and
+  nothing is stored.
+- Errors: 401 `apple_invalid_token`, 409 `apple_link_failed` (the email belongs to an account linked to another Apple ID),
+  422 `apple_no_email` (a new Apple ID without an email), 403 `signup_closed` / `banned`, 429 `rate_limited`
+  (10 attempts / 10 min per IP), 503 `apple_unavailable` (database not upgraded yet).
+
+**Server-to-server notifications** (`/auth/apple/notifications`, registered in Apple Developer as
+`https://api.nuralquran.net/v1/auth/apple/notifications`): Apple posts `payload` = a JWT signed with the same keys
+(`iss` `https://appleid.apple.com`, `aud` the client id). Its `events` claim (JSON string) has `type` and `sub`:
+
+| `type` | Effect |
+|---|---|
+| `consent-revoked` | the user stopped using Sign in with Apple for the app: `apple_sub` and the refresh token are removed; the account stays (email/Google sign-in, or Apple again, which re-links by email) |
+| `account-delete` | the Apple ID was deleted: same unlink; if the account has no other way to sign in (no password, no Google), it is deleted (same path as `DELETE /auth/account`, without the revoke call) |
+| `email-disabled` / `email-enabled` | logged only (the relay address stops / resumes forwarding) |
+
+Unknown `sub` → `{handled:false}`. A bad signature / audience / missing payload → 400.
 
 Emails (verification, reset, welcome, password changed, team messages, admin test) are sent in the account's `lang`; ar/ur are right-to-left. Text written by an admin is shown as written.
 
@@ -216,7 +251,7 @@ The site polls messages every 5 s while a ticket is open.
 | PUT | `/admin/settings` | any subset of the above | same |
 | GET | `/admin/integrations` | | `{items:[{key, label, set: bool, preview: "sk-…ab12"\|null, secret: bool}]}` — secrets never returned |
 | PUT | `/admin/integrations` | `{key: value, …}` (empty string clears) | same as GET |
-| POST | `/admin/integrations/test` | `{target:"ai"\|"mail"\|"google"\|"livekit"\|"fcm"\|"apns"}` | `{ok, message}` |
+| POST | `/admin/integrations/test` | `{target:"ai"\|"mail"\|"google"\|"livekit"\|"fcm"\|"apns"\|"apple"}` | `{ok, message}` — `apple` signs a client secret with the `.p8` and sends a made-up code to Apple's token endpoint: `invalid_grant` = the key works, `invalid_client` = wrong key / ids |
 | GET | `/admin/tickets` | `?status=&page` | paginated `Ticket[]` with `user` |
 | GET | `/admin/tickets/{id}/messages` | `?after_id=` | `Message[]` (marks user messages read) |
 | POST | `/admin/tickets/{id}/messages` | `{body}` | `Message` |
@@ -224,7 +259,7 @@ The site polls messages every 5 s while a ticket is open.
 | GET | `/admin/unread` | | `{count}` |
 | GET | `/admin/log` | `?page` | paginated `[{id, admin_email, action, target, created_at}]` |
 
-Integration keys: `google_client_id`, `google_client_secret`*, `ai_provider` (`openai`\|`anthropic`), `ai_model`, `openai_api_key`*, `anthropic_api_key`*, `mail_from_address`, `mail_from_name`, `mail_transport` (`server`\|`smtp`, default `server` = PHP `mail()`), `smtp_host`, `smtp_port` (1–65535), `smtp_username`, `smtp_password`*, `smtp_encryption` (`tls` = STARTTLS\|`ssl` = implicit TLS\|`none`). Voice rooms & push: `livekit_url` (`wss://rtc.nuralquran.net:7443`, what clients connect to), `livekit_api_url` (optional, `http://127.0.0.1:7880` when LiveKit runs on the same server; default = `livekit_url` with ws→http), `livekit_api_key`, `livekit_api_secret`* (≥ 32 chars), `fcm_service_account`* (the Firebase service-account JSON, pasted whole, multi-line allowed, ≤ 12 000 chars), `apns_key_p8`* (the `.p8` PEM), `apns_key_id` / `apns_team_id` (10 chars), `apns_bundle_id`, `apns_environment` (`production`\|`sandbox`). (* = secret, encrypted at rest with AES-256-GCM using `app_key` from config.)
+Integration keys: `google_client_id`, `google_client_secret`*, `ai_provider` (`openai`\|`anthropic`), `ai_model`, `openai_api_key`*, `anthropic_api_key`*, `mail_from_address`, `mail_from_name`, `mail_transport` (`server`\|`smtp`, default `server` = PHP `mail()`), `smtp_host`, `smtp_port` (1–65535), `smtp_username`, `smtp_password`*, `smtp_encryption` (`tls` = STARTTLS\|`ssl` = implicit TLS\|`none`). Voice rooms & push: `livekit_url` (`wss://rtc.nuralquran.net:7443`, what clients connect to), `livekit_api_url` (optional, `http://127.0.0.1:7880` when LiveKit runs on the same server; default = `livekit_url` with ws→http), `livekit_api_key`, `livekit_api_secret`* (≥ 32 chars), `fcm_service_account`* (the Firebase service-account JSON, pasted whole, multi-line allowed, ≤ 12 000 chars), `apns_key_p8`* (the `.p8` PEM), `apns_key_id` / `apns_team_id` (10 chars), `apns_bundle_id`, `apns_environment` (`production`\|`sandbox`). Sign in with Apple: `apple_signin_client_id` (default `net.nuralquran.app`), `apple_signin_team_id` / `apple_signin_key_id` (10 chars), `apple_signin_key_p8`* (the Sign in with Apple `.p8` PEM, multi-line). (* = secret, encrypted at rest with AES-256-GCM using `app_key` from config.)
 
 ## Rooms & community
 

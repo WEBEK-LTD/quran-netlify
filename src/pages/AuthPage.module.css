@@ -88,6 +88,18 @@
 .google svg { flex: none; }
 :global(:root[data-mode="contrast"]) .google { border-color: #fff; }
 
+/* Sign in with Apple (Apple HIG): white button on dark, black on light, system font */
+.cardIn .apple { width: 100%; min-height: 52px; }
+.apple {
+  background: #fff; color: #000; border-color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Arabic", system-ui, sans-serif;
+  font-weight: 600; font-size: 1.04rem; letter-spacing: 0;
+}
+.apple svg { flex: none; margin-top: -3px; }
+.apple:disabled { opacity: .6; }
+:global(:root[data-scheme="light"]) .apple { background: #000; color: #fff; border-color: #000; }
+.socials { display: grid; gap: 12px; }
+
 .or { display: flex; align-items: center; gap: 12px; color: var(--faint); font-size: .84rem; }
 .or::before, .or::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--line2)); }
 .or::after { transform: scaleX(-1); }

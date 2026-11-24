@@ -37,6 +37,10 @@ const FIELD_META = {
   apns_team_id:         { label: 'معرّف الفريق (Team ID)', placeholder: 'ABCDE12345', ltr: true },
   apns_bundle_id:       { label: 'معرّف التطبيق (Bundle ID)', placeholder: 'net.nuralquran.app', ltr: true },
   apns_environment:     { label: 'البيئة', select: [['', 'production (المتجر و TestFlight)'], ['production', 'production'], ['sandbox', 'sandbox (التطوير)']] },
+  apple_signin_client_id: { label: 'معرّف التطبيق (Client ID)', placeholder: 'net.nuralquran.app', ltr: true },
+  apple_signin_team_id: { label: 'معرّف الفريق (Team ID)', placeholder: 'ABCDE12345', ltr: true },
+  apple_signin_key_id:  { label: 'معرّف المفتاح (Key ID)', placeholder: 'ABC123DEFG', ltr: true },
+  apple_signin_key_p8:  { label: 'محتوى ملف المفتاح ‎.p8', secret: true, ltr: true, multiline: true, placeholder: '-----BEGIN PRIVATE KEY-----' },
 };
 const SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_username', 'smtp_password', 'smtp_encryption'];
 
@@ -71,6 +75,11 @@ const INTEGRATION_GROUPS = [
     id: 'apns', icon: 'bell', title: 'إشعارات آيفون (Apple)', test: 'apns',
     hint: 'من Apple Developer ← Certificates, Identifiers & Profiles ← Keys: أنشئ مفتاحاً مفعّلاً عليه Apple Push Notifications service، ثم الصق محتوى ملف ‎.p8 ومعرّفه.',
     keys: ['apns_key_p8', 'apns_key_id', 'apns_team_id', 'apns_bundle_id', 'apns_environment'],
+  },
+  {
+    id: 'apple', icon: 'user', title: 'تسجيل الدخول بـ Apple', test: 'apple',
+    hint: 'الدخول بـ Apple في تطبيق آيفون يعمل بدون هذه القيم؛ المفتاح يلزم لإلغاء ربط Apple عند حذف العضو حسابه (شرط من Apple). من Apple Developer ← Keys ← + ← فعّل Sign in with Apple واختر المعرّف الأساسي net.nuralquran.app، ثم نزّل ملف ‎.p8 والصق محتواه ومعرّفه هنا. يمكن تفعيل APNs على نفس المفتاح واستخدامه للإشعارات أيضاً. اترك معرّف التطبيق فارغاً ليُستخدم net.nuralquran.app.',
+    keys: ['apple_signin_client_id', 'apple_signin_team_id', 'apple_signin_key_id', 'apple_signin_key_p8'],
   },
 ];
 

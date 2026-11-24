@@ -75,3 +75,19 @@ export function googleErrorText(reason) {
     default:               return trNow('تعذّر تسجيل الدخول بحساب Google، حاول مرة أخرى');
   }
 }
+
+// Sign in with Apple (iOS app): '' when the visitor just closed Apple's sheet.
+export function appleErrorText(err) {
+  if (!err) return trNow('تعذّر تسجيل الدخول باستخدام Apple، حاول مرة أخرى');
+  if (err.code === 'cancelled') return '';
+  if (err.code === 'unavailable') return trNow('تسجيل الدخول باستخدام Apple غير متاح على هذا الجهاز');
+  if (!(err instanceof ApiError)) return trNow('تعذّر تسجيل الدخول باستخدام Apple، حاول مرة أخرى');
+  switch (err.code) {
+    case 'signup_closed':       return trNow('التسجيل مغلق حالياً — لا يمكن إنشاء حساب جديد باستخدام Apple');
+    case 'apple_no_email':      return trNow('لم تُشارك Apple بريدك الإلكتروني. افتح الإعدادات ← اسمك ← تسجيل الدخول والأمان ← تسجيل الدخول باستخدام Apple، وأوقف استخدامه مع «نور القرآن»، ثم حاول مجدداً.');
+    case 'apple_link_failed':   return trNow('هذا البريد مرتبط بحساب آخر. سجّل الدخول بالبريد وكلمة المرور أو بحساب Google.');
+    case 'apple_invalid_token':
+    case 'apple_unavailable':   return trNow('تعذّر تسجيل الدخول باستخدام Apple، حاول مرة أخرى');
+    default:                    return authErrorText(err);
+  }
+}
