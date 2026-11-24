@@ -13,7 +13,7 @@
       "launchShowDuration": 1200,
       "launchAutoHide": false,
       "launchFadeOutDuration": 250,
-      "backgroundColor": "#060D0A",
+      "backgroundColor": "#0B2A1E",
       "androidSplashResourceName": "splash",
       "androidScaleType": "CENTER_CROP",
       "showSpinner": false,
@@ -46,12 +46,12 @@
     "contentInset": "never",
     "allowsLinkPreview": false,
     "scrollEnabled": true,
-    "backgroundColor": "#060D0A",
+    "backgroundColor": "#0B2A1E",
     "preferredContentMode": "mobile",
     "appendUserAgent": "NurAlQuranApp"
   },
   "android": {
-    "backgroundColor": "#060D0A",
+    "backgroundColor": "#0B2A1E",
     "allowMixedContent": false,
     "captureInput": true,
     "webContentsDebuggingEnabled": false,

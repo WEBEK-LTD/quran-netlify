@@ -3,6 +3,7 @@
 // website never downloads it. Order matters a little: links first (a launch URL
 // may carry the sign-in token), then UI chrome, then background work.
 import { SplashScreen } from '@capacitor/splash-screen';
+import { launchVisible, finishLaunch } from './launch';
 import { isAndroid } from './platform';
 import { initLinks } from './links';
 import { initSystemBars } from './systemBars';
@@ -39,8 +40,16 @@ export async function initNative() {
   if (isAndroid()) step('media', initMediaBridge);
   step('keyboard', initKeyboard);
   // drop the splash onto the painted first screen (src/native/NativeShell.jsx), never onto a blank page
-  await Promise.all([linked, firstScreen(2500)]);
-  SplashScreen.hide({ fadeOutDuration: 200 }).catch(() => {});
+  if (launchVisible()) {
+    // the branded opening screen (index.html) is already painted: drop the native splash onto it now,
+    // then let it fade into the first screen once that has painted
+    SplashScreen.hide({ fadeOutDuration: 150 }).catch(() => {});
+    await Promise.all([linked, firstScreen(4000)]);
+    finishLaunch();
+  } else {
+    await Promise.all([linked, firstScreen(2500)]);
+    SplashScreen.hide({ fadeOutDuration: 200 }).catch(() => {});
+  }
   // after the first screen: the adhan listeners (a tapped notification is retained
   // until they attach) and re-planning, then the rest when the main thread is idle
   step('adhan', initAdhan);

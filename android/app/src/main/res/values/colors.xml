@@ -4,4 +4,6 @@
     <color name="nq_bg">#060D0A</color>
     <color name="nq_bg_light">#F4F5F0</color>
     <color name="nq_gold">#C9A84C</color>
+    <!-- Android 12+ system splash: close to the opening screen (index.html, nq-launch) so the hand-off is seamless -->
+    <color name="nq_splash">#0B2A1E</color>
 </resources>
