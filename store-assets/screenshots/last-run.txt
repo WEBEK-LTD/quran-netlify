@@ -1,3 +1,8 @@
-ar/iphone/03-listen
-ar/iphone/05-prayer
-ar/iphone/06-qibla
+en/iphone/01-home  ⚠ framed: device cut off
+en/iphone/02-mushaf  ⚠ unmocked: POST /me/reading, PUT /me/progress | framed: device cut off
+en/iphone/03-listen  ⚠ framed: device cut off
+en/iphone/04-tafsir
+en/iphone/05-prayer  ⚠ framed: device cut off
+en/iphone/06-qibla
+en/iphone/07-tadhkira  ⚠ framed: device cut off
+en/iphone/08-room  ⚠ framed: device cut off
