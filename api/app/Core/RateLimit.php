@@ -9,6 +9,7 @@ final class RateLimit
     /** Named limits: [max hits, window seconds]. */
     public const LIMITS = [
         'login'   => [10, 600],
+        'apple'   => [10, 600],   // Sign in with Apple, per IP
         'signup'  => [5, 3600],
         'forgot'  => [5, 3600],
         'resend'  => [5, 3600],

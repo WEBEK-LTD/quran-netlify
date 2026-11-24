@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS users (
   show_on_leaderboard TINYINT(1) NOT NULL DEFAULT 0,
   password_hash       VARCHAR(255) NULL,
   google_sub          VARCHAR(64) NULL,
+  apple_sub           VARCHAR(191) NULL,
+  apple_refresh_token TEXT NULL,
   hifz_completed      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
   created_at          DATETIME NOT NULL,
   updated_at          DATETIME NULL,
@@ -23,6 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_email (email),
   UNIQUE KEY uq_users_google_sub (google_sub),
+  UNIQUE KEY uq_users_apple_sub (apple_sub),
   KEY ix_users_created (created_at),
   KEY ix_users_last_seen (last_seen_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

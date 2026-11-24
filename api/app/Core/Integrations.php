@@ -34,10 +34,15 @@ final class Integrations
         'apns_team_id'         => ['معرّف فريق Apple ‏(Team ID)', false],
         'apns_bundle_id'       => ['معرّف تطبيق iOS ‏(Bundle ID)', false],
         'apns_environment'     => ['بيئة APNs ‏(production أو sandbox)', false],
+        // Sign in with Apple (iOS app): without the key sign-in still works; the key lets account deletion revoke Apple's token
+        'apple_signin_client_id' => ['معرّف التطبيق لتسجيل الدخول بـ Apple ‏(افتراضياً net.nuralquran.app)', false],
+        'apple_signin_team_id' => ['معرّف فريق Apple ‏(Team ID)', false],
+        'apple_signin_key_id'  => ['معرّف مفتاح Sign in with Apple ‏(Key ID)', false],
+        'apple_signin_key_p8'  => ['مفتاح Sign in with Apple ‏(.p8)', true],
     ];
 
     /** Values that may be long and span several lines (pasted files), with their maximum length. */
-    public const MULTILINE = ['fcm_service_account' => 12000, 'apns_key_p8' => 4000];
+    public const MULTILINE = ['fcm_service_account' => 12000, 'apns_key_p8' => 4000, 'apple_signin_key_p8' => 4000];
 
     /** @var array<string,string>|null */
     private static ?array $cache = null;

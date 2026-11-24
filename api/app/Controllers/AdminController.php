@@ -5,6 +5,7 @@ namespace NQ\Controllers;
 
 use NQ\Core\AiClient;
 use NQ\Core\ApiError;
+use NQ\Core\Apple;
 use NQ\Core\Auth;
 use NQ\Core\Db;
 use NQ\Core\Http;
@@ -411,6 +412,7 @@ final class AdminController
                 }
                 break;
             case 'apns_key_p8':
+            case 'apple_signin_key_p8':
                 $pk = openssl_pkey_get_private($value);
                 $det = $pk !== false ? openssl_pkey_get_details($pk) : false;
                 if (!is_array($det) || ($det['type'] ?? -1) !== OPENSSL_KEYTYPE_EC) {
@@ -419,11 +421,14 @@ final class AdminController
                 break;
             case 'apns_key_id':
             case 'apns_team_id':
+            case 'apple_signin_key_id':
+            case 'apple_signin_team_id':
                 if (!preg_match('/^[A-Z0-9]{10}$/', $value)) {
                     $fail('يتكون من 10 أحرف إنجليزية كبيرة وأرقام.');
                 }
                 break;
             case 'apns_bundle_id':
+            case 'apple_signin_client_id':
                 if (!preg_match('/^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/', $value)) {
                     $fail('مثال: net.nuralquran.app');
                 }
@@ -439,10 +444,13 @@ final class AdminController
     public static function testIntegration(Request $r): array
     {
         Auth::requireAdmin($r);
-        $target = V::enum($r->body(), 'target', ['ai', 'mail', 'google', 'livekit', 'fcm', 'apns']);
+        $target = V::enum($r->body(), 'target', ['ai', 'mail', 'google', 'livekit', 'fcm', 'apns', 'apple']);
         self::audit($r, 'integrations.test', (string) $target);
         if (in_array($target, ['livekit', 'fcm', 'apns'], true)) {
             return AdminCommunityController::testIntegration((string) $target);
+        }
+        if ($target === 'apple') {
+            return Apple::test();
         }
         switch ($target) {
             case 'ai':

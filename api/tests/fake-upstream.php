@@ -14,7 +14,12 @@ declare(strict_types=1);
  *   /fcm/token                        → Google OAuth token endpoint stand-in (service-account JWT grant)
  *   /fcm/v1/projects/<p>/messages:send → FCM HTTP v1 stand-in (a token starting with "dead" → 404 UNREGISTERED)
  *   /apns/3/device/<token>            → APNs stand-in (a token starting with "dead" → 410 Unregistered)
- *   LiveKit / FCM / APNs requests are appended as JSON lines (headers + body) to <state>/livekit.log and <state>/push.log.
+ *   /apple/auth/keys                  → Sign in with Apple JWKS: <state>/apple-jwks.json (written by the smoke test)
+ *   /apple/auth/token                 → Apple token endpoint stand-in: code «nq-connectivity-test» → 400 invalid_grant
+ *                                       (invalid_client while <state>/apple-bad-client exists), other codes → a refresh token
+ *   /apple/auth/revoke                → Apple revoke stand-in (503 while <state>/apple-down exists)
+ *   LiveKit / FCM / APNs requests are appended as JSON lines (headers + body) to <state>/livekit.log and <state>/push.log,
+ *   Apple token / revoke requests (form fields) to <state>/apple.log.
  * <state> is sys_get_temp_dir()/nq-fake-upstream-<port>; every request path is appended to <state>/requests.log
  * so the smoke test can tell whether the API answered from its cache.
  */
@@ -25,6 +30,10 @@ $state = sys_get_temp_dir() . '/nq-fake-upstream-' . ($_SERVER['SERVER_PORT'] ??
 file_put_contents($state . '/requests.log', $path . "\n", FILE_APPEND);
 $self = 'http://127.0.0.1:' . ($_SERVER['SERVER_PORT'] ?? '0');
 
+if (str_starts_with($path, '/apple/')) {
+    appleRoute($path, $state);
+    return;
+}
 if (str_starts_with($path, '/livekit/') || str_starts_with($path, '/fcm/') || str_starts_with($path, '/apns/')) {
     pushRoute($path, $state);
     return;
@@ -163,6 +172,42 @@ function pushRoute(string $path, string $state): void
             return;
         }
         header('apns-id: 00000000-0000-0000-0000-000000000001');
+        return;
+    }
+    http_response_code(404);
+    echo '{"error":"no route"}';
+}
+
+/** Sign in with Apple stand-ins: JWKS, token exchange, revocation. */
+function appleRoute(string $path, string $state): void
+{
+    header('Content-Type: application/json');
+    if ($path === '/apple/auth/keys') {
+        echo is_file($state . '/apple-jwks.json') ? file_get_contents($state . '/apple-jwks.json') : '{"keys":[]}';
+        return;
+    }
+    parse_str((string) file_get_contents('php://input'), $form);
+    file_put_contents($state . '/apple.log', json_encode(['path' => $path, 'form' => $form], JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND);
+    if ($path === '/apple/auth/token') {
+        if (is_file($state . '/apple-bad-client')) {
+            http_response_code(400);
+            echo '{"error":"invalid_client"}';
+        } elseif (($form['code'] ?? '') === 'nq-connectivity-test' || ($form['grant_type'] ?? '') !== 'authorization_code') {
+            http_response_code(400);
+            echo '{"error":"invalid_grant"}';
+        } else {
+            echo json_encode(['access_token' => 'at-fake', 'token_type' => 'Bearer', 'expires_in' => 3600,
+                'refresh_token' => 'rt-' . (string) ($form['code'] ?? ''), 'id_token' => 'x.y.z']);
+        }
+        return;
+    }
+    if ($path === '/apple/auth/revoke') {
+        if (is_file($state . '/apple-down')) {
+            http_response_code(503);
+            echo '{"error":"down"}';
+            return;
+        }
+        echo '';
         return;
     }
     http_response_code(404);

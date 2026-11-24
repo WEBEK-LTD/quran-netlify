@@ -4,6 +4,7 @@ declare(strict_types=1);
 use NQ\Controllers\AdminCommunityController as AdminCommunity;
 use NQ\Controllers\AdminController as Admin;
 use NQ\Controllers\AiController as Ai;
+use NQ\Controllers\AppleController as Apple;
 use NQ\Controllers\AuthController as AuthC;
 use NQ\Controllers\AvatarController as Avatar;
 use NQ\Controllers\CommunityController as Community;
@@ -46,6 +47,8 @@ return static function (Router $r): void {
     $r->get('/auth/export', [AuthC::class, 'export']);
     $r->get('/auth/google/start', [Google::class, 'start']);
     $r->get('/auth/google/callback', [Google::class, 'callback']);
+    $r->post('/auth/apple', [Apple::class, 'signIn']);                       // iOS app (native sheet)
+    $r->post('/auth/apple/notifications', [Apple::class, 'notifications']);  // Apple server-to-server (signed JWT)
 
     // Personal data
     $r->post('/me/avatar', [Avatar::class, 'upload']);

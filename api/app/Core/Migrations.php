@@ -14,7 +14,7 @@ namespace NQ\Core;
 final class Migrations
 {
     /** Bump when a step is added below. */
-    public const VERSION = 4;
+    public const VERSION = 5;
 
     /** Whether every column of VERSION is known to exist (false only when an upgrade failed). */
     private static bool $ready = true;
@@ -59,6 +59,28 @@ final class Migrations
         self::addColumn('users', 'avatar_file', 'VARCHAR(100) NULL AFTER avatar_url');
         // v4: voice rooms & community — new tables, created from schema.sql (CREATE TABLE IF NOT EXISTS, in file order)
         self::createMissingTables();
+        // v5: Sign in with Apple — the Apple account id, and the refresh token (encrypted) revoked when the account is deleted
+        self::addColumn('users', 'apple_sub', 'VARCHAR(191) NULL AFTER google_sub');
+        self::addColumn('users', 'apple_refresh_token', 'TEXT NULL AFTER apple_sub');
+        self::addUniqueIndex('users', 'uq_users_apple_sub', 'apple_sub');
+    }
+
+    private static function addUniqueIndex(string $table, string $name, string $column): void
+    {
+        $has = (int) Db::value(
+            'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?',
+            [$table, $name]
+        ) > 0;
+        if ($has) {
+            return;
+        }
+        try {
+            Db::exec('ALTER TABLE `' . $table . '` ADD UNIQUE KEY `' . $name . '` (`' . $column . '`)');
+        } catch (\PDOException $e) {
+            if ((int) ($e->errorInfo[1] ?? 0) !== 1061) { // 1061 = duplicate key name: another request won the race
+                throw $e;
+            }
+        }
     }
 
     /** Run every `CREATE TABLE IF NOT EXISTS` of schema.sql whose table is missing (never touches existing tables). */

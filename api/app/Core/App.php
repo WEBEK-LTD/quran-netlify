@@ -61,8 +61,9 @@ final class App
             }
 
             $isWrite = !in_array($req->method, ['GET', 'HEAD'], true);
-            // LiveKit's webhook is server-to-server (no Origin, no X-NQ-Client); it is authenticated by its signed JWT.
-            $isWebhook = $req->method === 'POST' && $req->path === '/v1/livekit/webhook';
+            // LiveKit's webhook and Apple's Sign in with Apple notifications are server-to-server (no Origin,
+            // no X-NQ-Client, no session); each is authenticated by its signed JWT.
+            $isWebhook = $req->method === 'POST' && in_array($req->path, ['/v1/livekit/webhook', '/v1/auth/apple/notifications'], true);
             if ($isWrite && !$isWebhook) {
                 if ($origin !== null && $origin !== '' && !$allowed) {
                     throw ApiError::forbidden('المصدر غير مسموح.');

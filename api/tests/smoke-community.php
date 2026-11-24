@@ -61,8 +61,8 @@ $q1 = static function (string $sql, array $p = []) use ($db): mixed {
 $db->exec('DROP TABLE dictionary_words');
 array_map('unlink', glob($LOCAL . '/storage/schema-*.version') ?: []);
 req('GET', '/health');
-check('Migrations v4 recreates missing community tables from schema.sql', (int) $q1("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dictionary_words'") === 1
-    && (int) @file_get_contents((string) (glob($LOCAL . '/storage/schema-*.version')[0] ?? '')) === 4);
+check('Migrations (v4) recreates missing community tables from schema.sql', (int) $q1("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dictionary_words'") === 1
+    && (int) @file_get_contents((string) (glob($LOCAL . '/storage/schema-*.version')[0] ?? '')) === 5);
 
 // ── Keys: LiveKit, FCM service account (RSA), APNs .p8 (EC P-256) — test keys made here, endpoints = the stand-ins
 $LK_KEY = 'APItestkey';

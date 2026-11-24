@@ -1167,6 +1167,7 @@ if ($LOCAL !== null && $FAKE !== null) {
 
 // ───────────────────────────────────────────────────────────────────────────
 require __DIR__ . '/smoke-community.php'; // voice rooms & community (needs --local and --fake-upstream)
+require __DIR__ . '/smoke-apple.php';     // Sign in with Apple (needs --local and --fake-upstream)
 
 // ───────────────────────────────────────────────────────────────────────────
 section('Rate limiting');
