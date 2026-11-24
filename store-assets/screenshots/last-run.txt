@@ -1,8 +1,3 @@
-ar/iphone/01-home
-ar/iphone/02-mushaf  ⚠ unmocked: POST /me/reading, PUT /me/progress
 ar/iphone/03-listen
-ar/iphone/04-tafsir
 ar/iphone/05-prayer
 ar/iphone/06-qibla
-ar/iphone/07-tadhkira
-ar/iphone/08-room

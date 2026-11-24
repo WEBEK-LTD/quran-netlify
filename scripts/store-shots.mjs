@@ -62,7 +62,7 @@ const readJson = (p) => JSON.parse(readFileSync(join(ROOT, p), 'utf8'));
 const b64 = (p) => readFileSync(join(ROOT, p)).toString('base64');
 
 async function startPreview() {
-  const child = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, [join(ROOT, 'node_modules/vite/bin/vite.js'), 'preview', '--port', String(PORT), '--strictPort'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = '';
   child.stdout.on('data', d => { log += d; });
   child.stderr.on('data', d => { log += d; });
@@ -128,7 +128,7 @@ function shiftTimes(dayDelta) {
   }
   return out;
 }
-const HIJRI = { date: '04-06-1448', day: '4', month: { number: 6, en: 'Jumādá al-ākhirah', ar: 'جُمادى الآخرة' }, year: '1448', weekday: { en: 'Al Thalaata', ar: 'الثلاثاء' } };
+const HIJRI = { date: '14-06-1448', day: '14', month: { number: 6, en: 'Jumādá al-ākhirah', ar: 'جُمادى الآخرة' }, year: '1448', weekday: { en: 'Al Thalaata', ar: 'الثلاثاء' } };
 function aladhan(url) {
   const u = new URL(url);
   const meta = { latitude: 30.0444, longitude: 31.2357, timezone: TZ, method: { id: 5, name: 'Egyptian General Authority of Survey' } };
@@ -142,11 +142,14 @@ function aladhan(url) {
     }) };
   }
   if (/\/gToH/.test(u.pathname)) return { code: 200, status: 'OK', data: { hijri: HIJRI, gregorian: { date: '24-11-2026' } } };
-  return { code: 200, status: 'OK', data: { timings: { ...TIMES }, date: { readable: '24 Nov 2026', timestamp: String(NOW / 1000), hijri: HIJRI, gregorian: { date: '24-11-2026', day: '24' } }, meta } };
+  const dm = /\/timings\/(\d+)-(\d+)-(\d+)/.exec(u.pathname);
+  const delta = dm ? (Date.UTC(+dm[3], +dm[2] - 1, +dm[1]) - Date.UTC(2026, 10, 24)) / 864e5 : 0;
+  const timings = Object.fromEntries(Object.entries(shiftTimes(delta)).map(([k, v]) => [k, v.slice(0, 5)]));
+  return { code: 200, status: 'OK', data: { timings, date: { readable: '24 Nov 2026', timestamp: String(NOW / 1000), hijri: HIJRI, gregorian: { date: '24-11-2026', day: '24' } }, meta } };
 }
 
-// 2 s of silence, 16 kHz mono WAV — stands in for every recitation file
-function silentWav(seconds = 30) {
+// a few seconds of silence (8 kHz mono WAV) stands in for every recitation file
+function silentWav(seconds = 3) {
   const rate = 8000, n = rate * seconds, buf = Buffer.alloc(44 + n * 2);
   buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8); buf.write('fmt ', 12);
   buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22); buf.writeUInt32LE(rate, 24);
@@ -304,6 +307,9 @@ const seed = ([lang, mode, extra]) => {
     set('nq_pray_city', lang === 'ar' ? 'القاهرة' : 'Cairo');
     set('nq_lastRead', { surah: 18, ayah: 10 });
     set('nq_room_mic_explained', '1');
+    set('nq_pray_method_v2', '5');
+    set('nq_pray_alarms', { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true });
+    set('nq_adhan_settings', { enabled: true, muezzin: 'khalaf1', fajrMuezzin: 'owner_fajr', reminder: 10, dailyAyah: true, modes: { Fajr: 'adhan', Dhuhr: 'adhan', Asr: 'adhan', Maghrib: 'adhan', Isha: 'notify' } });
     for (const [k, v] of Object.entries(extra || {})) set(k, v);
   } catch {}
   // hide the opening animation and the caret
@@ -329,34 +335,55 @@ const SCREENS = [
     } },
   { n: '03', name: 'listen', path: '/listen', mode: 'dark',
     head: ['استمع إلى السورة كاملة', 'Listen to whole surahs'],
-    sub: ['قرّاء كبار، والتلاوة مستمرة وأنت تتنقل', 'Renowned reciters, playing as you move around'] },
+    sub: ['قرّاء كبار، والتلاوة مستمرة وأنت تتنقل', 'Renowned reciters, playing as you move around'],
+    async prep(page) {
+      await page.getByRole('button', { name: /العفاسي|Alafasy|Afasy/ }).first().click().catch(() => {});
+      await sleep(300);
+      await page.locator('button[data-n="18"]').first().click();
+      await sleep(4500); // past the basmala: «Al-Kahf · ayah 1»
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await sleep(400);
+    } },
   { n: '04', name: 'tafsir', path: '/tafsir', mode: 'light',
     head: ['التفسير آية بآية', 'Tafsir, ayah by ayah'],
     sub: ['التفسير الميسّر وتفسير الجلالين', 'Al-Muyassar and Al-Jalalayn'] },
   { n: '05', name: 'prayer', path: '/prayer-times', mode: 'dark',
     head: ['الأذان في وقته', 'The adhan, on time'],
-    sub: ['مواقيت مدينتك، واختر مؤذّنك ومؤذّن الفجر', 'Your city’s times, your muezzin, a Fajr muezzin'] },
+    sub: ['لكل صلاة أذانها، واختر مؤذّنك ومؤذّن الفجر', 'Per-prayer alerts, your muezzin and a Fajr muezzin'],
+    async prep(page) {
+      // the «تنبيه الأذان» row: five prayers, style per prayer, muezzins, reminder
+      await page.waitForSelector('#pt-settings button[aria-pressed]');
+      await sleep(600);
+      await page.evaluate(() => {
+        const row = document.querySelector('#pt-settings button[aria-pressed]').closest('[class*="setRow"]');
+        const bar = document.querySelector('.nq-header, header');
+        window.scrollTo(0, row.getBoundingClientRect().top + scrollY - (bar ? bar.getBoundingClientRect().height : 64) - 12);
+      });
+      await sleep(600);
+    } },
   { n: '06', name: 'qibla', path: '/qibla', mode: 'dark',
     head: ['اتجاه القبلة', 'Find the Qibla'],
     sub: ['بوصلة تعمل من موقعك', 'A compass that works from where you are'],
+    // a steady heading from the first frame, as a real magnetometer would give
+    init: (ios) => {
+      if (ios) {
+        try { delete Window.prototype.ondeviceorientationabsolute; delete window.ondeviceorientationabsolute; } catch {}
+        window.DeviceOrientationEvent.requestPermission = async () => 'granted';
+      }
+      let i = 0;
+      setInterval(() => {
+        const h = 131.4 + Math.sin(i++ / 6) * 0.3; // Cairo: qibla 136.1° true, declination +4.8°
+        if (ios) { const e = new Event('deviceorientation'); Object.assign(e, { webkitCompassHeading: h, webkitCompassAccuracy: 10, alpha: 0, beta: 30, gamma: 0 }); window.dispatchEvent(e); }
+        else window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', { alpha: 360 - h, beta: 30, gamma: 0, absolute: true }));
+      }, 40);
+    },
     async prep(page, { platform }) {
-      // Cairo: qibla 136.1° true; magnetic declination +4.8° → face it with the phone
-      if (platform === 'ios') {
-        await page.getByRole('button', { name: /تفعيل البوصلة|Enable the compass|compass/i }).first().click({ timeout: 3000 }).catch(() => {});
-      }
-      for (let i = 0; i < 45; i++) {
-        const h = 131.4 + Math.sin(i / 5) * 0.4;
-        await page.evaluate(([h, ios]) => {
-          if (ios) { const e = new Event('deviceorientation'); Object.assign(e, { webkitCompassHeading: h, webkitCompassAccuracy: 10, alpha: 0, beta: 30, gamma: 0 }); window.dispatchEvent(e); }
-          else window.dispatchEvent(new DeviceOrientationEvent('deviceorientationabsolute', { alpha: 360 - h, beta: 30, gamma: 0, absolute: true }));
-        }, [h, platform === 'ios']);
-        await sleep(25);
-      }
-      await sleep(600);
+      if (platform === 'ios') await page.getByRole('button', { name: /تفعيل البوصلة|compass/i }).first().click({ timeout: 3000 }).catch(() => {});
+      await sleep(1500);
     } },
   { n: '07', name: 'tadhkira', path: '/tadhkira?open=1', mode: 'dark',
     head: ['تذكرة لقلبك كل يوم', 'A daily reminder for your heart'],
-    sub: ['آية من كتاب الله مع تفسيرها', 'An ayah from the Book of Allah with its tafsir'],
+    sub: ['آية من كتاب الله تتجدّد كل يوم', 'An ayah from the Book of Allah, new each day'],
     async prep(page) {
       const btn = page.getByRole('button', { name: /افتح|Open/ }).first();
       if (await btn.count()) await btn.click().catch(() => {});
@@ -388,6 +415,7 @@ async function capture(browser, { lang, device, screen }) {
   page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|net::ERR|favicon/i.test(m.text())) errors.push('console: ' + m.text().slice(0, 200)); });
   await page.addInitScript(fakeBridge, platform);
   await page.addInitScript(seed, [lang, screen.mode, screen.storage || {}]);
+  if (screen.init) await page.addInitScript(screen.init, platform === 'ios');
   const json = (route, data, extra = {}) => route.fulfill({ status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', ...extra }, body: JSON.stringify(data) });
   await page.route(/^https?:\/\/(?!localhost)/, async (route) => {
     const req = route.request();
@@ -426,7 +454,7 @@ async function capture(browser, { lang, device, screen }) {
   const dir = join(OUT, 'screenshots', lang, device, 'raw');
   mkdirSync(dir, { recursive: true });
   const file = join(dir, `${screen.n}-${screen.name}.png`);
-  await page.screenshot({ path: file, animations: 'disabled', caret: 'hide' });
+  await page.screenshot({ path: file, animations: 'disabled', caret: 'hide', fullPage: flag('full') });
   await ctx.close();
   return { file, errors, unknown: [...api.unknown], ...check };
 }
@@ -439,7 +467,7 @@ const FONTS = `
 @font-face{font-family:'Plex';src:url(data:font/woff2;base64,${b64('node_modules/@fontsource/ibm-plex-sans-arabic/files/ibm-plex-sans-arabic-latin-500-normal.woff2')}) format('woff2');unicode-range:U+0000-024F,U+2000-206F;}
 `;
 // eight-pointed star lattice, as on the site (very faint)
-const PATTERN = `url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><g fill="none" stroke="#D6B267" stroke-opacity=".10" stroke-width="1.2"><path d="M48 14l10 24 24 10-24 10-10 24-10-24-24-10 24-10z"/><rect x="30" y="30" width="36" height="36" transform="rotate(45 48 48)"/><rect x="30" y="30" width="36" height="36"/></g></svg>')}")`;
+const PATTERN = `url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><g fill="none" stroke="#D6B267" stroke-opacity=".07" stroke-width="1.2"><path d="M48 14l10 24 24 10-24 10-10 24-10-24-24-10 24-10z"/><rect x="30" y="30" width="36" height="36" transform="rotate(45 48 48)"/><rect x="30" y="30" width="36" height="36"/></g></svg>')}")`;
 const BG = `radial-gradient(120% 60% at 50% 0%, #1B5A41 0%, #0B2A1E 45%, #06100C 100%)`;
 
 function framedHtml({ shotB64, head, sub, lang, D }) {
@@ -545,4 +573,5 @@ try {
   await browser.close();
   if (preview) preview.kill();
 }
+setTimeout(() => process.exit(0), 100);
 if (report.length) writeFileSync(join(OUT, 'screenshots', 'last-run.txt'), report.join('\n') + '\n');
