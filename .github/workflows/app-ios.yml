@@ -142,7 +142,19 @@ jobs:
             echo "No signing secrets: unsigned build only."; exit 0
           fi
           KEY="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
-          echo "$ASC_KEY_P8_BASE64" | base64 -d > "$KEY"
+          # the secret may hold the .p8 file itself (-----BEGIN PRIVATE KEY-----…) or its base64
+          if printf '%s' "$ASC_KEY_P8_BASE64" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s\n' "$ASC_KEY_P8_BASE64" | tr -d '\r' > "$KEY"
+          else
+            printf '%s' "$ASC_KEY_P8_BASE64" | tr -d ' \r\n\t' | base64 -D > "$KEY" 2>/dev/null \
+              || printf '%s' "$ASC_KEY_P8_BASE64" | tr -d ' \r\n\t' | base64 -d > "$KEY"
+          fi
+          if ! openssl pkey -in "$KEY" -noout 2>/dev/null; then
+            echo "::error::ASC_KEY_P8_BASE64 is not a valid App Store Connect key. Open AuthKey_<KeyID>.p8 in Notepad and paste its whole content (with the BEGIN/END lines) into that secret."
+            echo "decoded size: $(wc -c < "$KEY") bytes; first line: $(head -1 "$KEY" | cut -c1-30)"
+            exit 1
+          fi
+          case "$ASC_KEY_ID" in *[!A-Z0-9]*|"") echo "::error::ASC_KEY_ID should be the 10-character Key ID (letters/digits only)"; exit 1;; esac
           AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
@@ -173,7 +185,8 @@ jobs:
           ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
         run: |
           mkdir -p ~/.appstoreconnect/private_keys
-          echo "$ASC_KEY_P8_BASE64" | base64 -d > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          if printf '%s' "$ASC_KEY_P8_BASE64" | grep -q "BEGIN PRIVATE KEY"; then printf '%s\n' "$ASC_KEY_P8_BASE64" | tr -d '\r' > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          else printf '%s' "$ASC_KEY_P8_BASE64" | tr -d ' \r\n\t' | base64 -D > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8; fi
           xcrun altool --upload-app -f ios-out/*.ipa -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
 
       - name: Clean up signing material
