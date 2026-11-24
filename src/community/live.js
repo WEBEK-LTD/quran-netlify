@@ -16,6 +16,7 @@
 // rooms hub ever download it.
 import { capi } from './api';
 import { setAudioMode } from './audioMode';
+import { isIOS } from '../native/platform';
 
 const STAGE = ['owner', 'moderator', 'speaker'];
 
@@ -272,11 +273,25 @@ export async function setMic(on) {
   const r = room;
   wantMic = true;
   emit({ micBusy: true, micError: null });
-  // iOS only (.playAndRecord); a no-op elsewhere — never allowed to block the microphone
-  try { await setAudioMode('voice'); } catch {}
+  // iOS only (session options for the microphone, then a moment for the route to settle);
+  // a no-op elsewhere — never allowed to block the microphone
+  const ios = isIOS();
+  const voice = async () => {
+    try { await setAudioMode('voice', { force: true }); } catch {}
+    if (ios) await new Promise(res => setTimeout(res, 150));
+  };
+  await voice();
   const t = timeout(MIC_TIMEOUT);
   try {
-    await Promise.race([r.localParticipant.setMicrophoneEnabled(true), t.p]);
+    try {
+      await Promise.race([r.localParticipant.setMicrophoneEnabled(true), t.p]);
+    } catch (e) {
+      // iOS: the first capture can still fail with NotReadableError while the session reconfigures — retry once
+      if (!ios || room !== r || micErrorKind(e) !== 'busy') throw e;
+      try { await r.localParticipant.setMicrophoneEnabled(false); } catch {}
+      await voice();
+      await Promise.race([r.localParticipant.setMicrophoneEnabled(true), t.p]);
+    }
     t.clear();
     if (room !== r) return false;
     emit({ micBusy: false });

@@ -250,8 +250,10 @@ every bundled file**: the Fajr wording of `khalaf_fajr` was not checked by ear h
 
 ## 4. Background audio and lock-screen controls
 
-- **iOS**: `UIBackgroundModes: audio` + `AVAudioSession` category `.playback` / mode
-  `.spokenAudio` (`AppDelegate.swift`). The WebView's `<audio>` keeps playing with the
+- **iOS**: `UIBackgroundModes: audio` + `AVAudioSession` category `.playAndRecord` / mode
+  `.default` with `.defaultToSpeaker`, A2DP and AirPlay, set at launch (`AppDelegate.swift` →
+  `NQAudioSession` in `SceneDelegate.swift`; never `.playback`, so the voice rooms' microphone
+  can always start — see *Microphone* in §5). Background playback works the same. The WebView's `<audio>` keeps playing with the
   screen locked; WebKit publishes `navigator.mediaSession` (already set by
   `src/audio/mediaSession.js` and the radio) to Now Playing / the lock screen.
 - **Android**: Capacitor keeps the WebView running in the background (`KeepRunning`), but
@@ -299,11 +301,15 @@ when `google-services.json` is provided).
 - **Microphone** (voice rooms): iOS purpose string is in `Info.plist` (+ translations). Android
   declares `RECORD_AUDIO` + `MODIFY_AUDIO_SETTINGS`; Capacitor's WebChromeClient asks for them
   the first time a speaker turns the microphone on (after our own explanation sheet). There is
-  **no** `FOREGROUND_SERVICE_MICROPHONE`: speaking stops when the app is in the background. iOS
-  keeps the app's `.playback` session for the Mushaf; while the microphone is on, the small
-  `NQAudio` plugin (`ios/App/App/SceneDelegate.swift`, registered by `NQBridgeViewController`)
-  switches to `.playAndRecord` / `.voiceChat` (speaker + Bluetooth), and back to `.playback`
-  when the microphone goes off or the room ends. The privacy policy says the microphone is
+  **no** `FOREGROUND_SERVICE_MICROPHONE`: speaking stops when the app is in the background. iOS:
+  the session category is `.playAndRecord` all the time (with `.playback`, WebKit re-activating
+  the session for media playback made `getUserMedia` fail with `NotReadableError`, which the app
+  showed as "microphone used by another app"). While the microphone is on, the small `NQAudio`
+  plugin (`ios/App/App/SceneDelegate.swift`, registered by `NQBridgeViewController`) only adds
+  Bluetooth HFP (a headset's microphone) and activates the session; afterwards it goes back to
+  speaker / A2DP / AirPlay (HFP is left out while listening, or a headset would play the
+  recitation in call quality). `setMic` (`src/community/live.js`) waits 150 ms after the switch
+  and retries once on `NotReadableError`. The privacy policy says the microphone is
   used only while you speak in a room and audio is live, never recorded.
 - **Tapping a push** opens the screen for its `type` (`src/native/pushRoutes.js`, unit-tested):
   `dm` → `/messages/{conversation_id}`, room types and `speak_invite` → `/rooms/{room_id}`,

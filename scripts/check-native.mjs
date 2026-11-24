@@ -72,7 +72,14 @@ ok(/registerPluginInstance\(NQAppleSignInPlugin\(\)\)/.test(scene) && /jsName = 
   && /ASAuthorizationAppleIDProvider\(\)\.createRequest\(\)/.test(scene) && /requestedScopes = \[\.fullName, \.email\]/.test(scene)
   && /CAPPluginMethod\(name: "signIn"/.test(scene) && /"cancelled"/.test(scene), 'NQAppleSignIn plugin (Sign in with Apple, fullName + email) registered by NQBridgeViewController');
 ok(/registerPlugin\('NQAppleSignIn'\)/.test(readFileSync(R('src/native/appleSignIn.js'), 'utf8')), 'src/native/appleSignIn.js talks to NQAppleSignIn');
-ok(/\.playAndRecord/.test(scene) && /\.playback, mode: \.spokenAudio/.test(scene), 'NQAudio switches .playAndRecord (speaking) ↔ .playback (after)');
+{
+  const appDel = readFileSync(R('ios/App/App/AppDelegate.swift'), 'utf8');
+  const code = (s) => s.replace(/\/\/.*$/gm, '');
+  ok(/setCategory\(\.playAndRecord, mode: \.default, options: options\)/.test(scene) && /\.defaultToSpeaker/.test(scene)
+    && /NQAudioSession\.apply\(voice: mode == "voice"\)/.test(scene) && /NQAudioSession\.apply\(voice: false\)/.test(appDel)
+    && !/setCategory\(\.playback/.test(code(scene) + code(appDel)),
+    'audio session is .playAndRecord from launch and in both NQAudio modes (never .playback: the room microphone must be able to start)');
+}
 const ent = parsePlist(readFileSync(R('ios/App/App/App.entitlements'), 'utf8'));
 ok((ent['com.apple.developer.associated-domains'] || []).includes('applinks:nuralquran.net'), 'entitlements: applinks:nuralquran.net');
 ok(!!ent['aps-environment'], 'entitlements: aps-environment (push)');

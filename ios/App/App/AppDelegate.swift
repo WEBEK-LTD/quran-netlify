@@ -9,16 +9,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // The Mushaf recitation and the radio play through the WebView's <audio>.
-        // With UIBackgroundModes=audio (Info.plist) and the .playback category they keep
-        // playing with the screen locked or the app in the background, and WebKit feeds
-        // the lock screen / Control Center "Now Playing" from navigator.mediaSession.
-        // The session is only *activated* by WebKit when something actually plays, so
-        // opening the app does not interrupt other apps' audio.
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
-        } catch {
-            NSLog("[NurAlQuran] AVAudioSession category: \(error)")
-        }
+        // With UIBackgroundModes=audio (Info.plist) they keep playing with the screen locked or
+        // the app in the background, and WebKit feeds the lock screen / Control Center
+        // "Now Playing" from navigator.mediaSession.
+        // The category is .playAndRecord from launch (NQAudioSession, SceneDelegate.swift): with
+        // .playback, the voice rooms' microphone could not start (getUserMedia NotReadableError,
+        // shown as "used by another app") because WebKit re-activates the session for playback.
+        // .defaultToSpeaker keeps recitation on the loudspeaker. The session is only *activated*
+        // by WebKit when something actually plays, so opening the app does not interrupt other apps.
+        NQAudioSession.apply(voice: false)
         return true
     }
 

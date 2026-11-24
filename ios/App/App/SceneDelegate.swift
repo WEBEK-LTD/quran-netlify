@@ -35,10 +35,35 @@ class NQBridgeViewController: CAPBridgeViewController {
     }
 }
 
-/// Voice rooms: the app's audio session is .playback (recitation / radio keep playing with the
-/// screen locked, see AppDelegate). Speaking in a room needs .playAndRecord while the microphone
-/// is on; afterwards we go back to .playback so the Mushaf audio behaves as before.
+/// The app's audio session. The category is always .playAndRecord — never .playback — so the
+/// voice rooms' microphone can start at any moment (with .playback, WebKit re-activating the
+/// session for media made getUserMedia fail with NotReadableError). Only the options change:
+///   media (listening, recitation, radio): speaker, AirPlay, Bluetooth A2DP (full-quality output);
+///   voice (my microphone is on): adds Bluetooth HFP so a headset's microphone can be used.
+/// HFP is left out while only listening: when a headset supports both profiles iOS prefers HFP,
+/// which would play the recitation in low "call" quality. Mode .default in both: WebKit's capture
+/// does its own voice processing (echo cancellation).
+enum NQAudioSession {
+    static func apply(voice: Bool) {
+        let session = AVAudioSession.sharedInstance()
+        var options: AVAudioSession.CategoryOptions = [.defaultToSpeaker, .allowBluetoothA2DP, .allowAirPlay]
+        if voice {
+            options.insert(.allowBluetooth)   // HFP (renamed .allowBluetoothHFP in newer SDKs; same value)
+        }
+        do {
+            try session.setCategory(.playAndRecord, mode: .default, options: options)
+            if voice {
+                try session.setActive(true, options: [])
+            }
+        } catch {
+            NSLog("[NurAlQuran] audio session (voice: \(voice)): \(error)")
+        }
+    }
+}
+
+/// Voice rooms: switches the session options around the microphone (see NQAudioSession).
 ///   JS: registerPlugin('NQAudio').setMode({ mode: 'voice' | 'media' })   (src/community/audioMode.js)
+/// Always resolves: the microphone must be tried even if the session change failed (logged).
 @objc(NQAudioPlugin)
 public class NQAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "NQAudioPlugin"
@@ -50,21 +75,8 @@ public class NQAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func setMode(_ call: CAPPluginCall) {
         let mode = call.getString("mode") ?? "media"
         DispatchQueue.main.async {
-            let session = AVAudioSession.sharedInstance()
-            do {
-                if mode == "voice" {
-                    try session.setCategory(.playAndRecord, mode: .voiceChat,
-                                            options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP])
-                    try session.setActive(true, options: [])
-                } else {
-                    // same as AppDelegate at launch; WebKit re-activates it when audio plays
-                    try session.setCategory(.playback, mode: .spokenAudio, options: [])
-                }
-                call.resolve()
-            } catch {
-                NSLog("[NurAlQuran] audio mode \(mode): \(error)")
-                call.reject("audio_session", nil, error)
-            }
+            NQAudioSession.apply(voice: mode == "voice")
+            call.resolve()
         }
     }
 }
