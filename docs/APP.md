@@ -733,6 +733,10 @@ tracking.** Prayer location: kept on the device (localStorage); the coordinates 
 are sent **directly from the device** to api.aladhan.com (times, calendar) and
 nominatim.openstreetmap.org (city name) — not to our server. Push device token (when
 enabled). The daily-ayah text comes from api.alquran.cloud (no personal data).
+Sign in with Apple (iOS): Apple's account id (`sub`), the email Apple shares (possibly a
+"Hide My Email" relay address) and the name if the user shares it — the same *Email Address /
+Name / User ID* categories below; the Apple refresh token is stored encrypted only to revoke it
+when the account is deleted.
 
 ### App Store "App Privacy" (matches `ios/App/App/PrivacyInfo.xcprivacy`)
 
