@@ -233,6 +233,7 @@ function makeApi(lang) {
     if (path === '/me/conversations') return ok({ items: [], server_time: iso() }, 200, { ETag: 'W/"c0"' });
     if (path === '/me/notifications') return ok({ items: [], unread: 0, max_id: 0 }, 200, { ETag: 'W/"n0"' });
     if (path === '/me/devices') return ok({}, 201);
+    if (path === '/me/reading' || path === '/me/progress') return ok({});
     unknown.add(`${method} ${path}`);
     if (method !== 'GET') return ok({});
     return err(404, 'not_found');
@@ -331,7 +332,9 @@ const SCREENS = [
       const a = page.locator('[data-kufi="3"]').first();
       await a.waitFor({ timeout: 8000 });
       await a.click();
-      await sleep(1500);
+      await sleep(1200);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await sleep(400);
     } },
   { n: '03', name: 'listen', path: '/listen', mode: 'dark',
     head: ['استمع إلى السورة كاملة', 'Listen to whole surahs'],
@@ -356,7 +359,7 @@ const SCREENS = [
       await sleep(600);
       await page.evaluate(() => {
         const row = document.querySelector('#pt-settings button[aria-pressed]').closest('[class*="setRow"]');
-        const bar = document.querySelector('.nq-header, header');
+        const bar = document.querySelector('.nq-top');
         window.scrollTo(0, row.getBoundingClientRect().top + scrollY - (bar ? bar.getBoundingClientRect().height : 64) - 12);
       });
       await sleep(600);
@@ -388,6 +391,19 @@ const SCREENS = [
       const btn = page.getByRole('button', { name: /افتح|Open/ }).first();
       if (await btn.count()) await btn.click().catch(() => {});
       await sleep(3200);
+      // whole card in view: from the top of the page if it fits, else from the card's top
+      await page.evaluate(() => {
+        const card = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
+        if (card) card.blur();
+        window.scrollTo(0, 0);
+        if (!card) return;
+        const r = card.getBoundingClientRect();
+        if (r.bottom > innerHeight - 90) {
+          const bar = document.querySelector('.nq-top');
+          window.scrollTo(0, r.top - (bar ? bar.getBoundingClientRect().height : 64) - 14);
+        }
+      });
+      await sleep(400);
     } },
   { n: '08', name: 'room', path: '/rooms/11', mode: 'dark',
     head: ['مجالس القرآن الصوتية', 'Live Quran voice rooms'],
@@ -502,7 +518,17 @@ async function frame(browser, { lang, device, screen, rawFile }) {
   const i = lang === 'ar' ? 0 : 1;
   await page.setContent(framedHtml({ shotB64: readFileSync(rawFile).toString('base64'), head: screen.head[i], sub: screen.sub[i], lang, D }), { waitUntil: 'load' });
   await page.evaluate(() => document.fonts.ready);
-  const fit = await page.evaluate(() => { const r = document.querySelector('.dev').getBoundingClientRect(); return { bottom: r.bottom, h: innerHeight, headLines: Math.round(document.querySelector('h1').getBoundingClientRect().height / parseFloat(getComputedStyle(document.querySelector('h1')).lineHeight)) }; });
+  // the device takes the height left under the headline (one or two lines)
+  await page.evaluate(([bottom]) => {
+    const dev = document.querySelector('.dev');
+    const pad = parseFloat(getComputedStyle(dev).paddingTop);
+    const avail = innerHeight - dev.getBoundingClientRect().top - bottom - 2 * pad;
+    const w = Math.min(dev.getBoundingClientRect().width - 2 * pad, avail * innerWidth / innerHeight);
+    dev.style.width = w + 'px';
+    window.__fit = { pad, avail, w, top: dev.getBoundingClientRect().top };
+  }, [D.tablet ? 64 : Math.round(D.h * 0.035)]);
+  await page.evaluate(() => new Promise(r => requestAnimationFrame(() => r())));
+  const fit = await page.evaluate(() => { const r = document.querySelector('.dev').getBoundingClientRect(); return { dbg: window.__fit, bottom: r.bottom, h: innerHeight, headLines: Math.round(document.querySelector('h1').getBoundingClientRect().height / parseFloat(getComputedStyle(document.querySelector('h1')).lineHeight)) }; });
   const dir = join(OUT, 'screenshots', lang, device, 'framed');
   mkdirSync(dir, { recursive: true });
   const file = join(dir, `${screen.n}-${screen.name}.png`);
@@ -536,12 +562,22 @@ async function playGraphics(browser) {
   await page.setContent(html, { waitUntil: 'load' });
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: join(dir, 'feature-graphic-1024x500.png') });
-  // icon 512×512, opaque: the 1024 store icon downscaled over its own background colour
-  const icon = readFileSync(join(ROOT, 'store-assets/icons/icon-1024.png')).toString('base64');
-  await page.setViewportSize({ width: 512, height: 512 });
-  await page.setContent(`<!doctype html><html><body style="margin:0;background:#06100C"><img style="display:block;width:512px;height:512px" src="data:image/png;base64,${icon}"></body></html>`, { waitUntil: 'load' });
-  await page.screenshot({ path: join(dir, 'icon-512.png'), omitBackground: false });
   await ctx.close();
+  // icon 512×512: the 1024 store icon, downscaled, fully opaque (alpha channel kept at 255 = "32-bit PNG")
+  const out = join(dir, 'icon-512.png');
+  let sharp = null;
+  try { sharp = require('sharp'); } catch {}
+  if (sharp) {
+    await sharp(join(ROOT, 'store-assets/icons/icon-1024.png')).resize(512, 512, { kernel: 'lanczos3' })
+      .flatten({ background: '#06100C' }).ensureAlpha(1).png({ compressionLevel: 9 }).toFile(out);
+  } else {
+    const c2 = await browser.newContext({ viewport: { width: 512, height: 512 }, deviceScaleFactor: 1 });
+    const p2 = await c2.newPage();
+    const icon = readFileSync(join(ROOT, 'store-assets/icons/icon-1024.png')).toString('base64');
+    await p2.setContent(`<!doctype html><html><body style="margin:0;background:#06100C"><img style="display:block;width:512px;height:512px" src="data:image/png;base64,${icon}"></body></html>`, { waitUntil: 'load' });
+    await p2.screenshot({ path: out });
+    await c2.close();
+  }
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────
@@ -564,6 +600,7 @@ try {
       const r = await capture(browser, { lang, device, screen });
       const f = flag('no-framed') ? null : await frame(browser, { lang, device, screen, rawFile: r.file });
       const issues = [...r.errors, ...(r.unknown.length ? ['unmocked: ' + r.unknown.join(', ')] : []), ...(r.overflow ? ['horizontal overflow'] : []), ...(r.spinners ? [`${r.spinners} loading indicator(s) visible`] : []), ...(f && f.fit.bottom > f.fit.h ? ['framed: device cut off'] : [])];
+      if (process.env.DEBUG && f) console.log(JSON.stringify(f.fit));
       report.push(`${lang}/${device}/${screen.n}-${screen.name}${issues.length ? '  ⚠ ' + issues.join(' | ') : ''}`);
       console.log(report.at(-1));
     }

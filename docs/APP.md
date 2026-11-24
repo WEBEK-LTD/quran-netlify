@@ -731,9 +731,10 @@ the people in the room and is never recorded or stored — on Apple's definition
 "collected" (real-time only); for Google Play declare *Audio → Voice or sound recordings* as
 *processed ephemerally*, not shared, for App functionality (owner to confirm the wording).
 
-**Privacy policy update still needed** (`/privacy`): local notifications, the coordinates
-sent to aladhan.com for the adhan schedule, push tokens, and the community data above. The
-microphone sentence is done (all six languages).
+**Privacy policy update still needed** (`/privacy`): local notifications and the coordinates
+sent to aladhan.com for the adhan schedule. Done (all six languages): the microphone sentence,
+and one paragraph for the community data above (profile, friends/follows/blocks, groups, DMs,
+room chat, reports, push token) with a link to `/child-safety`.
 
 ---
 
@@ -754,10 +755,20 @@ microphone sentence is done (all six languages).
   applicable; a named **child-safety contact** (email) who can speak to Google. Enter the URL
   and contact in Play Console → *App content → Child safety standards*. Apple 1.2 similarly
   expects reporting, blocking and timely responses for UGC apps.
+  **Published**: `https://nuralquran.net/child-safety` (`src/pages/ChildSafetyPage.jsx`, all six
+  languages, linked from the footer and the privacy page); contact **info@webek.org**.
 
 ---
 
 ## 13. Screenshots plan
+
+**Generated**: `npm run store:shots` (`scripts/store-shots.mjs`) builds the app bundle and
+captures 8 screens from the real UI (mocked network, fixed clock, Cairo) in Arabic and
+English for iPhone 6.9" (1320×2868), iPad 13" (2064×2752) and Google Play phone (1080×1920),
+each as `raw/` and `framed/` (headline + device frame) under `store-assets/screenshots/`,
+plus `store-assets/play/feature-graphic-1024x500.png` and `store-assets/play/icon-512.png`.
+Options: `--no-build`, `--lang ar`, `--device iphone`, `--only qibla,room`. Needs Playwright
+and Chromium (`npm i --no-save playwright && npx playwright install chromium`).
 
 Sizes: iPhone 6.9" (1320×2868), iPad 13" (2064×2752), Android phone (1080×1920 or larger),
 7"/10" tablets; Play feature graphic 1024×500 exists (`store-assets/feature-graphic-1024x500.png`).
