@@ -156,16 +156,22 @@ jobs:
           fi
           case "$ASC_KEY_ID" in *[!A-Z0-9]*|"") echo "::error::ASC_KEY_ID should be the 10-character Key ID (letters/digits only)"; exit 1;; esac
           AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          # Archive signed "to run locally" (ad-hoc identity "-"): the entitlements (push, associated
+          # domains, time-sensitive) are embedded, and no development profile / registered device is
+          # needed. The export below re-signs for the App Store with Apple's cloud-managed
+          # distribution certificate and an App Store profile, both created through the API key.
+          set -o pipefail
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
             MARKETING_VERSION="$NQ_VERSION" CURRENT_PROJECT_VERSION="$NQ_BUILD_NUMBER" \
-            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic "${AUTH[@]}" archive | tail -n 60
+            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="-" \
+            PROVISIONING_PROFILE_SPECIFIER="" AD_HOC_CODE_SIGNING_ALLOWED=YES archive | tail -n 40
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0"><dict>
             <key>method</key><string>app-store-connect</string>
-            <key>destination</key><string>upload</string>
+            <key>destination</key><string>export</string>
             <key>teamID</key><string>${TEAM_ID}</string>
             <key>signingStyle</key><string>automatic</string>
             <key>uploadSymbols</key><true/>
@@ -174,6 +180,17 @@ jobs:
           PLIST
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}"
+          IPA=$(ls "$RUNNER_TEMP"/export/*.ipa | head -1)
+          # the signed app must carry the capabilities (Apple silently drops push otherwise)
+          rm -rf "$RUNNER_TEMP/ipa" && mkdir -p "$RUNNER_TEMP/ipa" && unzip -q "$IPA" -d "$RUNNER_TEMP/ipa"
+          ENT=$(codesign -d --entitlements :- "$RUNNER_TEMP"/ipa/Payload/*.app 2>/dev/null)
+          echo "$ENT" | grep -E "aps-environment|associated-domains|time-sensitive|application-identifier" || true
+          for k in aps-environment com.apple.developer.associated-domains; do
+            echo "$ENT" | grep -q "$k" || { echo "::error::signed app is missing the $k entitlement"; exit 1; }
+          done
+          codesign -dv "$RUNNER_TEMP"/ipa/Payload/*.app 2>&1 | grep -E "Authority=|TeamIdentifier" || true
+          mkdir -p ~/.appstoreconnect/private_keys && cp "$KEY" ~/.appstoreconnect/private_keys/
+          xcrun altool --upload-app -f "$IPA" -t ios --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
           rm -f "$KEY"
           echo "Uploaded build $NQ_VERSION ($NQ_BUILD_NUMBER) to App Store Connect → TestFlight."
 
