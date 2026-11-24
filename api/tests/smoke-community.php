@@ -59,9 +59,11 @@ $q1 = static function (string $sql, array $p = []) use ($db): mixed {
 
 // ── Runtime migration: an install from an older schema.sql gets the new tables on the next request
 $db->exec('DROP TABLE dictionary_words');
+$db->exec('ALTER TABLE community_profiles DROP COLUMN terms_accepted_at');
 array_map('unlink', glob($LOCAL . '/storage/schema-*.version') ?: []);
 req('GET', '/health');
-check('Migrations (v4) recreates missing community tables from schema.sql', (int) $q1("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dictionary_words'") === 1
+check('Migrations recreate missing community tables from schema.sql (v4) and add community_profiles.terms_accepted_at (v5)', (int) $q1("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'dictionary_words'") === 1
+    && (int) $q1("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'community_profiles' AND COLUMN_NAME = 'terms_accepted_at'") === 1
     && (int) @file_get_contents((string) (glob($LOCAL . '/storage/schema-*.version')[0] ?? '')) === 5);
 
 // ── Keys: LiveKit, FCM service account (RSA), APNs .p8 (EC P-256) — test keys made here, endpoints = the stand-ins
@@ -110,7 +112,7 @@ $mk = static function (string $key, string $name, ?string $gender, ?string $bd, 
     $s = req('POST', '/auth/signup', ['name' => $name, 'email' => $email, 'password' => 'community-pass-1'], ['ip' => $ip]);
     $a = ['token' => (string) (data($s)['token'] ?? ''), 'ip' => $ip, 'id' => (int) (data($s)['user']['id'] ?? 0), 'name' => $name];
     if ($gender !== null) {
-        req('PATCH', '/me/community-profile', ['gender' => $gender, 'birthdate' => $bd], $a);
+        req('PATCH', '/me/community-profile', ['gender' => $gender, 'birthdate' => $bd, 'terms_accepted' => true], $a);
     }
     return $a;
 };
@@ -121,6 +123,33 @@ $W1 = $mk('w1', 'فاطمة', 'female', $adult, '10.70.0.4');
 $W2 = $mk('w2', 'مريم', 'female', $adult, '10.70.0.5');
 $LEG = $mk('leg', 'حساب قديم', null, null, '10.70.0.6');
 $KID = $mk('kid', 'طفل', null, null, '10.70.0.7');
+// ── Terms (App Store 1.2: zero tolerance for objectionable content / abusive users), agreed once
+$TRM = $mk('trm', 'شروط', null, null, '10.70.0.8');
+$tj0 = req('PATCH', '/me/community-profile', ['gender' => 'male', 'birthdate' => $adult], $TRM);
+$tj0me = data(req('GET', '/me/community-profile', null, $TRM));
+check('terms: joining without terms_accepted → 422 terms_required, nothing saved', $tj0['status'] === 422 && errc($tj0) === 'terms_required'
+    && ($tj0me['joined'] ?? null) === false && is_array($tj0me) && array_key_exists('gender', $tj0me) && $tj0me['gender'] === null, desc($tj0));
+$tjf = req('PATCH', '/me/community-profile', ['gender' => 'male', 'birthdate' => $adult, 'terms_accepted' => false], $TRM);
+check('terms: terms_accepted false → 422', $tjf['status'] === 422, desc($tjf));
+$tj1 = req('PATCH', '/me/community-profile', ['gender' => 'male', 'birthdate' => $adult, 'terms_accepted' => true], $TRM);
+check('terms: joining with terms_accepted → joined, terms_accepted true, accepted_at stored', $tj1['status'] === 200 && (data($tj1)['joined'] ?? null) === true
+    && (data($tj1)['terms_accepted'] ?? null) === true && $q1('SELECT terms_accepted_at FROM community_profiles WHERE user_id = ?', [$TRM['id']]) !== null, desc($tj1));
+// a member who joined before the agreement existed
+$db->prepare('UPDATE community_profiles SET terms_accepted_at = NULL WHERE user_id = ?')->execute([$TRM['id']]);
+$tm0 = data(req('GET', '/me/community-profile', null, $TRM));
+$tr0 = req('GET', '/rooms', null, $TRM);
+$trp = req('POST', '/rooms', ['title' => 'x'], $TRM);
+check('terms: an existing member without the agreement → profile says terms_accepted false; rooms → 409 terms_required', ($tm0['terms_accepted'] ?? null) === false
+    && ($tm0['joined'] ?? null) === true && $tr0['status'] === 409 && errc($tr0) === 'terms_required' && $trp['status'] === 409, desc($tr0));
+$tbl = req('GET', '/me/blocks', null, $TRM);
+check('terms: safety actions (block list) stay open before agreeing', $tbl['status'] === 200, desc($tbl));
+$ta = req('PATCH', '/me/community-profile', ['terms_accepted' => true], $TRM);
+$tr1 = req('GET', '/rooms', null, $TRM);
+check('terms: PATCH {terms_accepted:true} once → rooms open again', $ta['status'] === 200 && (data($ta)['terms_accepted'] ?? null) === true && $tr1['status'] === 200, desc($ta) . ' / ' . desc($tr1));
+$LEG2 = $mk('leg2', 'بدون بيانات', null, null, '10.70.0.9');
+$tnp = req('PATCH', '/me/community-profile', ['terms_accepted' => true], $LEG2);
+check('terms: agreeing before gender/birthdate → 409 community_profile_required', $tnp['status'] === 409 && errc($tnp) === 'community_profile_required', desc($tnp));
+
 check('community actors created', $M1['id'] > 0 && $M2['id'] > 0 && $M3['id'] > 0 && $W1['id'] > 0 && $W2['id'] > 0 && $LEG['id'] > 0 && $KID['id'] > 0);
 $srch = static fn (string $q, array $who): array => array_map(static fn ($u) => (int) $u['id'], (array) (data(req('GET', '/people?q=' . rawurlencode($q), null, $who))['items'] ?? []));
 check('people search: same gender only (a man searching «فاطمة» finds nobody, a woman finds her)',
@@ -132,7 +161,7 @@ check('no gender/birthdate → 409 community_profile_required with missing field
     && ($g0['json']['error']['missing'] ?? []) === ['gender', 'birthdate'], desc($g0));
 $cp0 = req('GET', '/me/community-profile', null, $LEG);
 check('GET /me/community-profile before joining: joined false, both missing', $cp0['status'] === 200 && (data($cp0)['joined'] ?? null) === false && count((array) (data($cp0)['missing'] ?? [])) === 2, desc($cp0));
-$k1 = req('PATCH', '/me/community-profile', ['gender' => 'male', 'birthdate' => $kidBd], $KID);
+$k1 = req('PATCH', '/me/community-profile', ['gender' => 'male', 'birthdate' => $kidBd, 'terms_accepted' => true], $KID);
 check('under 13: profile saved but not eligible (underage)', $k1['status'] === 200 && (data($k1)['eligible'] ?? null) === false && (data($k1)['underage'] ?? null) === true, desc($k1));
 $k2 = req('GET', '/rooms', null, $KID);
 check('under 13 → 403 underage on rooms', $k2['status'] === 403 && errc($k2) === 'underage', desc($k2));

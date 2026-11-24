@@ -1,7 +1,12 @@
 // First entry: gender + birthdate (PATCH /me/community-profile). Both are locked once
 // saved (docs/ROOMS-DECISIONS.md, docs/API.md «Entry»), so the screen says so plainly
-// and asks once more before saving.
+// and asks once more before saving. Joining also needs the agreement to the terms
+// (zero tolerance for objectionable content and abusive users — App Store 1.2):
+// `terms_accepted: true` goes with the PATCH. Members who joined before the agreement
+// existed see <TermsAgreement> once (profile.terms_accepted false; the API answers
+// 409 terms_required until then).
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { capi } from './api';
 import { setMe } from './store';
 import { useT, n } from './format';
@@ -26,6 +31,77 @@ export function EtiquetteList() {
   );
 }
 
+/** The required agreement checkbox, with links to the terms and the child-safety standards. */
+function TermsCheck({ checked, onChange }) {
+  const t = useT();
+  return (
+    <div className={s.check} role="checkbox" aria-checked={checked} tabIndex={0} data-terms
+      onClick={(e) => { if (e.target.closest('a, button')) return; onChange(!checked); }}
+      onKeyDown={(e) => { if (e.target.closest('a, button')) return; if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onChange(!checked); } }}>
+      <span className={`${s.checkBox}${checked ? ' ' + s.on : ''}`} aria-hidden="true">{checked && <RIcon name="check" size={18} />}</span>
+      <span className={s.muted} style={{ color: 'var(--text)' }}>
+        {t('أوافق على شروط الاستخدام وقواعد الغرف والمجتمع، ولا تسامح مع المحتوى المسيء أو المستخدمين المسيئين.')}{' '}
+        <Link to="/terms#community" className={s.link}>{t('شروط الاستخدام وقواعد المجتمع')}</Link>
+        {' · '}
+        <Link to="/child-safety" className={s.link}>{t('معايير سلامة الأطفال')}</Link>
+      </span>
+    </div>
+  );
+}
+
+/** Zero tolerance, in three lines (the full text is on /terms#community). */
+function ZeroTolerance() {
+  const t = useT();
+  return (
+    <ul className={s.list}>
+      <li className={s.note}><RIcon name="shieldCheck" />{t('لا تسامح مطلقاً مع المحتوى المسيء: الفحش، والكراهية، والتحرش، والتهديد، والمحتوى الجنسي، وأي استغلال للأطفال.')}</li>
+      <li className={s.note}><RIcon name="lock" />{t('ولا مع المستخدمين المسيئين: يُحذف المحتوى المخالف، ويُوقف الحساب أو يُحظر نهائياً.')}</li>
+      <li className={s.note}><RIcon name="flag" />{t('أبلغ عن أي إساءة أو احظر صاحبها، ويراجع فريق الإشراف البلاغات خلال ٢٤ ساعة.')}</li>
+    </ul>
+  );
+}
+
+/** One-time agreement for members who joined before the terms existed. */
+export function TermsAgreement() {
+  const t = useT();
+  const [agree, setAgree] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  async function accept() {
+    setBusy(true); setErr(null);
+    try {
+      setMe(await capi.patch('/me/community-profile', { terms_accepted: true }));
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className={s.page}>
+      <div className={s.topbar}>
+        <span className={`${s.grow} ${s.gateStep}`}>{t('مرة واحدة فقط')}</span>
+        <BackButton to="/" />
+      </div>
+      <div className={s.gateHero}>
+        <div>
+          <h1 className={s.h1}>{t('قواعد الغرف والمجتمع')}</h1>
+          <p className={s.muted}>{t('قبل أن تكمل، وافق مرة واحدة على قواعد الغرف والمجتمع.')}</p>
+        </div>
+        <Arch />
+      </div>
+      <ZeroTolerance />
+      <TermsCheck checked={agree} onChange={setAgree} />
+      {err && <ErrorBox text={errText(t, err)} />}
+      <div className={s.stickyCta}>
+        <button type="button" className={`${s.btn} ${s.btnGold} ${s.btnBlock}`} disabled={!agree || busy} onClick={accept}>
+          {busy ? t('جارٍ الحفظ…') : t('أوافق، ادخل الغرف')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Arch() {
   return (
     <svg className={s.arch} viewBox="0 0 96 128" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -45,6 +121,7 @@ export default function Gate({ profile }) {
   const [month, setMonth] = useState(pre ? String(+pre[1]) : '');
   const [year, setYear] = useState(pre ? pre[0] : '');
   const [agree, setAgree] = useState(false);
+  const [terms, setTerms] = useState(false);
   const [rules, setRules] = useState(false);
   const [ask, setAsk] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -57,13 +134,13 @@ export default function Gate({ profile }) {
   const thisYear = new Date().getFullYear();
   const years = useMemo(() => Array.from({ length: 100 }, (_, i) => thisYear - 4 - i), [thisYear]);
   const daysIn = year && month ? new Date(+year, +month, 0).getDate() : 31;
-  const valid = gender && day && month && year && +day <= daysIn && agree;
+  const valid = gender && day && month && year && +day <= daysIn && agree && terms;
 
   async function save() {
     setBusy(true); setErr(null);
     try {
       const birthdate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const data = await capi.patch('/me/community-profile', { gender, birthdate });
+      const data = await capi.patch('/me/community-profile', { gender, birthdate, terms_accepted: true });
       setMe(data);
       if (data && data.joined && !data.underage) {
         import('../native/push').then(m => m.askForPush()).catch(() => {});
@@ -147,6 +224,9 @@ export default function Gate({ profile }) {
           <button type="button" className={s.link} onClick={() => setRules(true)}>{t('آداب الغرف')}</button>
         </span>
       </div>
+
+      <ZeroTolerance />
+      <TermsCheck checked={terms} onChange={setTerms} />
 
       {err && <ErrorBox text={errText(t, err)} />}
 

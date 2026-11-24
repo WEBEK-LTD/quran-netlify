@@ -30,6 +30,7 @@ export function errText(t, e) {
     case 'rooms_banned': return suspensionText(t, e.code, x);
     case 'underage': return t('الغرف والمجتمع متاحة لمن أتمّ ١٣ سنة.');
     case 'community_profile_required': return t('أكمل بياناتك (الجنس وتاريخ الميلاد) أولاً.');
+    case 'terms_required': return t('وافق على شروط الاستخدام وقواعد الغرف والمجتمع أولاً.');
     case 'gender_locked':
     case 'birthdate_locked': return t('لا يمكن تغيير الجنس أو تاريخ الميلاد بعد تحديدهما. تواصل مع الدعم إن كان هناك خطأ.');
     case 'kicked': return t('تم إخراجك من هذه الغرفة، ولا يمكنك العودة إليها.');

@@ -63,6 +63,8 @@ final class Migrations
         self::addColumn('users', 'apple_sub', 'VARCHAR(191) NULL AFTER google_sub');
         self::addColumn('users', 'apple_refresh_token', 'TEXT NULL AFTER apple_sub');
         self::addUniqueIndex('users', 'uq_users_apple_sub', 'apple_sub');
+        // v5: rooms & community — when the member agreed to the terms (zero tolerance for abuse, App Store 1.2)
+        self::addColumn('community_profiles', 'terms_accepted_at', 'DATETIME NULL AFTER claps_received');
     }
 
     private static function addUniqueIndex(string $table, string $name, string $column): void

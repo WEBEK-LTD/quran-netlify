@@ -7,6 +7,7 @@ use NQ\Core\ApiError;
 use NQ\Core\Auth;
 use NQ\Core\Community;
 use NQ\Core\Db;
+use NQ\Core\Migrations;
 use NQ\Core\Moderation;
 use NQ\Core\Push;
 use NQ\Core\PushText;
@@ -54,6 +55,8 @@ final class CommunityController
             'is_minor' => $minor,
             'underage' => $age !== null && $age < Community::MIN_AGE,
             'locked' => ['gender' => $p !== null, 'birthdate' => $p !== null], // after joining: only via support/admin
+            // agreed to the terms (zero tolerance for abuse); false → the app asks once (PATCH {terms_accepted: true})
+            'terms_accepted' => $p !== null && (!array_key_exists('terms_accepted_at', $p) || $p['terms_accepted_at'] !== null),
             'user' => Community::brief($u),
             'profile' => $p === null ? null : [
                 'bio' => (string) $p['bio'],
@@ -102,6 +105,10 @@ final class CommunityController
         $b = $r->body();
         $u = (array) $r->user;
         $joined = Community::profileRow($uid) !== null;
+        $terms = array_key_exists('terms_accepted', $b) ? V::bool($b, 'terms_accepted') : null;
+        if ($terms === false) {
+            throw ApiError::validation(['terms_accepted' => 'يجب الموافقة على الشروط.']);
+        }
         $sets = [];
         $params = [];
         if (array_key_exists('gender', $b)) {
@@ -123,6 +130,16 @@ final class CommunityController
             $sets[] = 'birthdate = ?';
             $params[] = $bd;
         }
+        if ($sets !== [] && !$joined && $terms !== true && Migrations::ready()) {
+            $after = $u;
+            foreach ($sets as $i => $col) {
+                $after[substr($col, 0, (int) strpos($col, ' '))] = $params[$i];
+            }
+            if (Community::missing($after) === []) {
+                // joining (gender + birthdate complete) needs the agreement to the terms (the gate's checkbox); nothing is saved without it
+                throw new ApiError(422, 'terms_required', 'وافق على شروط الاستخدام وقواعد الغرف والمجتمع أولاً.', ['fields' => ['terms_accepted' => 'يجب الموافقة على الشروط.']]);
+            }
+        }
         if ($sets !== []) {
             Db::exec('UPDATE users SET ' . implode(', ', $sets) . ', updated_at = ? WHERE id = ?', array_merge($params, [Db::now(), $uid]));
             $u = (array) Auth::findUser($uid);
@@ -130,6 +147,12 @@ final class CommunityController
             if (Community::missing($u) === []) {
                 Community::ensureProfileRow($uid); // joined: gender + birthdate are now locked (also for under-13s)
             }
+        }
+        if ($terms === true && Migrations::ready()) {
+            if (Community::profileRow($uid) === null) {
+                throw new ApiError(409, 'community_profile_required', 'أكمل بياناتك (الجنس وتاريخ الميلاد) قبل دخول الغرف والمجتمع.', ['missing' => Community::missing((array) Auth::findUser($uid))]);
+            }
+            Db::exec('UPDATE community_profiles SET terms_accepted_at = COALESCE(terms_accepted_at, ?), updated_at = ? WHERE user_id = ?', [Db::now(), Db::now(), $uid]);
         }
         $profileFields = array_intersect(array_keys($b), ['bio', 'facebook_url', 'instagram_url', 'is_private', 'dm_policy']);
         if ($profileFields !== []) {

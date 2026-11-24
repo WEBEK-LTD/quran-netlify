@@ -42,6 +42,8 @@ export async function call(method, path, body, { etag, timeout = 20000 } = {}) {
   if (!res.ok || !json || json.ok === false) {
     const err = (json && json.error) || {};
     if (res.status === 401) window.dispatchEvent(new CustomEvent('nq-auth-expired'));
+    // terms not agreed yet (a member from before the agreement): store.js reloads the profile → the agreement screen
+    if (res.status === 409 && err.code === 'terms_required') window.dispatchEvent(new CustomEvent('nq-community-terms'));
     const extra = { ...err };
     if (!extra.retry_after) {
       const ra = parseInt(res.headers.get('Retry-After') || '', 10);

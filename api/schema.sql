@@ -306,6 +306,7 @@ CREATE TABLE IF NOT EXISTS community_profiles (
   muted_types    VARCHAR(500) NOT NULL DEFAULT '',
   claps_sent     INT UNSIGNED NOT NULL DEFAULT 0,
   claps_received INT UNSIGNED NOT NULL DEFAULT 0,
+  terms_accepted_at DATETIME NULL,
   joined_at      DATETIME NOT NULL,
   updated_at     DATETIME NOT NULL,
   PRIMARY KEY (user_id),

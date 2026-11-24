@@ -26,6 +26,7 @@ export function loadMe(force = false) {
     .finally(() => { inflight = null; });
   return inflight;
 }
+if (typeof window !== 'undefined') window.addEventListener('nq-community-terms', () => { loadMe(true); });
 export function setMe(data) { me.set({ status: 'ready', data, error: null }); }
 export const useMe = () => me.use();
 export function resetMe() { me.set({ status: 'idle', data: null, error: null }); }

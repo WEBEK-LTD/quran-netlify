@@ -809,6 +809,15 @@ room chat, reports, push token) with a link to `/child-safety`.
   expects reporting, blocking and timely responses for UGC apps.
   **Published**: `https://nuralquran.net/child-safety` (`src/pages/ChildSafetyPage.jsx`, all six
   languages, linked from the footer and the privacy page); contact **info@webek.org**.
+- **Apple 1.2 — terms agreement (UGC)**: before the rooms / community can be used, the member
+  ticks a required box agreeing to the Terms of Use and the rooms & community rules (*zero
+  tolerance for objectionable content or abusive users*; `src/community/Gate.jsx`, links to
+  `/terms#community` and `/child-safety`). The terms page has a «قواعد الغرف والمجتمع» section
+  (objectionable content listed, report + block, review within 24 hours, removal, suspension or
+  ban). The API stores `terms_accepted_at` and refuses community use without it (409
+  `terms_required`), so members who joined earlier see a one-time agreement screen
+  (`TermsAgreement`) on their next visit. For App Review: reporting is on every message,
+  profile, room and group; blocking on every profile.
 
 ---
 

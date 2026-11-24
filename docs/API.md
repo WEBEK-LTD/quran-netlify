@@ -275,6 +275,11 @@ broadcasts it into the room with LiveKit `SendData` — clients never get `canPu
   `PATCH /me/community-profile`). Both are **locked** once set together (the account "joins": 409 `gender_locked` /
   `birthdate_locked`, also through `PATCH /auth/profile`); corrections only by an admin (`PATCH /admin/community/users/{id}`).
   Under 13 → 403 `underage`.
+- **Terms (App Store 1.2):** joining needs `terms_accepted: true` in the same `PATCH /me/community-profile` (the gate's
+  checkbox: zero tolerance for objectionable content and abusive users; else 422 `terms_required`, nothing saved).
+  `community_profiles.terms_accepted_at` records it. A member without it (joined before the agreement existed) gets
+  409 `terms_required` from every community endpoint except the safety / leaving ones (block, unblock, unfollow, reports…)
+  until `PATCH /me/community-profile {terms_accepted:true}`; `GET /me/community-profile` says `terms_accepted: false`.
 - **Minors (13–17):** rooms incl. mixed, may speak; follow and be followed; **no DMs and no friendship either way**
   (403 `minor_restricted`); profile always private; `dm_policy` reported as `"none"`.
 - **Gender separation:** room/group `gender_scope` `men` | `women` | `mixed`. A viewer only ever gets rooms/groups of
@@ -325,8 +330,8 @@ Notification types: `room_opened`, `room_scheduled` (followed person/friend), `g
 
 | Method | Path | Body / query | Returns |
 |---|---|---|---|
-| GET | `/me/community-profile` | | `{joined, eligible, missing[], gender, birthdate, age, is_minor, underage, locked:{gender,birthdate}, user: Brief, profile: {bio, facebook_url, instagram_url, is_private, private_forced, dm_policy: "everyone"\|"same_gender"\|"friends"\|"none", counters:{friends, followers, following, claps_sent, claps_received}}\|null, suspension: {scope, source, reason, until, permanent}\|null, muted_types[]}` |
-| PATCH | `/me/community-profile` | `{gender?, birthdate?, bio? (≤ 300), facebook_url?, instagram_url?, is_private?, dm_policy?}` | same. gender/birthdate only until joined; social links: https `facebook.com`/`fb.com` or `instagram.com` profile URLs only (`null` clears). Photo = the existing `POST /me/avatar` |
+| GET | `/me/community-profile` | | `{joined, eligible, missing[], gender, birthdate, age, is_minor, underage, locked:{gender,birthdate}, terms_accepted, user: Brief, profile: {bio, facebook_url, instagram_url, is_private, private_forced, dm_policy: "everyone"\|"same_gender"\|"friends"\|"none", counters:{friends, followers, following, claps_sent, claps_received}}\|null, suspension: {scope, source, reason, until, permanent}\|null, muted_types[]}` |
+| PATCH | `/me/community-profile` | `{gender?, birthdate?, terms_accepted?, bio? (≤ 300), facebook_url?, instagram_url?, is_private?, dm_policy?}` | same. gender/birthdate only until joined (joining needs `terms_accepted: true`; `true` alone records the agreement of an already-joined member, `false` → 422); social links: https `facebook.com`/`fb.com` or `instagram.com` profile URLs only (`null` clears). Photo = the existing `POST /me/avatar` |
 | GET | `/people?q=` | ≥ 2 chars | `{items:[Brief & {is_friend, i_follow}]}` (community members of the searcher's own gender only, minus blocked; 60/min) |
 | GET | `/people/{id}` | | `Brief & {is_private, is_me, relation:{is_friend, i_follow, follows_me, request_sent, request_received}, can_friend, can_message, lists_visible}` + when public or friend: `{bio, facebook_url, instagram_url, counters, in_room: {id,title,gender_scope}\|null, joined_at}`. 404 when blocked either way or not a member |
 | GET | `/people/{id}/{kind}` | kind = `friends`\|`followers`\|`following`\|`clappers`, `?page` | paginated `Brief[]` (`clappers`: + `claps`) — **friends of that person only** (403) |

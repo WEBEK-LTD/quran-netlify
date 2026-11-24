@@ -45,6 +45,15 @@ final class Community
         return Db::one('SELECT * FROM community_profiles WHERE user_id = ?', [$uid]);
     }
 
+    /** Whether the member agreed to the rooms & community terms (true while the column does not exist yet). */
+    public static function termsAccepted(int $uid): bool
+    {
+        if (!Migrations::ready()) {
+            return true;
+        }
+        return Db::value('SELECT terms_accepted_at FROM community_profiles WHERE user_id = ?', [$uid]) !== null;
+    }
+
     public static function ensureProfileRow(int $uid): void
     {
         if (Db::value('SELECT 1 FROM community_profiles WHERE user_id = ?', [$uid]) !== null) {
@@ -93,6 +102,11 @@ final class Community
             throw new ApiError(403, 'underage', 'الغرف والمجتمع متاحة لمن أعمارهم 13 سنة فأكثر.');
         }
         self::ensureProfileRow($uid); // first entry of an account that already had gender + birthdate: they are now locked
+        // The terms (zero tolerance for objectionable content and abusive users) must be accepted once, also by members
+        // who joined before the agreement existed. Safety and leaving actions ($allowSuspended: block, unfollow, reports…) stay open.
+        if (!$allowSuspended && !self::termsAccepted($uid)) {
+            throw new ApiError(409, 'terms_required', 'وافق على شروط الاستخدام وقواعد الغرف والمجتمع أولاً.');
+        }
         if (!$allowSuspended) {
             $s = self::suspension($uid);
             if ($s !== null) {

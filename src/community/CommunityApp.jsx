@@ -9,7 +9,7 @@ import { useMe, loadMe, resetMe } from './store';
 import { useT } from './format';
 import { errText, suspensionText } from './errors';
 import { Spinner, ErrorBox, ToastView, RIcon, css as s } from './ui';
-import Gate from './Gate';
+import Gate, { TermsAgreement } from './Gate';
 
 const Hub = lazy(() => import('./Hub'));
 const CreateRoom = lazy(() => import('./CreateRoom'));
@@ -83,6 +83,8 @@ export default function CommunityApp() {
       </Notice>;
     } else if (!p.joined || (p.missing && p.missing.length)) {
       body = <Gate profile={p} />;
+    } else if (p.terms_accepted === false) {
+      body = <TermsAgreement />;
     } else if (suspended && !matchPath('/notifications', pathname)) {
       body = <Notice icon="lock" title={t('حسابك موقوف في المجتمع')} body={suspensionText(t, 'community_suspended', p.suspension)}>
         <p className={s.faint}>{t('يمكنك متابعة القراءة وبقية ميزات التطبيق كالمعتاد. للاستفسار تواصل مع الدعم.')}</p>
