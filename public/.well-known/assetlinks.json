@@ -1,12 +1,13 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "net.nuralquran.app",
       "sha256_cert_fingerprints": [
-        "REPLACE_WITH_PLAY_APP_SIGNING_SHA256",
-        "REPLACE_WITH_UPLOAD_KEY_SHA256"
+        "B9:FE:39:91:C1:35:49:35:A6:09:C5:4B:61:85:B2:A7:D8:B9:E6:AF:95:47:A1:57:8A:D6:00:0F:00:62:F8:DF"
       ]
     }
   }
