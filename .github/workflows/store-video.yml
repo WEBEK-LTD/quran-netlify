@@ -1,0 +1,65 @@
+# Records the short demo video Google Play asks for in the foreground-service declaration
+# (FOREGROUND_SERVICE_MEDIA_PLAYBACK): on an Android emulator the app opens «التلاوات», starts a
+# surah, then shows the media notification and the lock-screen controls (pause / play) while the
+# recitation keeps playing in the background. Manual only (Actions → Store video → Run).
+name: Store video
+
+on:
+  workflow_dispatch:
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Build debug APK
+        run: |
+          npm ci
+          npm run build:android
+          cd android && ./gradlew --no-daemon assembleDebug
+          ls -la app/build/outputs/apk/debug/
+
+      - name: Record on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash scripts/store-video.sh android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Compress
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg >/dev/null
+          ffmpeg -v error -y -i demo-raw.mp4 -vf "scale=540:-2,fps=24" -c:v libx264 -preset slow -crf 30 -pix_fmt yuv420p -movflags +faststart -an demo.mp4
+          ls -la demo.mp4
+          echo "== BASE64 BEGIN"; base64 -w 4000 demo.mp4; echo "== BASE64 END"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: store-video-media-playback
+          path: |
+            demo.mp4
+            demo-raw.mp4
+            shots/
+          retention-days: 30
