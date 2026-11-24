@@ -12,10 +12,19 @@ import { registerPlugin } from '@capacitor/core';
 import { isIOS } from '../native/platform';
 
 let NQAudio = null;
+
+/** navigator.audioSession (Safari/WKWebView 16.4+): 'playback' | 'play-and-record' | … — no-op elsewhere. */
+export function setWebAudioSession(type) {
+  try { if (typeof navigator !== 'undefined' && navigator.audioSession && navigator.audioSession.type !== type) navigator.audioSession.type = type; } catch {}
+}
 let current = 'media';
 
 /** mode: 'voice' (speaking) | 'media' (listening / out of the room). force: apply even if unchanged. */
 export async function setAudioMode(mode, { force = false } = {}) {
+  // WebKit's own audio session (Audio Session API). The recitation engine sets it to 'playback'
+  // (src/audio/engine.js), and WebKit then refuses capture with "InvalidStateError: AudioSession
+  // category is not compatible with audio capture" — whatever the native AVAudioSession says.
+  setWebAudioSession(mode === 'voice' ? 'play-and-record' : 'playback');
   if (!isIOS() || (mode === current && !force)) return;
   const prev = current;
   current = mode;
