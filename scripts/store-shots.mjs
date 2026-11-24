@@ -323,7 +323,7 @@ const seed = ([lang, mode, extra]) => {
 // mode is the same in every language; two light screens for variety.
 const SCREENS = [
   { n: '01', name: 'home', path: '/', mode: 'dark',
-    head: ['القرآن والصلاة في تطبيق واحد', 'Quran and prayer in one app'],
+    head: ['القرآن والصلاة معاً', 'Quran and prayer, together'],
     sub: ['المصحف والتلاوات ومواقيت الصلاة والأذكار', 'Mushaf, recitations, prayer times and adhkar'] },
   { n: '02', name: 'mushaf', path: '/reader?surah=18&ayah=1', mode: 'light',
     head: ['المصحف بالرسم العثماني', 'The Mushaf in Uthmani script'],
@@ -490,7 +490,10 @@ function framedHtml({ shotB64, head, sub, lang, D }) {
   const rtl = lang === 'ar';
   const W = D.w, H = D.h;
   const tablet = D.tablet;
-  const headSize = tablet ? 64 : Math.round(W * 0.085);
+  // Arabic headlines fit one line, English ones take two: the block keeps that height on
+  // every screen so the device has the same size across a language's set
+  const lines = rtl ? 1 : 2;
+  const headSize = tablet ? (rtl ? 64 : 58) : Math.round(W * (rtl ? 0.085 : 0.078));
   const subSize = tablet ? 30 : Math.round(W * 0.042);
   const top = tablet ? 70 : Math.round(H * 0.06);
   const phoneW = tablet ? Math.round(W * 0.74) : Math.round(W * 0.76);
@@ -500,7 +503,7 @@ function framedHtml({ shotB64, head, sub, lang, D }) {
   html,body{margin:0;width:${W}px;height:${H}px;overflow:hidden}
   body{background:${PATTERN},${BG};background-size:96px 96px,auto;display:flex;flex-direction:column;align-items:center;color:#F1EBDC}
   .t{margin-top:${top}px;padding:0 ${Math.round(W * 0.07)}px;text-align:center}
-  h1{font-family:Kufi,sans-serif;font-weight:600;font-size:${headSize}px;line-height:1.25;margin:0;
+  h1{font-family:Kufi,sans-serif;font-weight:600;font-size:${headSize}px;line-height:1.25;margin:0;min-height:${lines * 1.25}em;display:flex;align-items:flex-end;justify-content:center;
      background:linear-gradient(180deg,#F6DFA0,#D4AE5C 60%,#B8893A);-webkit-background-clip:text;background-clip:text;color:transparent;text-wrap:balance}
   p{font-family:Plex,sans-serif;font-weight:500;font-size:${subSize}px;line-height:1.5;margin:${Math.round(subSize * 0.55)}px 0 0;color:#C9D3CB;text-wrap:balance}
   .rule{width:${Math.round(W * 0.16)}px;height:2px;margin:${Math.round(subSize * 0.7)}px auto 0;background:linear-gradient(90deg,transparent,#D6B267,transparent)}
