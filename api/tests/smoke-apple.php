@@ -77,7 +77,7 @@ $appleCalls = static function (string $path) use ($fakeState): array {
     $out = [];
     foreach (is_file($fakeState . '/apple.log') ? (file($fakeState . '/apple.log') ?: []) : [] as $l) {
         $j = json_decode($l, true);
-        if (is_array($j) && $j['path'] === $path) {
+        if (is_array($j) && $j['path'] === '/apple' . $path) {
             $out[] = $j['form'];
         }
     }
