@@ -4,9 +4,11 @@ declare(strict_types=1);
 namespace NQ\Controllers;
 
 use NQ\Core\ApiError;
+use NQ\Core\Apple;
 use NQ\Core\Auth;
 use NQ\Core\Avatar;
 use NQ\Core\Community;
+use NQ\Core\Crypto;
 use NQ\Core\Db;
 use NQ\Core\Mailer;
 use NQ\Core\MailText;
@@ -266,16 +268,40 @@ final class AuthController
         } elseif (($b['confirm'] ?? null) !== 'DELETE') {
             throw ApiError::validation(['confirm' => 'اكتب DELETE للتأكيد.']);
         }
+        self::purgeAccount($uid);
+        Auth::clearCookie();
+        return Reply::empty();
+    }
+
+    /**
+     * Delete an account and everything it owns (also used when Apple reports the Apple ID's account was deleted).
+     * $revokeApple: tell Apple to revoke the stored Sign in with Apple token first (guideline 5.1.1(v));
+     * a failure there is logged and never blocks the deletion.
+     */
+    public static function purgeAccount(int $uid, bool $revokeApple = true): void
+    {
+        $row = Db::one('SELECT ' . (Migrations::ready() ? 'avatar_file, apple_refresh_token' : 'NULL AS avatar_file, NULL AS apple_refresh_token') . ' FROM users WHERE id = ?', [$uid]);
+        if ($row === null) {
+            return;
+        }
+        $enc = $row['apple_refresh_token'] ?? null;
+        if ($revokeApple && is_string($enc) && $enc !== '') {
+            $rt = Crypto::decrypt($enc);
+            $why = null;
+            if ($rt === null || !Apple::keyConfigured()) {
+                error_log('[nq] apple revoke skipped for user ' . $uid . ': ' . ($rt === null ? 'token unreadable' : 'Sign in with Apple key not configured'));
+            } elseif (!Apple::revoke($rt, $why)) {
+                error_log('[nq] apple revoke failed for user ' . $uid . ': ' . $why);
+            }
+        }
         // Foreign keys cascade: sessions, tokens, bookmarks, notes, progress, reading log, hifz,
         // khatmat, owned group rooms (+ parts, takers, members), claims, memberships, tickets, bans, presence.
-        $photo = $r->user['avatar_file'] ?? null;
+        $photo = $row['avatar_file'] ?? null;
         if (Migrations::ready()) {
             Community::onAccountDelete($uid); // close own rooms, hand over founded groups
         }
         Db::exec('DELETE FROM users WHERE id = ?', [$uid]);
         Avatar::delete(is_string($photo) ? $photo : null); // the profile photo file too
-        Auth::clearCookie();
-        return Reply::empty();
     }
 
     public static function export(Request $r): Reply
