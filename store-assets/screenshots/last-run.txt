@@ -1,8 +1,0 @@
-ar/play/01-home
-ar/play/05-prayer
-ar/play/07-tadhkira
-ar/play/08-room
-en/play/01-home
-en/play/05-prayer
-en/play/07-tadhkira
-en/play/08-room

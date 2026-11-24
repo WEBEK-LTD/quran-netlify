@@ -23,7 +23,7 @@
 // or point PLAYWRIGHT_MODULE at an installed copy and CHROMIUM_PATH at a browser.
 import { spawn, execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { readFileSync, mkdirSync, existsSync, writeFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -454,7 +454,6 @@ async function capture(browser, { lang, device, screen }) {
     return route.abort();
   });
   await page.route('**/assets/livekit-client.esm-*.js', route => route.fulfill({ status: 200, headers: { 'Content-Type': 'text/javascript' }, body: FAKE_LK }));
-  // the app's own recordings (adhan) are local files: let them through
   await page.goto(BASE + screen.path, { waitUntil: 'load' });
   await page.evaluate(() => document.fonts && document.fonts.ready);
   await sleep(1800);
@@ -505,7 +504,7 @@ function framedHtml({ shotB64, head, sub, lang, D }) {
   .t{margin-top:${top}px;padding:0 ${Math.round(W * 0.07)}px;text-align:center}
   h1{font-family:Kufi,sans-serif;font-weight:600;font-size:${headSize}px;line-height:1.25;margin:0;min-height:${lines * 1.25}em;display:flex;align-items:flex-end;justify-content:center;
      background:linear-gradient(180deg,#F6DFA0,#D4AE5C 60%,#B8893A);-webkit-background-clip:text;background-clip:text;color:transparent;text-wrap:balance}
-  p{font-family:Plex,sans-serif;font-weight:500;font-size:${subSize}px;line-height:1.5;margin:${Math.round(subSize * 0.55)}px 0 0;color:#C9D3CB;text-wrap:balance}
+  p{font-family:Plex,sans-serif;font-weight:500;font-size:${subSize}px;line-height:1.5;margin:${Math.round(subSize * 0.55)}px 0 0;color:#C9D3CB;text-wrap:balance;min-height:${tablet ? 1.5 : lines * 1.5}em}
   .rule{width:${Math.round(W * 0.16)}px;height:2px;margin:${Math.round(subSize * 0.7)}px auto 0;background:linear-gradient(90deg,transparent,#D6B267,transparent)}
   .dev{margin-top:${tablet ? 52 : Math.round(H * 0.035)}px;width:${phoneW}px;padding:${bezel}px;border-radius:${radius + bezel}px;background:linear-gradient(160deg,#2A2A26,#0B0B0A 40%,#1C1C19);
        box-shadow:0 0 0 1.5px rgba(214,178,103,.45),0 40px 90px -20px rgba(0,0,0,.8),0 0 120px -30px rgba(214,178,103,.35)}
@@ -521,17 +520,16 @@ async function frame(browser, { lang, device, screen, rawFile }) {
   const i = lang === 'ar' ? 0 : 1;
   await page.setContent(framedHtml({ shotB64: readFileSync(rawFile).toString('base64'), head: screen.head[i], sub: screen.sub[i], lang, D }), { waitUntil: 'load' });
   await page.evaluate(() => document.fonts.ready);
-  // the device takes the height left under the headline (one or two lines)
+  // the device takes the height left under the headline
   await page.evaluate(([bottom]) => {
     const dev = document.querySelector('.dev');
     const pad = parseFloat(getComputedStyle(dev).paddingTop);
     const avail = innerHeight - dev.getBoundingClientRect().top - bottom - 2 * pad;
     const w = Math.min(dev.getBoundingClientRect().width - 2 * pad, avail * innerWidth / innerHeight);
     dev.style.width = w + 'px';
-    window.__fit = { pad, avail, w, top: dev.getBoundingClientRect().top };
   }, [D.tablet ? 64 : Math.round(D.h * 0.035)]);
   await page.evaluate(() => new Promise(r => requestAnimationFrame(() => r())));
-  const fit = await page.evaluate(() => { const r = document.querySelector('.dev').getBoundingClientRect(); return { dbg: window.__fit, bottom: r.bottom, h: innerHeight, headLines: Math.round(document.querySelector('h1').getBoundingClientRect().height / parseFloat(getComputedStyle(document.querySelector('h1')).lineHeight)) }; });
+  const fit = await page.evaluate(() => { const r = document.querySelector('.dev').getBoundingClientRect(); return { bottom: r.bottom, h: innerHeight }; });
   const dir = join(OUT, 'screenshots', lang, device, 'framed');
   mkdirSync(dir, { recursive: true });
   const file = join(dir, `${screen.n}-${screen.name}.png`);
@@ -603,7 +601,6 @@ try {
       const r = await capture(browser, { lang, device, screen });
       const f = flag('no-framed') ? null : await frame(browser, { lang, device, screen, rawFile: r.file });
       const issues = [...r.errors, ...(r.unknown.length ? ['unmocked: ' + r.unknown.join(', ')] : []), ...(r.overflow ? ['horizontal overflow'] : []), ...(r.spinners ? [`${r.spinners} loading indicator(s) visible`] : []), ...(f && f.fit.bottom > f.fit.h ? ['framed: device cut off'] : [])];
-      if (process.env.DEBUG && f) console.log(JSON.stringify(f.fit));
       report.push(`${lang}/${device}/${screen.n}-${screen.name}${issues.length ? '  ⚠ ' + issues.join(' | ') : ''}`);
       console.log(report.at(-1));
     }
@@ -614,4 +611,3 @@ try {
   if (preview) preview.kill();
 }
 setTimeout(() => process.exit(0), 100);
-if (report.length) writeFileSync(join(OUT, 'screenshots', 'last-run.txt'), report.join('\n') + '\n');
