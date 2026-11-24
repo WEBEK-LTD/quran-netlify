@@ -91,6 +91,9 @@
             "/": "/settings*"
           },
           {
+            "/": "/rooms*"
+          },
+          {
             "/": "/auth/callback*"
           },
           {
