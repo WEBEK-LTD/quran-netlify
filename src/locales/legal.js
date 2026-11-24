@@ -2,6 +2,7 @@
 // Keyed by the exact Arabic source string (see src/l10n.js).
 export default {
   en: {
+    'في تطبيق الهاتف تُجدول تنبيهات الأذان وآية اليوم على جهازك نفسه، وتُحسب المواقيت من موقع مدينتك المحفوظ عليه، ولا نرسل موقعك إلى خادمنا.': 'In the phone app, adhan and ayah-of-the-day alerts are scheduled on your device itself, prayer times are calculated from your city saved on it, and we never send your location to our server.',
     'أصوات الأذان في تطبيق الهاتف: أحمد خلف (بترخيص {lic})، وأذان الفجر للمؤذن إبراهيم المدني.': 'Adhan recordings in the phone app: Ahmed Khalaf (licensed {lic}), and the Fajr adhan by the muezzin Ibrahim Al-Madani.',
     "مقدمة": "Introduction",
     "نور القرآن («الموقع») خدمة مجانية تماماً تُقدَّم لوجه الله تعالى، ولا نسعى من خلالها إلى أي ربح مادي. نلتزم بحماية خصوصيتك وبيانات زوّار الموقع ومستخدميه، ونشرح في هذه الصفحة ما نحفظه ولماذا، وكيف تتحكّم فيه.": "Nur Al-Quran (“the Site”) is an entirely free service offered for the sake of Allah the Exalted, and we seek no material profit from it. We are committed to protecting your privacy and the data of the Site's visitors and users, and on this page we explain what we store and why, and how you control it.",
@@ -156,6 +157,7 @@ export default {
     "في التطبيق: تُغلق غرفك المفتوحة، وتنتقل إدارة الجروبات التي أسّستها إلى عضو آخر فيها، وتبقى رسائلك الخاصة عند من استلمها دون اسمك.": "In the app: your open rooms are closed, groups you founded pass to another member, and private messages you sent stay with their recipients without your name.",
   },
   tr: {
+    'في تطبيق الهاتف تُجدول تنبيهات الأذان وآية اليوم على جهازك نفسه، وتُحسب المواقيت من موقع مدينتك المحفوظ عليه، ولا نرسل موقعك إلى خادمنا.': 'Telefon uygulamasında ezan ve günün ayeti bildirimleri cihazınızın kendisinde planlanır, vakitler cihazda kayıtlı şehrinize göre hesaplanır ve konumunuzu asla sunucumuza göndermeyiz.',
     'أصوات الأذان في تطبيق الهاتف: أحمد خلف (بترخيص {lic})، وأذان الفجر للمؤذن إبراهيم المدني.': 'Telefon uygulamasındaki ezan kayıtları: Ahmed Halef ({lic} lisanslı) ve müezzin İbrahim el-Medenî’nin sabah ezanı.',
     "مقدمة": "Giriş",
     "نور القرآن («الموقع») خدمة مجانية تماماً تُقدَّم لوجه الله تعالى، ولا نسعى من خلالها إلى أي ربح مادي. نلتزم بحماية خصوصيتك وبيانات زوّار الموقع ومستخدميه، ونشرح في هذه الصفحة ما نحفظه ولماذا، وكيف تتحكّم فيه.": "Nur Al-Kuran (“Site”), yalnızca Allah Teâlâ rızası için sunulan tamamen ücretsiz bir hizmettir ve bununla hiçbir maddi kazanç amaçlamıyoruz. Gizliliğinizi ve sitenin ziyaretçileri ile kullanıcılarının verilerini korumayı taahhüt ediyoruz; bu sayfada neleri neden sakladığımızı ve bunları nasıl kontrol edebileceğinizi açıklıyoruz.",
@@ -310,6 +312,7 @@ export default {
     "في التطبيق: تُغلق غرفك المفتوحة، وتنتقل إدارة الجروبات التي أسّستها إلى عضو آخر فيها، وتبقى رسائلك الخاصة عند من استلمها دون اسمك.": "Uygulamada: açık odalarınız kapatılır, kurduğunuz grupların yönetimi başka bir üyeye geçer ve gönderdiğiniz özel mesajlar adınız olmadan alıcılarında kalır.",
   },
   fr: {
+    'في تطبيق الهاتف تُجدول تنبيهات الأذان وآية اليوم على جهازك نفسه، وتُحسب المواقيت من موقع مدينتك المحفوظ عليه، ولا نرسل موقعك إلى خادمنا.': 'Dans l’application mobile, les alertes de l’adhan et du verset du jour sont programmées sur votre appareil même, les horaires sont calculés à partir de votre ville enregistrée sur celui-ci, et nous n’envoyons jamais votre position à notre serveur.',
     'أصوات الأذان في تطبيق الهاتف: أحمد خلف (بترخيص {lic})، وأذان الفجر للمؤذن إبراهيم المدني.': 'Enregistrements de l’adhan dans l’application mobile : Ahmed Khalaf (sous licence {lic}), et l’adhan du Fajr par le muezzin Ibrahim Al-Madani.',
     "مقدمة": "Introduction",
     "نور القرآن («الموقع») خدمة مجانية تماماً تُقدَّم لوجه الله تعالى، ولا نسعى من خلالها إلى أي ربح مادي. نلتزم بحماية خصوصيتك وبيانات زوّار الموقع ومستخدميه، ونشرح في هذه الصفحة ما نحفظه ولماذا، وكيف تتحكّم فيه.": "Nur Al-Coran (« le Site ») est un service entièrement gratuit, proposé pour l'amour d'Allah le Très-Haut, dont nous ne cherchons à tirer aucun profit matériel. Nous nous engageons à protéger votre vie privée ainsi que les données des visiteurs et des utilisateurs du Site, et nous expliquons sur cette page ce que nous conservons, pourquoi, et comment vous en gardez le contrôle.",
@@ -464,6 +467,7 @@ export default {
     "في التطبيق: تُغلق غرفك المفتوحة، وتنتقل إدارة الجروبات التي أسّستها إلى عضو آخر فيها، وتبقى رسائلك الخاصة عند من استلمها دون اسمك.": "Dans l'application : vos salons ouverts sont fermés, la gestion des groupes que vous avez fondés passe à un autre membre, et les messages privés que vous avez envoyés restent chez leurs destinataires, sans votre nom.",
   },
   ur: {
+    'في تطبيق الهاتف تُجدول تنبيهات الأذان وآية اليوم على جهازك نفسه، وتُحسب المواقيت من موقع مدينتك المحفوظ عليه، ولا نرسل موقعك إلى خادمنا.': 'فون ایپ میں اذان اور آج کی آیت کی اطلاعات آپ کے آلے پر ہی شیڈول ہوتی ہیں، اوقات اسی پر محفوظ آپ کے شہر سے حساب کیے جاتے ہیں، اور ہم آپ کا مقام کبھی اپنے سرور کو نہیں بھیجتے۔',
     'أصوات الأذان في تطبيق الهاتف: أحمد خلف (بترخيص {lic})، وأذان الفجر للمؤذن إبراهيم المدني.': 'فون ایپ میں اذان کی ریکارڈنگز: احمد خلف ({lic} لائسنس کے تحت)، اور فجر کی اذان مؤذن ابراہیم المدنی کی آواز میں۔',
     "مقدمة": "تعارف",
     "نور القرآن («الموقع») خدمة مجانية تماماً تُقدَّم لوجه الله تعالى، ولا نسعى من خلالها إلى أي ربح مادي. نلتزم بحماية خصوصيتك وبيانات زوّار الموقع ومستخدميه، ونشرح في هذه الصفحة ما نحفظه ولماذا، وكيف تتحكّم فيه.": "نور القرآن («سائٹ») ایک مکمل طور پر مفت خدمت ہے جو اللہ تعالیٰ کی رضا کے لیے پیش کی جاتی ہے، اور ہم اس سے کوئی مادی منافع نہیں چاہتے۔ ہم آپ کی رازداری اور سائٹ کے زائرین و صارفین کے ڈیٹا کی حفاظت کے پابند ہیں، اور اس صفحے پر وضاحت کرتے ہیں کہ ہم کیا محفوظ کرتے ہیں، کیوں، اور آپ اس پر کیسے اختیار رکھتے ہیں۔",
@@ -618,6 +622,7 @@ export default {
     "في التطبيق: تُغلق غرفك المفتوحة، وتنتقل إدارة الجروبات التي أسّستها إلى عضو آخر فيها، وتبقى رسائلك الخاصة عند من استلمها دون اسمك.": "ایپ میں: آپ کے کھلے رومز بند ہو جاتے ہیں، آپ کے بنائے ہوئے گروپس کا انتظام کسی دوسرے ممبر کو منتقل ہو جاتا ہے، اور آپ کے بھیجے گئے نجی پیغامات وصول کنندگان کے پاس آپ کے نام کے بغیر رہتے ہیں۔",
   },
   id: {
+    'في تطبيق الهاتف تُجدول تنبيهات الأذان وآية اليوم على جهازك نفسه، وتُحسب المواقيت من موقع مدينتك المحفوظ عليه، ولا نرسل موقعك إلى خادمنا.': 'Di aplikasi ponsel, pengingat azan dan ayat hari ini dijadwalkan di perangkat Anda sendiri, jadwal salat dihitung dari kota yang tersimpan di sana, dan kami tidak pernah mengirim lokasi Anda ke server kami.',
     'أصوات الأذان في تطبيق الهاتف: أحمد خلف (بترخيص {lic})، وأذان الفجر للمؤذن إبراهيم المدني.': 'Rekaman azan di aplikasi ponsel: Ahmed Khalaf (berlisensi {lic}), dan azan Subuh oleh muazin Ibrahim Al-Madani.',
     "مقدمة": "Pendahuluan",
     "نور القرآن («الموقع») خدمة مجانية تماماً تُقدَّم لوجه الله تعالى، ولا نسعى من خلالها إلى أي ربح مادي. نلتزم بحماية خصوصيتك وبيانات زوّار الموقع ومستخدميه، ونشرح في هذه الصفحة ما نحفظه ولماذا، وكيف تتحكّم فيه.": "Nur Al-Quran (“Situs”) adalah layanan yang sepenuhnya gratis dan dipersembahkan semata-mata karena Allah Ta'ala, dan kami tidak mencari keuntungan materi apa pun darinya. Kami berkomitmen melindungi privasi Anda serta data pengunjung dan pengguna Situs, dan di halaman ini kami menjelaskan apa yang kami simpan, alasannya, dan bagaimana Anda mengendalikannya.",
