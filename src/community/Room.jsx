@@ -497,6 +497,9 @@ export default function RoomScreen({ params, profile }) {
           : sess.micError === 'nodevice' ? t('لم نجد ميكروفوناً في هذا الجهاز.')
           : sess.micError === 'timeout' ? t('استغرق فتح الميكروفون وقتاً أطول من المعتاد. تحقّق من الاتصال ثم حاول مرة أخرى.')
           : t('تعذّر تشغيل الميكروفون. تأكد أن تطبيقاً آخر لا يستخدمه ثم حاول مرة أخرى.')}</p>
+        {sess.micError && sess.micError !== 'denied' && sess.micDetail && (
+          <p dir="ltr" style={{ fontSize: '.72rem', opacity: .7, wordBreak: 'break-all', userSelect: 'text', WebkitUserSelect: 'text', margin: '8px 0 0' }}>{sess.micDetail}</p>
+        )}
         <div className={s.rowEnd}>
           <button type="button" className={`${s.btn} ${s.btnGhost}`} onClick={() => setSheet(null)}>{t('حسناً')}</button>
           {sess.micError === 'denied' && isNative() ? (

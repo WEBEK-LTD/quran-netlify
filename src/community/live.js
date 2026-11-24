@@ -15,7 +15,7 @@
 // livekit-client is imported lazily on the first join, so neither the website nor the
 // rooms hub ever download it.
 import { capi } from './api';
-import { setAudioMode } from './audioMode';
+import { setAudioMode, requestMicPermission, diagnoseAudio } from './audioMode';
 import { isIOS } from '../native/platform';
 
 const STAGE = ['owner', 'moderator', 'speaker'];
@@ -30,6 +30,7 @@ const initial = () => ({
   mic: false,              // my microphone is publishing and unmuted (read from the SDK, never assumed)
   micBusy: false,          // opening it (permission prompt, publish) — bounded by MIC_TIMEOUT
   micError: null,          // denied | nodevice | busy | timeout | unavailable | null
+  micDetail: null,         // the raw error (+ iOS audio session state) for the error sheet
   speaking: [],            // identities (user ids as strings) speaking now
   muted: {},               // identity → true when their mic track is muted
   audioBlocked: false,     // autoplay blocked: needs a tap (startAudio)
@@ -272,7 +273,17 @@ export async function setMic(on) {
   if (state.micBusy) return false;
   const r = room;
   wantMic = true;
-  emit({ micBusy: true, micError: null });
+  emit({ micBusy: true, micError: null, micDetail: null });
+  // iOS: ask for the permission natively first (the system prompt), so WebKit never meets an
+  // undetermined permission while it starts the capture
+  if (isIOS()) {
+    const granted = await requestMicPermission();
+    if (granted === false) {
+      wantMic = false;
+      emit({ micBusy: false, mic: false, micError: 'denied' });
+      return false;
+    }
+  }
   // iOS only (session options for the microphone, then a moment for the route to settle);
   // a no-op elsewhere — never allowed to block the microphone
   const ios = isIOS();
@@ -290,7 +301,16 @@ export async function setMic(on) {
       if (!ios || room !== r || micErrorKind(e) !== 'busy') throw e;
       try { await r.localParticipant.setMicrophoneEnabled(false); } catch {}
       await voice();
-      await Promise.race([r.localParticipant.setMicrophoneEnabled(true), t.p]);
+      try {
+        await Promise.race([r.localParticipant.setMicrophoneEnabled(true), t.p]);
+      } catch (e2) {
+        if (room !== r || micErrorKind(e2) !== 'busy') throw e2;
+        // last resort: a plain capture without processing constraints, published as the microphone
+        try { await r.localParticipant.setMicrophoneEnabled(false); } catch {}
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const track = stream.getAudioTracks()[0];
+        await Promise.race([r.localParticipant.publishTrack(track, { source: lk.Track.Source.Microphone }), t.p]);
+      }
     }
     t.clear();
     if (room !== r) return false;
@@ -304,7 +324,9 @@ export async function setMic(on) {
     const kind = micErrorKind(e);
     // a timed-out attempt may still finish later: reconcileMic closes it then
     wantMic = false;
-    emit({ micBusy: false, mic: false, micError: kind });
+    let detail = `${(e && e.name) || 'Error'}: ${(e && e.message) || ''}`.slice(0, 200);
+    if (isIOS()) { try { const d = await diagnoseAudio(); if (d) detail += ' | ' + JSON.stringify(d); } catch {} }
+    emit({ micBusy: false, mic: false, micError: kind, micDetail: detail });
     if (kind !== 'timeout') { try { await r.localParticipant.setMicrophoneEnabled(false); } catch {} }
     setAudioMode('media').catch(() => {});
     if (room === r) refreshMuted();

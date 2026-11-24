@@ -69,8 +69,56 @@ public class NQAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "NQAudioPlugin"
     public let jsName = "NQAudio"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "setMode", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "setMode", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "requestMic", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "diagnose", returnType: CAPPluginReturnPromise)
     ]
+
+    /// Asks iOS for the microphone permission itself (the system prompt), before WebKit captures.
+    @objc func requestMic(_ call: CAPPluginCall) {
+        let done: (Bool) -> Void = { granted in
+            DispatchQueue.main.async { call.resolve(["granted": granted, "permission": NQAudioPlugin.permission()]) }
+        }
+        if #available(iOS 17.0, *) {
+            AVAudioApplication.requestRecordPermission(completionHandler: done)
+        } else {
+            AVAudioSession.sharedInstance().requestRecordPermission(done)
+        }
+    }
+
+    /// The audio session as iOS sees it — shown in the room's microphone error sheet.
+    @objc func diagnose(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let s = AVAudioSession.sharedInstance()
+            call.resolve([
+                "permission": NQAudioPlugin.permission(),
+                "category": s.category.rawValue,
+                "mode": s.mode.rawValue,
+                "inputAvailable": s.isInputAvailable,
+                "inputs": s.availableInputs?.map { $0.portType.rawValue }.joined(separator: ",") ?? "",
+                "route": s.currentRoute.inputs.map { $0.portType.rawValue }.joined(separator: ","),
+                "otherAudio": s.isOtherAudioPlaying,
+            ])
+        }
+    }
+
+    static func permission() -> String {
+        if #available(iOS 17.0, *) {
+            switch AVAudioApplication.shared.recordPermission {
+            case .granted: return "granted"
+            case .denied: return "denied"
+            case .undetermined: return "undetermined"
+            @unknown default: return "unknown"
+            }
+        } else {
+            switch AVAudioSession.sharedInstance().recordPermission {
+            case .granted: return "granted"
+            case .denied: return "denied"
+            case .undetermined: return "undetermined"
+            @unknown default: return "unknown"
+            }
+        }
+    }
 
     @objc func setMode(_ call: CAPPluginCall) {
         let mode = call.getString("mode") ?? "media"

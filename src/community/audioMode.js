@@ -26,3 +26,23 @@ export async function setAudioMode(mode, { force = false } = {}) {
     current = prev;   // try again next time
   }
 }
+
+/** iOS: ask for the microphone permission natively (system prompt). true = granted, false = denied,
+ *  null = could not ask (not iOS, plugin missing) — then WebKit asks by itself. */
+export async function requestMicPermission() {
+  if (!isIOS()) return null;
+  try {
+    if (!NQAudio) NQAudio = registerPlugin('NQAudio');
+    const r = await NQAudio.requestMic();
+    return !!(r && r.granted);
+  } catch { return null; }
+}
+
+/** iOS: the audio session state, for the microphone error sheet. */
+export async function diagnoseAudio() {
+  if (!isIOS()) return null;
+  try {
+    if (!NQAudio) NQAudio = registerPlugin('NQAudio');
+    return await NQAudio.diagnose();
+  } catch (e) { return { error: String((e && e.message) || e) }; }
+}
