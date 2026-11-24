@@ -15,7 +15,8 @@ export class CommunityError extends Error {
 }
 
 export async function call(method, path, body, { etag, timeout = 20000 } = {}) {
-  const headers = { Accept: 'application/json', 'X-NQ-Date': localDate() };
+  // X-NQ-Terms: this build shows the rooms terms agreement (older builds are not asked by the API)
+  const headers = { Accept: 'application/json', 'X-NQ-Date': localDate(), 'X-NQ-Terms': '1' };
   if (method !== 'GET') headers['X-NQ-Client'] = CLIENT;
   const multipart = typeof FormData !== 'undefined' && body instanceof FormData;
   if (body !== undefined && !multipart) headers['Content-Type'] = 'application/json';

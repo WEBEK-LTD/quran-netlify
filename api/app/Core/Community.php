@@ -104,7 +104,8 @@ final class Community
         self::ensureProfileRow($uid); // first entry of an account that already had gender + birthdate: they are now locked
         // The terms (zero tolerance for objectionable content and abusive users) must be accepted once, also by members
         // who joined before the agreement existed. Safety and leaving actions ($allowSuspended: block, unfollow, reports…) stay open.
-        if (!$allowSuspended && !self::termsAccepted($uid)) {
+        // Only app builds that can show the agreement send X-NQ-Terms: 1; older installed builds are not locked out.
+        if (!$allowSuspended && self::clientAsksTerms($r) && !self::termsAccepted($uid)) {
             throw new ApiError(409, 'terms_required', 'وافق على شروط الاستخدام وقواعد الغرف والمجتمع أولاً.');
         }
         if (!$allowSuspended) {
@@ -259,6 +260,12 @@ final class Community
      * @param array<string,mixed> $u users row with id, name, gender, birthdate, is_admin
      * @return array<string,mixed>|null
      */
+    /** The app build shows the terms agreement (header X-NQ-Terms: 1, sent since the agreement exists). */
+    public static function clientAsksTerms(Request $r): bool
+    {
+        return $r->header('x-nq-terms') === '1';
+    }
+
     public static function ctxOf(array $u): ?array
     {
         $scope = self::scopeOf($u['gender'] ?? null);

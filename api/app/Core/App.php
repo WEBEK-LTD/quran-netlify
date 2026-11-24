@@ -6,7 +6,7 @@ namespace NQ\Core;
 /** The HTTP kernel: security headers, CORS, CSRF, auth, maintenance, routing, JSON output. */
 final class App
 {
-    private const ALLOWED_HEADERS = 'Content-Type, Authorization, X-NQ-Client, X-NQ-Date, If-None-Match';
+    private const ALLOWED_HEADERS = 'Content-Type, Authorization, X-NQ-Client, X-NQ-Date, X-NQ-Terms, If-None-Match';
     private const ALLOWED_METHODS = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
 
     public static function securityHeaders(string $csp = "default-src 'none'; frame-ancestors 'none'"): void

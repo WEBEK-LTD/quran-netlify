@@ -130,7 +130,7 @@ final class CommunityController
             $sets[] = 'birthdate = ?';
             $params[] = $bd;
         }
-        if ($sets !== [] && !$joined && $terms !== true && Migrations::ready()) {
+        if ($sets !== [] && !$joined && $terms !== true && Migrations::ready() && Community::clientAsksTerms($r)) {
             $after = $u;
             foreach ($sets as $i => $col) {
                 $after[substr($col, 0, (int) strpos($col, ' '))] = $params[$i];

@@ -125,6 +125,7 @@ $LEG = $mk('leg', 'حساب قديم', null, null, '10.70.0.6');
 $KID = $mk('kid', 'طفل', null, null, '10.70.0.7');
 // ── Terms (App Store 1.2: zero tolerance for objectionable content / abusive users), agreed once
 $TRM = $mk('trm', 'شروط', null, null, '10.70.0.8');
+$TRM['headers'] = ['X-NQ-Terms' => '1'];   // an app build that shows the agreement
 $tj0 = req('PATCH', '/me/community-profile', ['gender' => 'male', 'birthdate' => $adult], $TRM);
 $tj0me = data(req('GET', '/me/community-profile', null, $TRM));
 check('terms: joining without terms_accepted → 422 terms_required, nothing saved', $tj0['status'] === 422 && errc($tj0) === 'terms_required'
@@ -143,6 +144,9 @@ check('terms: an existing member without the agreement → profile says terms_ac
     && ($tm0['joined'] ?? null) === true && $tr0['status'] === 409 && errc($tr0) === 'terms_required' && $trp['status'] === 409, desc($tr0));
 $tbl = req('GET', '/me/blocks', null, $TRM);
 check('terms: safety actions (block list) stay open before agreeing', $tbl['status'] === 200, desc($tbl));
+$TRMold = $TRM; unset($TRMold['headers']);
+$trOld = req('GET', '/rooms', null, $TRMold);
+check('terms: an older app build (no X-NQ-Terms header) is not locked out', $trOld['status'] === 200, desc($trOld));
 $ta = req('PATCH', '/me/community-profile', ['terms_accepted' => true], $TRM);
 $tr1 = req('GET', '/rooms', null, $TRM);
 check('terms: PATCH {terms_accepted:true} once → rooms open again', $ta['status'] === 200 && (data($ta)['terms_accepted'] ?? null) === true && $tr1['status'] === 200, desc($ta) . ' / ' . desc($tr1));
