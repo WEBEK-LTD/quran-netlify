@@ -208,7 +208,7 @@ function makeApi(lang) {
     const q = new URLSearchParams(query || '');
     let m;
     if (path === '/auth/me') return ok({ user: { ...ME, email: 'yusuf@example.com', is_admin: false, email_verified: true, has_password: true, gender: 'male', birthdate: '1996-03-14', created_at: iso(200 * 864e5) } });
-    if (path === '/settings/public') return ok({ app_name: 'نور القرآن', maintenance_mode: false, allow_signup: true, announcement: '', features: { rooms: true }, google_login: true });
+    if (path === '/settings/public') return ok({ app_name: 'نور القرآن', maintenance_mode: false, allow_signup: true, announcement: '', features: { rooms: true, ai_assistant: false }, google_login: true });
     if (path === '/presence') return ok({ online: 1240 });
     if (path === '/broadcasts') return ok([]);
     if (path === '/me/community-profile') return ok(profile);
