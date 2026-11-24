@@ -3,8 +3,8 @@
 // app. The native splash hides onto it at once (Android 12+ only shows the icon on a flat
 // colour, so this is the screen people actually see), and it fades away once the first
 // app screen has painted and the opening animation has had time to play.
-const MIN_MS = 1700;          // the mark, line and wordmark finish at ~1.2 s; a short hold
-const MIN_MS_REDUCED = 600;
+const MIN_MS = 3000;          // star draws, mark lands with its rays, the name reveals and shines (~2.9 s)
+const MIN_MS_REDUCED = 700;
 
 export const launchVisible = () => document.documentElement.classList.contains('nq-launching');
 
@@ -20,7 +20,7 @@ export function finishLaunch() {
         root.classList.remove('nq-launching', 'nq-launch-out');
         document.getElementById('nq-launch')?.remove();
         resolve();
-      }, reduced ? 150 : 460);
+      }, reduced ? 150 : 720);
     }, wait);
   });
 }

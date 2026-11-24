@@ -140,47 +140,66 @@
       })();
     </script>
     <style>
-      /* App opening screen (src/native/launch.js removes it). Hidden on the website. */
+      /* ── App opening animation (inside the app only; src/native/launch.js fades it out) ── */
       #nq-launch { display:none; }
-      html.nq-launching #nq-launch { display:flex; position:fixed; inset:0; z-index:2147483000; flex-direction:column; align-items:center; justify-content:center; gap:22px;
-        background:
-          radial-gradient(1.2px 1.2px at 12% 18%, rgba(246,223,160,.55) 50%, transparent 51%),
-          radial-gradient(1px 1px at 78% 12%, rgba(246,223,160,.45) 50%, transparent 51%),
-          radial-gradient(1.4px 1.4px at 64% 34%, rgba(246,223,160,.35) 50%, transparent 51%),
-          radial-gradient(1px 1px at 22% 62%, rgba(246,223,160,.4) 50%, transparent 51%),
-          radial-gradient(1.2px 1.2px at 86% 70%, rgba(246,223,160,.4) 50%, transparent 51%),
-          radial-gradient(1px 1px at 40% 86%, rgba(246,223,160,.35) 50%, transparent 51%),
-          radial-gradient(1px 1px at 8% 90%, rgba(246,223,160,.3) 50%, transparent 51%),
-          radial-gradient(1px 1px at 55% 8%, rgba(246,223,160,.3) 50%, transparent 51%),
-          radial-gradient(120% 70% at 50% 38%, #17503A 0%, #0B2A1E 45%, #06100C 100%);
-        transition:opacity .45s ease; }
-      #nq-launch::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.9;
-        background-image:radial-gradient(rgba(246,223,160,.08) 1px, transparent 1.2px); background-size:22px 22px;
-        -webkit-mask-image:radial-gradient(70% 55% at 50% 42%, #000 0%, transparent 80%); mask-image:radial-gradient(70% 55% at 50% 42%, #000 0%, transparent 80%); }
-      #nq-launch .nq-l-glow { position:absolute; left:50%; top:42%; width:340px; height:340px; transform:translate(-50%,-50%); border-radius:50%;
-        background:radial-gradient(circle, rgba(212,174,92,.28) 0%, rgba(212,174,92,0) 65%); opacity:0; animation:nqLGlow 1.6s ease-out .15s forwards; }
-      #nq-launch .nq-l-mark { position:relative; width:112px; height:auto; opacity:0; transform:scale(.9); filter:drop-shadow(0 10px 28px rgba(0,0,0,.45)); animation:nqLIn .8s cubic-bezier(.2,.8,.2,1) .1s forwards; }
-      #nq-launch .nq-l-line { position:relative; width:0; height:1px; background:linear-gradient(90deg, transparent, #D4AE5C, transparent); animation:nqLLine .7s ease-out .55s forwards; }
-      #nq-launch .nq-l-word { position:relative; width:210px; height:auto; opacity:0; transform:translateY(8px); animation:nqLUp .7s ease-out .4s forwards; }
-      html.nq-launch-out #nq-launch { opacity:0; }
-      @keyframes nqLIn { to { opacity:1; transform:none; } }
-      @keyframes nqLUp { to { opacity:1; transform:none; } }
-      @keyframes nqLLine { to { width:150px; } }
-      @keyframes nqLGlow { 0% { opacity:0; } 60% { opacity:1; } 100% { opacity:.75; } }
+      html.nq-launching #nq-launch { display:block; position:fixed; inset:0; z-index:2147483000; overflow:hidden; contain:strict;
+        background:radial-gradient(120% 75% at 50% 40%, #134a35 0%, #0a2419 42%, #050d09 100%); transition:opacity .55s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+      html.nq-launch-out #nq-launch { opacity:0; transform:scale(1.06); }
+      #nq-launch canvas { position:absolute; inset:0; width:100%; height:100%; }
+      #nq-launch .nql-stage { position:absolute; left:50%; top:41%; width:300px; height:300px; transform:translate(-50%,-50%); }
+      #nq-launch .nql-rays { position:absolute; inset:-80px; border-radius:50%; opacity:0;
+        background:repeating-conic-gradient(from 0deg, rgba(246,223,160,.16) 0deg 2.2deg, rgba(246,223,160,0) 2.2deg 15deg);
+        -webkit-mask-image:radial-gradient(circle, #000 18%, transparent 68%); mask-image:radial-gradient(circle, #000 18%, transparent 68%);
+        animation:nqlRaysIn 1.2s ease-out .85s forwards, nqlSpin 26s linear infinite; }
+      #nq-launch .nql-glow { position:absolute; inset:40px; border-radius:50%; opacity:0;
+        background:radial-gradient(circle, rgba(246,223,160,.45) 0%, rgba(212,174,92,.18) 35%, rgba(212,174,92,0) 70%); animation:nqlGlow 1.4s ease-out .8s forwards; }
+      #nq-launch svg.nql-geo { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+      #nq-launch .nql-ring { transform-origin:150px 150px; animation:nqlSpinR 40s linear infinite; }
+      #nq-launch .nql-ring circle { fill:none; stroke:#D4AE5C; stroke-width:.8; stroke-dasharray:2 7; opacity:0; animation:nqlFade 1s ease-out .3s forwards; }
+      #nq-launch .nql-ring circle.o { stroke-dasharray:none; stroke-width:.6; opacity:0; animation:nqlFadeHalf 1.2s ease-out .45s forwards; }
+      #nq-launch .nql-star path { fill:none; stroke:url(#nqlGold); stroke-width:1.6; stroke-linejoin:round; stroke-dasharray:1100; stroke-dashoffset:1100; animation:nqlDraw 1.3s cubic-bezier(.65,0,.35,1) .15s forwards, nqlStarDim .9s ease 1.5s forwards; }
+      #nq-launch .nql-mark { position:absolute; left:50%; top:50%; width:104px; height:auto; transform:translate(-50%,-50%) scale(.6); opacity:0;
+        filter:drop-shadow(0 12px 30px rgba(0,0,0,.55)) drop-shadow(0 0 22px rgba(212,174,92,.25)); animation:nqlMark 1s cubic-bezier(.2,.9,.25,1.15) .9s forwards; }
+      #nq-launch .nql-sheen { position:absolute; left:50%; top:50%; width:104px; height:124px; transform:translate(-50%,-50%); pointer-events:none;
+        -webkit-mask:url(/brand/logo-mark.svg) center/contain no-repeat; mask:url(/brand/logo-mark.svg) center/contain no-repeat;
+        background:linear-gradient(115deg, transparent 35%, rgba(255,250,230,.85) 50%, transparent 65%); background-size:260% 100%; background-position:120% 0; mix-blend-mode:screen; opacity:0;
+        animation:nqlSheen 1.1s ease-in-out 1.7s forwards; }
+      #nq-launch .nql-text { position:absolute; left:50%; top:calc(41% + 128px); transform:translateX(-50%); width:230px; display:flex; flex-direction:column; align-items:center; gap:16px; }
+      #nq-launch .nql-line { width:0; height:1px; background:linear-gradient(90deg, transparent, #E7C77E, transparent); animation:nqlLine .8s ease-out 1.35s forwards; }
+      #nq-launch .nql-word { width:230px; height:66px; clip-path:inset(0 0 0 100%);
+        -webkit-mask:url(/brand/wordmark-on-dark.svg) center/contain no-repeat; mask:url(/brand/wordmark-on-dark.svg) center/contain no-repeat;
+        background:linear-gradient(105deg, #B8893A 0%, #D4AE5C 30%, #F6DFA0 44%, #FFF8E1 50%, #F6DFA0 56%, #D4AE5C 70%, #B8893A 100%); background-size:300% 100%; background-position:100% 0;
+        animation:nqlReveal 1s cubic-bezier(.65,0,.35,1) 1.45s forwards, nqlShimmer 1.4s ease-in-out 2.2s forwards; }
+      @keyframes nqlDraw { to { stroke-dashoffset:0; } }
+      @keyframes nqlStarDim { to { opacity:.45; } }
+      @keyframes nqlFade { to { opacity:.7; } }
+      @keyframes nqlFadeHalf { to { opacity:.35; } }
+      @keyframes nqlSpin { to { transform:rotate(360deg); } }
+      @keyframes nqlSpinR { to { transform:rotate(-360deg); } }
+      @keyframes nqlRaysIn { to { opacity:1; } }
+      @keyframes nqlGlow { 0% { opacity:0; transform:scale(.6); } 55% { opacity:1; transform:scale(1.05); } 100% { opacity:.8; transform:scale(1); } }
+      @keyframes nqlMark { 0% { opacity:0; transform:translate(-50%,-50%) scale(.6) rotate(-6deg); } 100% { opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0); } }
+      @keyframes nqlSheen { 0% { opacity:1; background-position:120% 0; } 100% { opacity:1; background-position:-20% 0; } }
+      @keyframes nqlLine { to { width:170px; } }
+      @keyframes nqlReveal { to { clip-path:inset(0 0 0 0); } }
+      @keyframes nqlShimmer { to { background-position:0% 0; } }
       @media (prefers-reduced-motion: reduce) {
-        #nq-launch .nq-l-mark, #nq-launch .nq-l-word, #nq-launch .nq-l-glow { animation:none; opacity:1; transform:none; }
-        #nq-launch .nq-l-line { animation:none; width:150px; }
+        #nq-launch *, #nq-launch *::before { animation:none !important; }
+        #nq-launch .nql-mark { opacity:1; transform:translate(-50%,-50%); }
+        #nq-launch .nql-word { clip-path:none; } #nq-launch .nql-line { width:170px; }
+        #nq-launch .nql-star path { stroke-dashoffset:0; opacity:.45; } #nq-launch .nql-glow { opacity:.8; }
+        #nq-launch canvas { display:none; }
       }
     </style>
     <script>
-      /* Inside the native app only: show the opening screen from the very first paint. */
+      /* Inside the native app only: show the opening animation from the very first paint. */
       (function () {
         try {
           if (window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) {
             var r = document.documentElement;
             r.classList.add("nq-launching");
             // safety net: never keep the opening screen if the app code failed to start
-            setTimeout(function () { r.classList.remove("nq-launching"); }, 8000);
+            setTimeout(function () { r.classList.remove("nq-launching"); }, 9000);
           }
         } catch (e) {}
       })();
@@ -188,10 +207,55 @@
   </head>
   <body>
     <div id="nq-launch" aria-hidden="true">
-      <div class="nq-l-glow"></div>
-      <img class="nq-l-mark" src="/brand/logo-mark.svg" alt="" width="112" height="133" decoding="sync" />
-      <div class="nq-l-line"></div>
-      <img class="nq-l-word" src="/brand/wordmark-on-dark.svg" alt="" width="210" height="60" decoding="sync" />
+      <canvas id="nq-launch-fx"></canvas>
+      <div class="nql-stage">
+        <div class="nql-rays"></div>
+        <div class="nql-glow"></div>
+        <svg class="nql-geo" viewBox="0 0 300 300">
+          <defs><linearGradient id="nqlGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F6DFA0"/><stop offset=".5" stop-color="#D4AE5C"/><stop offset="1" stop-color="#B8893A"/></linearGradient></defs>
+          <g class="nql-ring"><circle cx="150" cy="150" r="142"/><circle class="o" cx="150" cy="150" r="132"/></g>
+          <g class="nql-star"><path d="M150.0,32.0 L184.6,66.6 L233.4,66.6 L233.4,115.4 L268.0,150.0 L233.4,184.6 L233.4,233.4 L184.6,233.4 L150.0,268.0 L115.4,233.4 L66.6,233.4 L66.6,184.6 L32.0,150.0 L66.6,115.4 L66.6,66.6 L115.4,66.6 Z"/><path d="M234.9,234.9 L65.1,234.9 L65.1,65.1 L234.9,65.1 Z"/><path d="M150.0,270.0 L30.0,150.0 L150.0,30.0 L270.0,150.0 Z"/></g>
+        </svg>
+        <img class="nql-mark" src="/brand/logo-mark.svg" alt="" width="104" height="124" decoding="sync" />
+        <div class="nql-sheen"></div>
+      </div>
+      <div class="nql-text"><div class="nql-line"></div><div class="nql-word"></div></div>
+      <script>
+        (function () {
+          var root = document.documentElement;
+          if (!root.classList.contains("nq-launching")) return;
+          if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+          var cv = document.getElementById("nq-launch-fx"), ctx = cv.getContext("2d");
+          var dpr = Math.min(window.devicePixelRatio || 1, 2), W, H, cx, cy, t0 = performance.now(), P = [];
+          function size() { W = cv.width = innerWidth * dpr; H = cv.height = innerHeight * dpr; cx = W / 2; cy = H * 0.41; }
+          size(); addEventListener("resize", size);
+          function spawn(init) {
+            var a = Math.random() * Math.PI * 2, d = (0.35 + Math.random() * 0.65) * Math.max(W, H) * 0.6;
+            return { x: cx + Math.cos(a) * d, y: (init ? Math.random() * H : H + Math.random() * H * 0.2), r: (0.6 + Math.random() * 1.8) * dpr,
+                     s: (0.25 + Math.random() * 0.9) * dpr, tw: Math.random() * 6.28, life: 0 };
+          }
+          for (var i = 0; i < 70; i++) P.push(spawn(true));
+          (function frame(now) {
+            if (!document.getElementById("nq-launch")) return;
+            var el = (now - t0) / 1000, pull = Math.min(1, el / 1.6);
+            ctx.clearRect(0, 0, W, H);
+            for (var i = 0; i < P.length; i++) {
+              var p = P[i]; p.life += 0.016;
+              var dx = cx - p.x, dy = cy - p.y, dist = Math.sqrt(dx * dx + dy * dy) || 1;
+              p.x += dx / dist * p.s * 0.9 * pull + Math.sin(p.tw + el * 2) * 0.15 * dpr;
+              p.y += dy / dist * p.s * 0.9 * pull - p.s * 0.6;
+              if (dist < 40 * dpr || p.y < -10) { P[i] = spawn(false); continue; }
+              var a = Math.min(1, p.life * 1.5) * (0.35 + 0.65 * Math.abs(Math.sin(p.tw + el * 3))) * Math.min(1, dist / (140 * dpr));
+              var g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 4);
+              g.addColorStop(0, "rgba(255,240,200," + (a * 0.95).toFixed(3) + ")");
+              g.addColorStop(0.35, "rgba(231,199,126," + (a * 0.45).toFixed(3) + ")");
+              g.addColorStop(1, "rgba(212,174,92,0)");
+              ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 4, 0, 6.283); ctx.fill();
+            }
+            requestAnimationFrame(frame);
+          })(t0);
+        })();
+      </script>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
