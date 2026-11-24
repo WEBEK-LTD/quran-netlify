@@ -43,6 +43,7 @@ const BASE = `http://localhost:${PORT}`;
 
 const DEVICES = {
   iphone: { w: 440, h: 956, dsf: 3, tablet: false },   // 1320×2868
+  iphone63: { w: 402, h: 874, dsf: 3, tablet: false }, // 1206×2622 — App Store «iPhone with Dynamic Island (medium display)», 6.3"
   ipad:   { w: 1032, h: 1376, dsf: 2, tablet: true },  // 2064×2752
   play:   { w: 432, h: 768, dsf: 2.5, tablet: false }, // 1080×1920
 };
