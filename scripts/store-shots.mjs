@@ -4,6 +4,7 @@
 //   npm run store:shots                      build the app bundle, then everything below
 //   node scripts/store-shots.mjs --no-build  reuse the current dist/ (app or website build)
 //   node scripts/store-shots.mjs --lang ar --device iphone --only qibla
+//   node scripts/store-shots.mjs --no-build --frame-only    redo only the framed versions
 //
 // Output (committed):
 //   store-assets/screenshots/<ar|en>/<iphone|ipad|play>/raw/NN-name.png      the screen itself
@@ -23,7 +24,7 @@
 // or point PLAYWRIGHT_MODULE at an installed copy and CHROMIUM_PATH at a browser.
 import { spawn, execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { readFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, mkdirSync, existsSync, writeFileSync, statSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -58,6 +59,14 @@ function loadPlaywright() {
   process.exit(1);
 }
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+// Chromium writes fast, large PNGs; recompress losslessly (about half the size) when sharp
+// is installed (it comes with @capacitor/assets)
+let sharpMod; try { sharpMod = require('sharp'); } catch { sharpMod = null; }
+async function optimizePng(file) {
+  if (!sharpMod) return;
+  const buf = await sharpMod(file).png({ compressionLevel: 9, adaptiveFiltering: true, palette: false }).toBuffer();
+  if (buf.length < statSync(file).size) writeFileSync(file, buf);
+}
 const readJson = (p) => JSON.parse(readFileSync(join(ROOT, p), 'utf8'));
 const b64 = (p) => readFileSync(join(ROOT, p)).toString('base64');
 
@@ -471,6 +480,7 @@ async function capture(browser, { lang, device, screen }) {
   const file = join(dir, `${screen.n}-${screen.name}.png`);
   await page.screenshot({ path: file, animations: 'disabled', caret: 'hide', fullPage: flag('full') });
   await ctx.close();
+  await optimizePng(file);
   return { file, errors, unknown: [...api.unknown], ...check };
 }
 
@@ -491,8 +501,8 @@ function framedHtml({ shotB64, head, sub, lang, D }) {
   const tablet = D.tablet;
   // Arabic headlines fit one line, English ones take two: the block keeps that height on
   // every screen so the device has the same size across a language's set
-  const lines = rtl ? 1 : 2;
-  const headSize = tablet ? (rtl ? 64 : 58) : Math.round(W * (rtl ? 0.085 : 0.078));
+  const lines = rtl || tablet ? 1 : 2;
+  const headSize = tablet ? (rtl ? 64 : 52) : Math.round(W * (rtl ? 0.085 : 0.078));
   const subSize = tablet ? 30 : Math.round(W * 0.042);
   const top = tablet ? 70 : Math.round(H * 0.06);
   const phoneW = tablet ? Math.round(W * 0.74) : Math.round(W * 0.76);
@@ -535,6 +545,7 @@ async function frame(browser, { lang, device, screen, rawFile }) {
   const file = join(dir, `${screen.n}-${screen.name}.png`);
   await page.screenshot({ path: file });
   await ctx.close();
+  await optimizePng(file);
   return { file, fit };
 }
 
@@ -564,12 +575,11 @@ async function playGraphics(browser) {
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: join(dir, 'feature-graphic-1024x500.png') });
   await ctx.close();
+  await optimizePng(join(dir, 'feature-graphic-1024x500.png'));
   // icon 512×512: the 1024 store icon, downscaled, fully opaque (alpha channel kept at 255 = "32-bit PNG")
   const out = join(dir, 'icon-512.png');
-  let sharp = null;
-  try { sharp = require('sharp'); } catch {}
-  if (sharp) {
-    await sharp(join(ROOT, 'store-assets/icons/icon-1024.png')).resize(512, 512, { kernel: 'lanczos3' })
+  if (sharpMod) {
+    await sharpMod(join(ROOT, 'store-assets/icons/icon-1024.png')).resize(512, 512, { kernel: 'lanczos3' })
       .flatten({ background: '#06100C' }).ensureAlpha(1).png({ compressionLevel: 9 }).toFile(out);
   } else {
     const c2 = await browser.newContext({ viewport: { width: 512, height: 512 }, deviceScaleFactor: 1 });
@@ -598,7 +608,10 @@ try {
   if (!flag('no-shots')) {
     for (const lang of LANGS) for (const device of DEVICES_WANTED) for (const screen of SCREENS) {
       if (ONLY && !ONLY.split(',').includes(screen.name)) continue;
-      const r = await capture(browser, { lang, device, screen });
+      const rawFile = join(OUT, 'screenshots', lang, device, 'raw', `${screen.n}-${screen.name}.png`);
+      const r = flag('frame-only') && existsSync(rawFile)
+        ? { file: rawFile, errors: [], unknown: [], overflow: false, spinners: 0 }
+        : await capture(browser, { lang, device, screen });
       const f = flag('no-framed') ? null : await frame(browser, { lang, device, screen, rawFile: r.file });
       const issues = [...r.errors, ...(r.unknown.length ? ['unmocked: ' + r.unknown.join(', ')] : []), ...(r.overflow ? ['horizontal overflow'] : []), ...(r.spinners ? [`${r.spinners} loading indicator(s) visible`] : []), ...(f && f.fit.bottom > f.fit.h ? ['framed: device cut off'] : [])];
       report.push(`${lang}/${device}/${screen.n}-${screen.name}${issues.length ? '  ⚠ ' + issues.join(' | ') : ''}`);
