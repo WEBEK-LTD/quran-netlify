@@ -51,7 +51,14 @@ jobs:
           GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
         if: env.GOOGLE_SERVICES_JSON_BASE64 != ''
         run: |
-          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 -d > android/app/google-services.json
+          # the secret may hold the JSON file itself or its base64
+          if printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | grep -q '"project_info"'; then
+            printf '%s\n' "$GOOGLE_SERVICES_JSON_BASE64" | tr -d '\r' > android/app/google-services.json
+          else
+            printf '%s' "$GOOGLE_SERVICES_JSON_BASE64" | tr -d ' \r\n\t' | base64 -d > android/app/google-services.json
+          fi
+          python3 -c "import json;d=json.load(open('android/app/google-services.json'));assert any(c['client_info']['android_client_info']['package_name']=='net.nuralquran.app' for c in d['client']);print('google-services.json ok:',d['project_info']['project_id'])" \
+            || { echo "::error::GOOGLE_SERVICES_JSON_BASE64 is not a valid google-services.json for net.nuralquran.app"; exit 1; }
           echo "VITE_NQ_PUSH=1" >> "$GITHUB_ENV"
 
       - name: Web build + cap sync android
