@@ -77,6 +77,7 @@ export function initAudio() {
     else if (ev.type === 'finished' && ev.cursor) toast = coreTrNow('انتهت سورة {name}', { name: surahName(ev.cursor.surah) });
     else if (ev.type === 'sleep-done') toast = coreTrNow('انتهى مؤقّت النوم — أُوقفت التلاوة');
     else if (ev.type === 'needs-tap') toast = coreTrNow('اضغط «تشغيل» لمتابعة التلاوة');
+    else if (ev.type === 'room-busy') toast = coreTrNow('التلاوة متوقفة وأنت في غرفة صوتية — غادر الغرفة لتشغيلها');
     else if (ev.type === 'degraded' && import.meta.env.DEV) console.info('[audio] single-element mode');
     if (toast) publish({ toast });
   });

@@ -30,6 +30,17 @@ function update(engine, force = false) {
   const ms = navigator.mediaSession;
   const x = engine.getSnapshot();
   const c = x.cursor;
+  if (c && x.suspended) {
+    // in a voice room: no Now Playing / lock-screen / media-notification entry that could start
+    // the recitation over the room (engine.suspend()); it comes back with the next play
+    if (lastMeta !== 'suspended') {
+      lastMeta = 'suspended';
+      lastPos = { at: 0, key: '' };
+      try { ms.playbackState = 'none'; } catch {}
+      try { ms.metadata = null; } catch {}
+    }
+    return;
+  }
   try { ms.playbackState = c ? (x.playing ? 'playing' : 'paused') : 'none'; } catch {}
   if (!c) return;
   const key = `${x.reader}|${c.surah}|${c.ayah}|${c.basmala ? 1 : 0}|${getLang()}`;

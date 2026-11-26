@@ -92,6 +92,8 @@ export function useRadioPlayer({ meta, neighbour }) {
   const begin = useCallback(async (st, isRetry = false) => {
     const a = audioRef.current;
     if (!a || !st || !st.url) return;
+    // in a voice room nothing plays over the room (src/audio/engine.js suspend())
+    if (engine.suspended) { stopRef.current(); return; }
     const token = ++tokenRef.current;
     clearTimers();
     teardown();
@@ -189,8 +191,13 @@ export function useRadioPlayer({ meta, neighbour }) {
       } catch {}
     });
 
+    // a voice room started → stop the radio
+    const onRoom = e => { if (e && e.detail && e.detail.active && phaseRef.current !== 'idle') stopRef.current(); };
+    window.addEventListener('nq-room-session', onRoom);
+
     return () => {
       unsub();
+      window.removeEventListener('nq-room-session', onRoom);
       tokenRef.current++;
       clearTimers();
       if (hlsRef.current) { try { hlsRef.current.destroy(); } catch {} hlsRef.current = null; }

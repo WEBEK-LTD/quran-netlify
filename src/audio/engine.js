@@ -75,6 +75,8 @@ export class AudioEngine {
     this._sleepTimer = null;
     this._fading = null;
     this._snap = null;
+    this.suspended = false;    // the member is in a voice room: nothing may load or play (suspend())
+    this._suspendAt = 0;       // where the recitation was when the room began
     this.els.forEach(el => this._wire(el));
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
   }
@@ -98,6 +100,7 @@ export class AudioEngine {
         sleep: this.sleep,
         single: this.single,
         reader: this.reader,
+        suspended: this.suspended,
       };
     }
     return this._snap;
@@ -190,6 +193,7 @@ export class AudioEngine {
   }
 
   _load(el, url, resumeAt = 0, { lazy = false } = {}) {
+    if (this.suspended) return;
     // lazy: fetch only the header for now (the standby while the first ayah starts,
     // so both do not share the bandwidth); `playing` on the active one upgrades it
     el.preload = lazy ? 'metadata' : 'auto';
@@ -207,6 +211,7 @@ export class AudioEngine {
   }
 
   _play(el, { auto = false } = {}) {
+    if (this.suspended) { this._refuse(); return; }
     this.wantPlay = true;
     if (el.readyState < 3) { this.status = 'loading'; this.buffering = true; }
     el.muted = false;
@@ -342,7 +347,7 @@ export class AudioEngine {
   _opts(extra = {}) { return { stopAtSurahEnd: this.sleep.kind === 'surah', ...extra }; }
 
   _planNext() {
-    if (!this.cursor || !this.reader) return;
+    if (!this.cursor || !this.reader || this.suspended) return;
     const urls = upcoming(this.cursor, this.settings, PREFETCH_AHEAD, this._opts()).map(f => getAudioUrl(this.reader, ...f));
     prefetchAudio(urls);
     if (this.single) return;
@@ -407,7 +412,7 @@ export class AudioEngine {
     if (!id || id === this.reader) return;
     const had = this.reader;
     this.reader = id;
-    if (!had || !this.cursor) { this._emit(); return; }
+    if (!had || !this.cursor || this.suspended) { this._suspendAt = 0; this._emit(); return; }
     // same ayah, new reciter (times differ between reciters: start the ayah over)
     const play = this.wantPlay;
     this.els.forEach(el => { el._url = null; });
@@ -419,6 +424,7 @@ export class AudioEngine {
 
   /** Start at (surah, ayah) — call from a user gesture. */
   start(surah, ayah) {
+    if (this.suspended) { this._refuse(); return; }
     this.fails = 0;
     this.everPlayed = false;
     this.cursor = firstCursor(surah, ayah, this.settings);
@@ -443,10 +449,12 @@ export class AudioEngine {
 
   resume() {
     if (!this.cursor) return false;
+    if (this.suspended) { this._refuse(); return true; }
     this._prime();
     const el = this.active;
     if (this.status === 'ended' || el.ended) { this._go({ ...this.cursor, rep: 0 }, { play: true }); return true; }
-    if (!el.getAttribute('src') || el.error || el._url !== this._url(this.cursor)) this._load(el, this._url(this.cursor), el.currentTime || 0);
+    if (!el.getAttribute('src') || el.error || el._url !== this._url(this.cursor)) this._load(el, this._url(this.cursor), el.currentTime || this._suspendAt || 0);
+    this._suspendAt = 0;
     this._play(el);
     this._emit();
     return true;
@@ -466,6 +474,7 @@ export class AudioEngine {
 
   next() {
     if (!this.cursor) return;
+    if (this.suspended) { this._refuse(); return; }
     const nxt = nextCursor(this.cursor, this.settings, { skip: true });
     if (!nxt) { this._event({ type: 'finished', cursor: this.cursor }); return; }
     this._prime();
@@ -474,6 +483,7 @@ export class AudioEngine {
 
   prev() {
     if (!this.cursor) return;
+    if (this.suspended) { this._refuse(); return; }
     if (this.time > 3) { this.seek(0); if (!this.wantPlay) this.resume(); return; }
     const p = prevCursor(this.cursor, this.settings);
     if (!p) { this.seek(0); return; }
@@ -563,7 +573,56 @@ export class AudioEngine {
     this.status = 'idle';
     this._emit();
   }
+
+  // ── voice rooms ────────────────────────────────────────────────────────────
+  // While the member is in a voice room the recitation must stay silent, or they cannot hear
+  // the room. Pausing is not enough: a paused element keeps its file, and the OS can start it
+  // again by itself — iOS when the room switches the audio session to play-and-record, Now
+  // Playing / lock screen / a Bluetooth headset's play button, Android's media notification.
+  // So both elements are unloaded (the cursor and the time are kept) and every load or play is
+  // refused until the member leaves. Leaving does not start the recitation again by itself:
+  // «تشغيل» continues from the same ayah and second.
+  suspend() {
+    if (this.suspended) return;
+    const at = this.cursor ? this.time : 0;
+    this.pause();
+    clearTimeout(this._sleepTimer);
+    clearTimeout(this._swapWatch);
+    this.suspended = true;
+    this._suspendAt = at;
+    this.els.forEach(el => {
+      try { el.pause(); el.removeAttribute('src'); el.load(); } catch {}
+      el._url = null;
+      el._playing = false;
+      el._failed = false;
+    });
+    if (this.sleep.kind !== 'off') this.sleep = { kind: 'off', endsAt: 0 };
+    this._emit();
+  }
+
+  unsuspend() {
+    if (!this.suspended) return;
+    this.suspended = false;
+    this._emit();
+  }
+
+  _refuse() {
+    this.wantPlay = false;
+    this.buffering = false;
+    if (this.status !== 'idle') this.status = 'paused';
+    this._emit();
+    this._event({ type: 'room-busy' });
+  }
 }
 
 export const engine = new AudioEngine();
+
+// a voice room (src/community/live.js) is connecting or connected: the recitation stays silent for
+// as long as it lasts, so the member hears the room (see suspend())
+if (typeof window !== 'undefined') {
+  window.addEventListener('nq-room-session', e => {
+    if (e && e.detail && e.detail.active) engine.suspend();
+    else engine.unsuspend();
+  });
+}
 if (import.meta.env && import.meta.env.DEV && typeof window !== 'undefined') window.__nqAudio = engine;
