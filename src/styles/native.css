@@ -95,3 +95,7 @@
 /* Blurred translucent bars repaint on every scroll frame on phones: solid bars in the app. */
 .nq-native .nq-tabbar { background:var(--surface); backdrop-filter:none; -webkit-backdrop-filter:none; }
 .nq-native .nq-top { background:var(--bg); backdrop-filter:none; -webkit-backdrop-filter:none; }
+
+/* iOS zooms in on a text field whose text is under 16px (and stays zoomed); boot.js also caps the
+   viewport scale — this keeps it from happening on any WebKit build that ignores the cap */
+.nq-native-ios :is(input:not([type="range"]):not([type="checkbox"]):not([type="radio"]), textarea, select) { font-size:max(16px, 1em); }
